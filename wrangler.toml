@@ -5,7 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "binchen-blog-db"
-database_id = "your-database-id"
+database_id = "7f97de5c-477b-49bb-85de-7a9d8076652e"
 
 [[r2_buckets]]
 binding = "BUCKET"

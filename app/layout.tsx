@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+export const runtime = "edge";
+
 export const metadata: Metadata = {
   title: "binchen | 自由与宁静",
   description: "binchen 的个人博客 - 喜欢自由与宁静地生活旅行者",
