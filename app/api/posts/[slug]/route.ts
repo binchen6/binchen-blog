@@ -6,7 +6,7 @@ export const runtime = "edge";
 export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
   try {
     const ctx = getRequestContext();
-    const db = ctx.env.DB;
+    const db = (ctx.env as any).DB;
     const slug = params.slug;
     const post = await db.prepare("SELECT * FROM posts WHERE slug = ? AND status = 'published'").bind(slug).first();
     if (!post) {
