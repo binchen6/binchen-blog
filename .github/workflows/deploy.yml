@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  NODE_VERSION: "20"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,8 +21,24 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+
+      - name: Verify Cloudflare Secrets
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "❌ ERROR: CLOUDFLARE_API_TOKEN secret is missing!"
+            echo "👉 请前往 GitHub 仓库 → Settings → Secrets and variables → Actions"
+            echo "👉 添加 CLOUDFLARE_API_TOKEN（从 Cloudflare My Profile → API Tokens 创建）"
+            exit 1
+          fi
+          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then
+            echo "❌ ERROR: CLOUDFLARE_ACCOUNT_ID secret is missing!"
+            echo "👉 请前往 GitHub 仓库 → Settings → Secrets and variables → Actions"
+            echo "👉 添加 CLOUDFLARE_ACCOUNT_ID（从 Cloudflare Dashboard 右侧获取）"
+            exit 1
+          fi
+          echo "✅ Cloudflare secrets verified"
 
       - name: Install dependencies
         run: npm install
@@ -34,9 +53,9 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy .vercel/output/static --project-name=binchen-blog
+          command: pages deploy .vercel/output/static --project-name=binchen-blog --branch=main
 
-      - name: Initialize Database
+      - name: Initialize Database (optional)
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
