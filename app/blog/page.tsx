@@ -26,7 +26,7 @@ export default function BlogPage() {
 
   useEffect(() => {
     fetch("/api/posts")
-      .then((res) => res.json())
+      .then((res) => res.json() as any)
       .then((data) => {
         setPosts(data.posts || []);
         setLoading(false);
@@ -58,62 +58,56 @@ export default function BlogPage() {
           {loading ? (
             <div className="ink-loading h-1 max-w-md mx-auto" />
           ) : posts.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-16"
-            >
-              <p className="text-stone text-lg">暂无文章，敬请期待...</p>
-            </motion.div>
+            <div className="text-center py-16">
+              <p className="text-stone text-sm">暂无文章</p>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {posts.map((post, index) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {posts.map((post) => (
                 <motion.article
                   key={post.id}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6 }}
+                  className="paper-card group"
                 >
-                  <Link href={`/blog/${post.slug}`} className="paper-card block overflow-hidden">
+                  <Link href={`/blog/${post.slug}`} className="block">
                     {post.cover_image && (
-                      <div className="aspect-video overflow-hidden">
+                      <div className="aspect-video overflow-hidden rounded-t-sm">
                         <img
                           src={post.cover_image}
                           alt={post.title}
-                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                         />
                       </div>
                     )}
                     <div className="p-6">
-                      <div className="flex items-center space-x-4 mb-3 text-xs text-stone">
+                      <div className="flex items-center space-x-3 mb-4 text-xs text-stone">
                         <span className="flex items-center space-x-1">
                           <Calendar size={12} />
                           <span>{formatDate(post.published_at || post.created_at)}</span>
                         </span>
                         <span className="flex items-center space-x-1">
                           <Eye size={12} />
-                          <span>{post.view_count} 阅读</span>
+                          <span>{post.view_count}</span>
                         </span>
                       </div>
-                      <h2 className="font-serif-zh text-xl font-semibold mb-3 tracking-wide">
+                      <h2 className="font-serif-zh text-xl font-bold tracking-wider mb-3 group-hover:text-ink transition-colors">
                         {post.title}
                       </h2>
-                      <p className="text-sm text-ink-light leading-relaxed mb-4">
+                      <p className="text-sm text-ink-light leading-relaxed mb-4 line-clamp-3">
                         {post.excerpt}
                       </p>
-                      <div className="flex items-center justify-between">
+                      {post.tags && (
                         <div className="flex items-center space-x-2">
-                          {post.tags && post.tags.split(",").map((tag) => (
-                            <span key={tag} className="flex items-center space-x-1 text-xs text-bronze">
-                              <Tag size={10} />
-                              <span>{tag.trim()}</span>
-                            </span>
-                          ))}
+                          <Tag size={12} className="text-bronze" />
+                          <span className="text-xs text-bronze">{post.tags.split(",").map(t => t.trim()).join(" · ")}</span>
                         </div>
-                        <span className="flex items-center space-x-1 text-sm text-ink-light">
-                          <span>阅读全文</span>
-                          <ArrowRight size={14} />
-                        </span>
+                      )}
+                      <div className="mt-4 flex items-center space-x-1 text-xs text-ink-light group-hover:text-ink transition-colors">
+                        <span>阅读全文</span>
+                        <ArrowRight size={12} />
                       </div>
                     </div>
                   </Link>
