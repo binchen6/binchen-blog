@@ -6,7 +6,7 @@ export const runtime = "edge";
 export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
   try {
     const ctx = getRequestContext();
-    const db = ctx.env.DB;
+    const db = (ctx.env as any).DB;
     const slug = params.slug;
     const post = await db.prepare("SELECT id FROM posts WHERE slug = ?").bind(slug).first();
     if (!post) {
@@ -22,13 +22,13 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
 
 export async function POST(request: NextRequest, { params }: { params: { slug: string } }) {
   try {
-    const body = await request.json();
+    const body = await request.json() as any;
     const { name, email, content, parentId } = body;
     if (!name || !email || !content) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
     const ctx = getRequestContext();
-    const db = ctx.env.DB;
+    const db = (ctx.env as any).DB;
     const slug = params.slug;
     const post = await db.prepare("SELECT id FROM posts WHERE slug = ?").bind(slug).first();
     if (!post) {
