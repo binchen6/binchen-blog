@@ -24,7 +24,7 @@ export default function GuestbookPage() {
 
   useEffect(() => {
     fetch("/api/guestbook")
-      .then((res) => res.json())
+      .then((res) => res.json() as any)
       .then((data) => { setEntries(data.entries || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
@@ -39,7 +39,7 @@ export default function GuestbookPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const data = await res.json();
+      const data = await res.json() as any;
       if (data.entry) { setEntries([data.entry, ...entries]); setForm({ name: "", email: "", content: "" }); }
     } catch (error) { console.error("Submit error:", error); } finally { setSubmitting(false); }
   };
@@ -58,51 +58,40 @@ export default function GuestbookPage() {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3 }} className="paper-card p-8 mb-12">
             <h2 className="font-serif-zh text-xl font-semibold mb-6 flex items-center space-x-2">
               <Wind size={20} />
-              <span>写下留言</span>
+              <span>写下你的留言</span>
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" placeholder="姓名 *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full" required />
-                <input type="email" placeholder="邮箱 *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full" required />
+                <input type="text" placeholder="姓名" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full" required />
+                <input type="email" placeholder="邮箱" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full" required />
               </div>
-              <textarea placeholder="想说的话..." value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="w-full h-32 resize-none" required />
+              <textarea placeholder="写下你的想法..." value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="w-full h-32 resize-none" required />
               <button type="submit" disabled={submitting} className="btn-ink flex items-center space-x-2 disabled:opacity-50">
                 <Send size={16} />
                 <span>{submitting ? "提交中..." : "提交留言"}</span>
               </button>
             </form>
           </motion.div>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8, delay: 0.5 }}>
-            <h2 className="font-serif-zh text-xl font-semibold mb-8 flex items-center space-x-2">
-              <MessageCircle size={20} />
-              <span>所有留言 ({entries.length})</span>
-            </h2>
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.5 }} className="space-y-6">
             {loading ? (
               <div className="ink-loading h-1 max-w-md mx-auto" />
             ) : entries.length === 0 ? (
-              <div className="text-center py-16">
-                <BookOpen className="mx-auto text-stone/30 mb-4" size={48} />
-                <p className="text-stone">暂无留言，来做第一个留言者吧！</p>
-              </div>
+              <p className="text-stone text-center py-8">暂无留言，来做第一个留言者吧！</p>
             ) : (
-              <div className="space-y-6">
-                {entries.map((entry, index) => (
-                  <motion.div key={entry.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: index * 0.1 }} className="paper-card p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="w-10 h-10 rounded-full bg-ink/10 flex items-center justify-center flex-shrink-0">
-                        <User size={20} className="text-ink-light" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-semibold text-sm">{entry.name}</span>
-                          <span className="text-xs text-stone">{formatDate(entry.created_at)}</span>
-                        </div>
-                        <p className="text-sm text-ink-light leading-relaxed">{entry.content}</p>
-                      </div>
+              entries.map((entry) => (
+                <motion.div key={entry.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="paper-card p-6">
+                  <div className="flex items-center space-x-3 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-ink/10 flex items-center justify-center">
+                      <User size={16} className="text-ink-light" />
                     </div>
-                  </motion.div>
-                ))}
-              </div>
+                    <div>
+                      <span className="text-sm font-semibold">{entry.name}</span>
+                      <span className="text-xs text-stone ml-2">{formatDate(entry.created_at)}</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-ink-light leading-relaxed">{entry.content}</p>
+                </motion.div>
+              ))
             )}
           </motion.div>
         </div>
