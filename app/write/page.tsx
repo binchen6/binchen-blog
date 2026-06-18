@@ -26,7 +26,7 @@ export default function WritePage() {
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const data = await res.json();
+      const data = await res.json() as any;
       if (data.url) setCoverImage(data.url);
     } catch (error) {
       console.error("Upload error:", error);
@@ -58,7 +58,7 @@ export default function WritePage() {
         },
         body: JSON.stringify({ title, content, tags, coverImage, status }),
       });
-      const data = await res.json();
+      const data = await res.json() as any;
       if (data.post) {
         alert("发布成功！");
         router.push(`/blog/${data.post.slug}`);
@@ -101,7 +101,7 @@ export default function WritePage() {
                   <TagIcon size={16} />
                   <span>标签</span>
                 </label>
-                <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="旅行, 摄影, 生活...（用逗号分隔）" className="w-full" />
+                <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="标签1, 标签2, 标签3..." className="w-full" />
               </div>
               <div>
                 <label className="flex items-center space-x-2 text-sm font-semibold mb-2">
@@ -109,44 +109,39 @@ export default function WritePage() {
                   <span>封面图片</span>
                 </label>
                 <div className="flex items-center space-x-4">
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="btn-outline flex items-center space-x-2" disabled={uploading}>
+                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="btn-outline flex items-center space-x-2 disabled:opacity-50">
                     <Upload size={16} />
                     <span>{uploading ? "上传中..." : "上传图片"}</span>
                   </button>
                   {coverImage && (
-                    <div className="relative">
-                      <img src={coverImage} alt="Cover" className="h-16 w-24 object-cover rounded" />
-                      <button type="button" onClick={() => setCoverImage("")} className="absolute -top-2 -right-2 w-5 h-5 bg-cinnabar text-white rounded-full text-xs flex items-center justify-center">×</button>
+                    <div className="aspect-video w-32 h-20 overflow-hidden rounded-sm">
+                      <img src={coverImage} alt="封面" className="w-full h-full object-cover" />
                     </div>
                   )}
                 </div>
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
               </div>
               <div>
                 <label className="flex items-center space-x-2 text-sm font-semibold mb-2">
                   <FileText size={16} />
                   <span>内容</span>
                 </label>
-                <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="支持 Markdown 格式..." className="w-full h-96 resize-none font-mono text-sm" required />
-                <p className="text-xs text-stone mt-1">支持 Markdown 语法。当前字数: {content.length}</p>
+                <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="支持 Markdown 格式..." className="w-full h-96 resize-none" required />
               </div>
               <div className="flex items-center space-x-4">
                 <label className="flex items-center space-x-2">
-                  <input type="radio" value="published" checked={status === "published"} onChange={() => setStatus("published")} className="accent-ink" />
-                  <span className="text-sm">立即发布</span>
+                  <input type="radio" checked={status === "published"} onChange={() => setStatus("published")} />
+                  <span className="text-sm">直接发布</span>
                 </label>
                 <label className="flex items-center space-x-2">
-                  <input type="radio" value="draft" checked={status === "draft"} onChange={() => setStatus("draft")} className="accent-ink" />
+                  <input type="radio" checked={status === "draft"} onChange={() => setStatus("draft")} />
                   <span className="text-sm">保存草稿</span>
                 </label>
               </div>
-              <div className="flex items-center space-x-4 pt-4">
-                <button type="submit" disabled={publishing} className="btn-ink flex items-center space-x-2 disabled:opacity-50">
-                  <Send size={16} />
-                  <span>{publishing ? "发布中..." : "发布文章"}</span>
-                </button>
-                <button type="button" onClick={() => router.push("/blog")} className="btn-outline">取消</button>
-              </div>
+              <button type="submit" disabled={publishing} className="btn-ink w-full flex items-center justify-center space-x-2 disabled:opacity-50">
+                <Send size={16} />
+                <span>{publishing ? "发布中..." : "发布文章"}</span>
+              </button>
             </form>
           </motion.div>
         </div>
