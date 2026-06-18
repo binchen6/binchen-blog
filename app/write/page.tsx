@@ -25,9 +25,20 @@ export default function WritePage() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("请先登录");
+        router.push("/login");
+        return;
+      }
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
       const data = await res.json() as any;
       if (data.url) setCoverImage(data.url);
+      else alert(data.error || "图片上传失败");
     } catch (error) {
       console.error("Upload error:", error);
       alert("图片上传失败");

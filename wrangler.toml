@@ -6,7 +6,3 @@ compatibility_flags = ["nodejs_compat"]
 binding = "DB"
 database_name = "binchen-blog-db"
 database_id = "7f97de5c-477b-49bb-85de-7a9d8076652e"
-
-[[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "binchen-blog-images"

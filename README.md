@@ -4,7 +4,7 @@
 
 ![设计风格](https://img.shields.io/badge/设计-原研哉%2B国风科技-blue)
 ![部署](https://img.shields.io/badge/部署-Cloudflare%20Pages-orange)
-![技术](https://img.shields.io/badge/技术-Next.js%2014%2BD1%2BR2-green)
+![技术](https://img.shields.io/badge/技术-Next.js%2014%2BD1%2BGitHub%20jsDelivr-green)
 
 ## 设计特色
 
@@ -42,7 +42,7 @@
 - **前端**：Next.js 14 (App Router) + React + TypeScript + Tailwind CSS
 - **动画**：Framer Motion + CSS Keyframes
 - **数据库**：Cloudflare D1 (SQLite Edge)
-- **存储**：Cloudflare R2 (图片存储)
+- **图床**：GitHub 仓库 + jsDelivr CDN
 - **认证**：Jose (JWT) + bcryptjs
 - **部署**：Cloudflare Pages (@cloudflare/next-on-pages)
 
@@ -67,10 +67,10 @@ database_name = "binchen-blog-db"
 database_id = "你的-database-id"
 ```
 
-#### 1.2 创建 R2 存储桶
-```bash
-wrangler r2 bucket create binchen-blog-images
-```
+#### 1.2 准备 GitHub 图床
+创建一个 GitHub Fine-grained token，授予目标图片仓库 `Contents: Read and write` 权限。
+
+推荐使用独立公开仓库保存图片，例如 `binchen-blog-images`，方便 jsDelivr 公开访问。
 
 #### 1.3 生成 JWT 密钥
 ```bash
@@ -86,6 +86,11 @@ openssl rand -base64 32
 |--------|------|------|
 | `JWT_SECRET` | 随机字符串 | JWT 签名密钥 |
 | `NEXT_PUBLIC_SITE_URL` | `https://你的域名.pages.dev` | 站点 URL |
+| `GITHUB_TOKEN` | GitHub Fine-grained token | 写入图片仓库 |
+| `GITHUB_OWNER` | GitHub 用户名或组织名 | 例如 `binchen6` |
+| `GITHUB_REPO` | 图片仓库名 | 例如 `binchen-blog-images` |
+| `GITHUB_BRANCH` | 分支名 | 可选，默认 `main` |
+| `GITHUB_UPLOAD_DIR` | 上传目录 | 可选，默认 `uploads` |
 
 ### 步骤 3：部署
 
@@ -195,7 +200,7 @@ blog/
 
 - 使用 Cloudflare Edge Network，全球 CDN 加速
 - D1 数据库边缘查询，延迟低于 50ms
-- R2 图片存储 + 缓存头，浏览器级缓存
+- GitHub 图片存储 + jsDelivr CDN 加速
 - Next.js 静态优化 + 边缘渲染
 - 字体使用 `font-display: swap` 策略
 
