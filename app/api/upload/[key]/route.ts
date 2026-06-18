@@ -6,7 +6,7 @@ export const runtime = "edge";
 export async function GET(request: NextRequest, { params }: { params: { key: string } }) {
   try {
     const ctx = getRequestContext();
-    const bucket = ctx.env.BUCKET;
+    const bucket = (ctx.env as any).BUCKET;
     const key = params.key;
     const object = await bucket.get(key);
     if (!object) {
