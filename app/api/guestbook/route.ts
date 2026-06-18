@@ -6,7 +6,7 @@ export const runtime = "edge";
 export async function GET() {
   try {
     const ctx = getRequestContext();
-    const db = ctx.env.DB;
+    const db = (ctx.env as any).DB;
     const results = await db.prepare("SELECT * FROM guestbook ORDER BY created_at DESC LIMIT 50").all();
     return NextResponse.json({ entries: results.results });
   } catch (error) {
@@ -17,7 +17,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json() as any;
     const { name, email, content, replyTo } = body;
 
     if (!name || !email || !content) {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ctx = getRequestContext();
-    const db = ctx.env.DB;
+    const db = (ctx.env as any).DB;
     const result = await db.prepare(
       "INSERT INTO guestbook (name, email, content, reply_to) VALUES (?, ?, ?, ?) RETURNING *"
     ).bind(name, email, content, replyTo || null).first();
