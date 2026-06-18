@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
 
     const ctx = getRequestContext();
-    const db = ctx.env.DB;
+    const db = (ctx.env as any).DB;
 
     let query = "SELECT * FROM posts";
     const params: any[] = [];
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await request.json() as any;
     const { title, content, coverImage, tags, status = "published" } = body;
 
     if (!title || !content) {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     const excerpt = generateExcerpt(content);
 
     const ctx = getRequestContext();
-    const db = ctx.env.DB;
+    const db = (ctx.env as any).DB;
 
     const publishedAt = status === "published" ? new Date().toISOString() : null;
     const result = await db.prepare(

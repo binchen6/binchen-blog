@@ -33,7 +33,7 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password, displayName: displayName || undefined }),
       });
-      const data = await res.json();
+      const data = await res.json() as any;
       if (data.token) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
@@ -73,18 +73,16 @@ export default function RegisterPage() {
               </div>
               <div>
                 <label className="flex items-center space-x-2 text-sm font-semibold mb-2"><Lock size={16} /><span>确认密码 *</span></label>
-                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="确认密码" className="w-full" required />
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="再次输入密码" className="w-full" required />
               </div>
               <button type="submit" disabled={loading} className="btn-ink w-full flex items-center justify-center space-x-2 disabled:opacity-50">
                 <UserPlus size={16} />
                 <span>{loading ? "注册中..." : "注册"}</span>
               </button>
-            </form>
-            <div className="mt-8 text-center">
-              <p className="text-sm text-ink-light">
-                已有账号？ <Link href="/login" className="text-cinnabar hover:underline inline-flex items-center space-x-1"><span>立即登录</span><ArrowRight size={14} /></Link>
+              <p className="text-center text-sm text-stone">
+                已有账号？<Link href="/login" className="text-ink hover:underline">立即登录</Link>
               </p>
-            </div>
+            </form>
           </motion.div>
         </div>
       </section>

@@ -45,12 +45,12 @@ export default function BlogPostPage() {
   useEffect(() => {
     if (!slug) return;
     fetch(`/api/posts/${slug}`)
-      .then((res) => res.json())
+      .then((res) => res.json() as any)
       .then((data) => {
         if (data.post) {
           setPost(data.post);
           fetch(`/api/posts/${slug}/comments`)
-            .then((res) => res.json())
+            .then((res) => res.json() as any)
             .then((commentData) => {
               setComments(commentData.comments || []);
             });
@@ -70,7 +70,7 @@ export default function BlogPostPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(commentForm),
       });
-      const data = await res.json();
+      const data = await res.json() as any;
       if (data.comment) {
         setComments([data.comment, ...comments]);
         setCommentForm({ name: "", email: "", content: "" });
