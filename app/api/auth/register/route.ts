@@ -6,7 +6,7 @@ export const runtime = "edge";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await request.json() as any;
     const { username, email, password, displayName } = body;
     if (!username || !email || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
