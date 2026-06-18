@@ -3,7 +3,7 @@ import { User, Post, GuestbookEntry, Comment } from "./types";
 
 export function getDB() {
   const ctx = getRequestContext();
-  return ctx.env.DB;
+  return (ctx.env as any).DB as D1Database;
 }
 
 export async function createTables() {
@@ -34,8 +34,7 @@ export async function createTables() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         published_at DATETIME,
         tags TEXT,
-        view_count INTEGER DEFAULT 0,
-        FOREIGN KEY (author_id) REFERENCES users(id)
+        view_count INTEGER DEFAULT 0
       )
     `),
     db.prepare(`
@@ -46,9 +45,7 @@ export async function createTables() {
         content TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         user_id INTEGER,
-        reply_to INTEGER,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (reply_to) REFERENCES guestbook(id)
+        reply_to INTEGER
       )
     `),
     db.prepare(`
@@ -60,24 +57,13 @@ export async function createTables() {
         content TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         user_id INTEGER,
-        parent_id INTEGER,
-        FOREIGN KEY (post_id) REFERENCES posts(id),
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (parent_id) REFERENCES comments(id)
+        parent_id INTEGER
       )
     `),
-    db.prepare(`
-      CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug)
-    `),
-    db.prepare(`
-      CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status)
-    `),
-    db.prepare(`
-      CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at)
-    `),
-    db.prepare(`
-      CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id)
-    `),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id)`),
   ]);
 }
 

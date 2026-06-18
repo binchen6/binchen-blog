@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
     const ctx = getRequestContext();
-    const db = ctx.env.DB;
+    const db = (ctx.env as any).DB;
     const existingUser = await db.prepare("SELECT id FROM users WHERE username = ? OR email = ?").bind(username, email).first();
     if (existingUser) {
       return NextResponse.json({ error: "Username or email already exists" }, { status: 409 });

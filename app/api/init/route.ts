@@ -6,7 +6,7 @@ export const runtime = "edge";
 export async function GET() {
   try {
     const ctx = getRequestContext();
-    const db = ctx.env.DB;
+    const db = (ctx.env as any).DB;
 
     await db.batch([
       db.prepare(`

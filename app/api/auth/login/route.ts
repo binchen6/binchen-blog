@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing username or password" }, { status: 400 });
     }
     const ctx = getRequestContext();
-    const db = ctx.env.DB;
+    const db = (ctx.env as any).DB;
     const user = await db.prepare("SELECT id, username, email, display_name, password_hash FROM users WHERE username = ?").bind(username).first();
     if (!user) {
       return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
