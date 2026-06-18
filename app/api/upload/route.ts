@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ctx = getRequestContext();
-    const bucket = ctx.env.BUCKET;
+    const bucket = (ctx.env as any).BUCKET;
 
     const key = `uploads/${Date.now()}-${file.name}`;
     await bucket.put(key, file.stream(), {
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const publicUrl = `${ctx.env.NEXT_PUBLIC_SITE_URL || ""}/api/upload/${key}`;
+    const publicUrl = `${(ctx.env as any).NEXT_PUBLIC_SITE_URL || ""}/api/upload/${key}`;
 
     return NextResponse.json({ url: publicUrl, key });
   } catch (error) {
