@@ -3,7 +3,7 @@ import { User, Post, GuestbookEntry, Comment } from "./types";
 
 export function getDB() {
   const ctx = getRequestContext();
-  return (ctx.env as any).DB as D1Database;
+  return (ctx.env as any).DB as any;
 }
 
 export async function createTables() {
@@ -70,13 +70,13 @@ export async function createTables() {
 export async function getUserByUsername(username: string): Promise<User | null> {
   const db = getDB();
   const result = await db.prepare("SELECT * FROM users WHERE username = ?").bind(username).first();
-  return result as User | null;
+  return result as any;
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
   const db = getDB();
   const result = await db.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
-  return result as User | null;
+  return result as any;
 }
 
 export async function createUser(username: string, email: string, passwordHash: string, displayName?: string): Promise<User> {
@@ -84,7 +84,7 @@ export async function createUser(username: string, email: string, passwordHash: 
   const result = await db.prepare(
     "INSERT INTO users (username, email, password_hash, display_name) VALUES (?, ?, ?, ?) RETURNING *"
   ).bind(username, email, passwordHash, displayName || null).first();
-  return result as User;
+  return result as any;
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {
@@ -92,7 +92,7 @@ export async function getPostBySlug(slug: string): Promise<Post | null> {
   const result = await db.prepare(
     "SELECT * FROM posts WHERE slug = ? AND status = 'published'"
   ).bind(slug).first();
-  return result as Post | null;
+  return result as any;
 }
 
 export async function getPosts(limit: number = 10, offset: number = 0): Promise<Post[]> {
@@ -100,7 +100,7 @@ export async function getPosts(limit: number = 10, offset: number = 0): Promise<
   const results = await db.prepare(
     "SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC LIMIT ? OFFSET ?"
   ).bind(limit, offset).all();
-  return results.results as Post[];
+  return results.results as any;
 }
 
 export async function getAllPosts(limit: number = 50, offset: number = 0): Promise<Post[]> {
@@ -108,7 +108,7 @@ export async function getAllPosts(limit: number = 50, offset: number = 0): Promi
   const results = await db.prepare(
     "SELECT * FROM posts ORDER BY created_at DESC LIMIT ? OFFSET ?"
   ).bind(limit, offset).all();
-  return results.results as Post[];
+  return results.results as any;
 }
 
 export async function createPost(
@@ -127,7 +127,7 @@ export async function createPost(
     `INSERT INTO posts (title, slug, content, excerpt, cover_image, author_id, status, published_at, tags)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
   ).bind(title, slug, content, excerpt, coverImage || null, authorId, status, publishedAt, tags || null).first();
-  return result as Post;
+  return result as any;
 }
 
 export async function incrementViewCount(slug: string): Promise<void> {
@@ -140,7 +140,7 @@ export async function getGuestbookEntries(limit: number = 50): Promise<Guestbook
   const results = await db.prepare(
     "SELECT * FROM guestbook ORDER BY created_at DESC LIMIT ?"
   ).bind(limit).all();
-  return results.results as GuestbookEntry[];
+  return results.results as any;
 }
 
 export async function createGuestbookEntry(name: string, email: string, content: string, userId?: number, replyTo?: number): Promise<GuestbookEntry> {
@@ -148,7 +148,7 @@ export async function createGuestbookEntry(name: string, email: string, content:
   const result = await db.prepare(
     "INSERT INTO guestbook (name, email, content, user_id, reply_to) VALUES (?, ?, ?, ?, ?) RETURNING *"
   ).bind(name, email, content, userId || null, replyTo || null).first();
-  return result as GuestbookEntry;
+  return result as any;
 }
 
 export async function getCommentsByPostId(postId: number): Promise<Comment[]> {
@@ -156,7 +156,7 @@ export async function getCommentsByPostId(postId: number): Promise<Comment[]> {
   const results = await db.prepare(
     "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC"
   ).bind(postId).all();
-  return results.results as Comment[];
+  return results.results as any;
 }
 
 export async function createComment(
@@ -171,5 +171,5 @@ export async function createComment(
   const result = await db.prepare(
     "INSERT INTO comments (post_id, name, email, content, user_id, parent_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
   ).bind(postId, name, email, content, userId || null, parentId || null).first();
-  return result as Comment;
+  return result as any;
 }
