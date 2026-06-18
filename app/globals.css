@@ -1,0 +1,308 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-paper: #f5f0e8;
+  --color-paper-warm: #ebe5d9;
+  --color-ink: #1a1a1a;
+  --color-ink-light: #4a4a4a;
+  --color-cinnabar: #c9372c;
+  --color-bronze: #8b6914;
+  --color-mist: #d4cfc7;
+  --color-stone: #8c8c8c;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--color-paper);
+}
+
+body {
+  font-family: 'Noto Sans SC', 'PingFang SC', sans-serif;
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.05em;
+}
+
+.paper-texture::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' /%3E%3C/svg%3E");
+  z-index: 9999;
+}
+
+@keyframes inkDrop {
+  0% { transform: scale(0); opacity: 0.8; }
+  50% { opacity: 0.4; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+.ink-drop {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(26,26,26,0.6) 0%, transparent 70%);
+  animation: inkDrop 3s ease-out forwards;
+}
+
+.compass-rotate {
+  animation: rotateSlow 60s linear infinite;
+}
+
+.vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.seal-stamp {
+  border: 2px solid var(--color-cinnabar);
+  color: var(--color-cinnabar);
+  padding: 0.25rem 0.5rem;
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 700;
+  display: inline-block;
+  transform: rotate(-2deg);
+  transition: transform 0.3s ease;
+}
+
+.seal-stamp:hover {
+  transform: rotate(0deg) scale(1.05);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-paper-warm);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-mist);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-stone);
+}
+
+.ink-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.ink-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--color-ink);
+  transition: width 0.4s ease;
+}
+
+.ink-underline:hover::after {
+  width: 100%;
+}
+
+.grid-pattern {
+  background-image: 
+    linear-gradient(rgba(26,26,26,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26,26,26,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.paper-card {
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  background: linear-gradient(135deg, #faf8f3 0%, #f5f0e8 100%);
+  border: 1px solid rgba(26,26,26,0.06);
+}
+
+.paper-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(26,26,26,0.08);
+}
+
+.btn-ink {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  padding: 0.75rem 1.5rem;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  transition: all 0.3s ease;
+  border: 1px solid var(--color-ink);
+}
+
+.btn-ink:hover {
+  background: transparent;
+  color: var(--color-ink);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-ink);
+  padding: 0.75rem 1.5rem;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--color-ink);
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.ink-mask {
+  mask-image: radial-gradient(ellipse at center, black 60%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 60%, transparent 100%);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 50%, #8b6914 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+::selection {
+  background: rgba(201, 55, 44, 0.2);
+  color: var(--color-ink);
+}
+
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+  font-family: 'Noto Serif SC', serif;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: var(--color-ink);
+}
+
+.markdown-content h1 { font-size: 1.8rem; border-bottom: 1px solid var(--color-mist); padding-bottom: 0.5rem; }
+.markdown-content h2 { font-size: 1.5rem; }
+.markdown-content h3 { font-size: 1.25rem; }
+
+.markdown-content p {
+  margin-bottom: 1rem;
+  line-height: 1.8;
+}
+
+.markdown-content img {
+  max-width: 100%;
+  border-radius: 4px;
+  margin: 1.5rem 0;
+}
+
+.markdown-content blockquote {
+  border-left: 3px solid var(--color-cinnabar);
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  color: var(--color-ink-light);
+  font-style: italic;
+}
+
+.markdown-content code {
+  background: var(--color-paper-warm);
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: 'Noto Serif SC', monospace;
+}
+
+.markdown-content pre {
+  background: var(--color-paper-warm);
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.markdown-content pre code { background: none; padding: 0; }
+
+.markdown-content ul, .markdown-content ol {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.markdown-content li { margin-bottom: 0.5rem; }
+
+.markdown-content a {
+  color: var(--color-cinnabar);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s ease;
+}
+
+.markdown-content a:hover { border-bottom-color: var(--color-cinnabar); }
+
+input, textarea {
+  background: var(--color-paper);
+  border: 1px solid var(--color-mist);
+  padding: 0.75rem 1rem;
+  font-family: 'Noto Sans SC', sans-serif;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-ink);
+  box-shadow: 0 0 0 3px rgba(26,26,26,0.05);
+}
+
+@keyframes inkLoading {
+  0% { width: 0; left: 0; }
+  50% { width: 100%; left: 0; }
+  100% { width: 0; left: 100%; }
+}
+
+.ink-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.ink-loading::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--color-ink);
+  animation: inkLoading 2s ease-in-out infinite;
+}
+
+@media (max-width: 768px) {
+  .vertical-text { writing-mode: horizontal-tb; }
+}
+
+@media print {
+  body { background: white; }
+  .paper-texture::before { display: none; }
+}

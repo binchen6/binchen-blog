@@ -1,0 +1,12 @@
+name = "binchen-blog"
+compatibility_date = "2024-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "binchen-blog-db"
+database_id = "your-database-id"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "binchen-blog-images"
