@@ -26,7 +26,7 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      const data = await res.json();
+      const data = await res.json() as any;
       if (data.token) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
@@ -60,12 +60,10 @@ export default function LoginPage() {
                 <LogIn size={16} />
                 <span>{loading ? "登录中..." : "登录"}</span>
               </button>
-            </form>
-            <div className="mt-8 text-center">
-              <p className="text-sm text-ink-light">
-                还没有账号？ <Link href="/register" className="text-cinnabar hover:underline inline-flex items-center space-x-1"><span>立即注册</span><ArrowRight size={14} /></Link>
+              <p className="text-center text-sm text-stone">
+                还没有账号？<Link href="/register" className="text-ink hover:underline">立即注册</Link>
               </p>
-            </div>
+            </form>
           </motion.div>
         </div>
       </section>
