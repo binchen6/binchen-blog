@@ -124,6 +124,7 @@ export async function createTables() {
   ]);
 
   await migrateSchema(db);
+  await migrateImageUrls(db);
   await seedUserGroups(db);
   await db.prepare("UPDATE users SET role = 'author' WHERE role IS NULL").run();
 }
@@ -150,6 +151,74 @@ async function migrateSchema(db: any) {
   await addColumnIfMissing(db, "comments", "user_id", "INTEGER");
   await addColumnIfMissing(db, "comments", "parent_id", "INTEGER");
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured, featured_rank)").run();
+}
+
+function decodeMaybeEncodedPath(path: string): string {
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
+}
+
+function githubCdnPathFromUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/^\/gh\/[^/]+\/[^@/]+@[^/]+\/(.+)$/);
+    return match ? decodeMaybeEncodedPath(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function migrateImageUrls(db: any) {
+  const imageRows = await db.prepare("SELECT id, url, storage_key FROM images").all();
+  const urlMap = new Map<string, string>();
+
+  for (const image of imageRows.results || []) {
+    const proxyUrl = `/api/images/${image.id}`;
+    urlMap.set(String(image.url), proxyUrl);
+    urlMap.set(String(image.storage_key), proxyUrl);
+    const cdnPath = githubCdnPathFromUrl(String(image.url || ""));
+    if (cdnPath) urlMap.set(cdnPath, proxyUrl);
+
+    if (image.url !== proxyUrl) {
+      await db.prepare("UPDATE images SET url = ? WHERE id = ?").bind(proxyUrl, image.id).run();
+    }
+  }
+
+  if (urlMap.size === 0) return;
+
+  const posts = await db.prepare("SELECT id, cover_image, images FROM posts").all();
+  for (const post of posts.results || []) {
+    let changed = false;
+    let coverImage = post.cover_image;
+    const mappedCover = coverImage ? urlMap.get(String(coverImage)) || urlMap.get(githubCdnPathFromUrl(String(coverImage)) || "") : null;
+    if (mappedCover && mappedCover !== coverImage) {
+      coverImage = mappedCover;
+      changed = true;
+    }
+
+    let images = post.images;
+    if (images) {
+      try {
+        const parsedImages = JSON.parse(images);
+        if (Array.isArray(parsedImages)) {
+          const nextImages = parsedImages.map((url) => urlMap.get(String(url)) || urlMap.get(githubCdnPathFromUrl(String(url)) || "") || url);
+          if (JSON.stringify(nextImages) !== images) {
+            images = JSON.stringify(nextImages);
+            changed = true;
+          }
+        }
+      } catch {
+        // Leave malformed image JSON untouched.
+      }
+    }
+
+    if (changed) {
+      await db.prepare("UPDATE posts SET cover_image = ?, images = ? WHERE id = ?").bind(coverImage || null, images || null, post.id).run();
+    }
+  }
 }
 
 async function seedUserGroups(db: any) {

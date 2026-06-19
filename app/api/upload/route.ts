@@ -12,6 +12,14 @@ const MIME_TO_EXT: Record<string, string> = {
   "image/webp": "webp",
 };
 
+const DEFAULT_MAX_UPLOAD_MB = 25;
+
+function getMaxUploadBytes(env: any): number {
+  const configuredMb = Number(env.MAX_UPLOAD_MB || DEFAULT_MAX_UPLOAD_MB);
+  const safeMb = Number.isFinite(configuredMb) ? Math.min(Math.max(configuredMb, 1), 50) : DEFAULT_MAX_UPLOAD_MB;
+  return safeMb * 1024 * 1024;
+}
+
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -76,15 +84,6 @@ export async function POST(request: NextRequest) {
       return json({ error: "Invalid file type" }, { status: 400 });
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      return json({ error: "File too large" }, { status: 400 });
-    }
-    const buffer = await file.arrayBuffer();
-    if (!hasValidImageSignature(file.type, new Uint8Array(buffer.slice(0, 16)))) {
-      return json({ error: "Invalid image content" }, { status: 400 });
-    }
-
     const ctx = getRequestContext();
     const env = ctx.env as any;
     const db = env.DB;
@@ -99,6 +98,18 @@ export async function POST(request: NextRequest) {
         { error: "GitHub image storage is not configured" },
         { status: 500 }
       );
+    }
+
+    const maxUploadBytes = getMaxUploadBytes(env);
+    if (file.size > maxUploadBytes) {
+      return json(
+        { error: `File too large. Maximum image size is ${Math.round(maxUploadBytes / 1024 / 1024)}MB.` },
+        { status: 400 }
+      );
+    }
+    const buffer = await file.arrayBuffer();
+    if (!hasValidImageSignature(file.type, new Uint8Array(buffer.slice(0, 16)))) {
+      return json({ error: "Invalid image content" }, { status: 400 });
     }
 
     const now = new Date();
@@ -142,13 +153,14 @@ export async function POST(request: NextRequest) {
     }
 
     const githubData = await githubRes.json() as any;
-    const publicUrl = `https://cdn.jsdelivr.net/gh/${owner}/${repo}@${branch}/${encodePath(key)}`;
     const image = await db.prepare(
       `INSERT INTO images (user_id, url, storage_key, filename, mime_type, size, sha)
        VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`
-    ).bind(currentUser.id, publicUrl, key, file.name, file.type, file.size, githubData?.content?.sha || null).first();
+    ).bind(currentUser.id, "", key, file.name, file.type, file.size, githubData?.content?.sha || null).first();
+    const publicUrl = `/api/images/${image.id}`;
+    const updatedImage = await db.prepare("UPDATE images SET url = ? WHERE id = ? RETURNING *").bind(publicUrl, image.id).first();
 
-    return json({ url: publicUrl, key, image });
+    return json({ url: publicUrl, key, image: updatedImage });
   } catch (error) {
     console.error("Upload error:", error);
     return json({ error: "Upload failed" }, { status: 500 });

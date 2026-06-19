@@ -1,12 +1,78 @@
 import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { canManageImage, getCurrentUserFromRequest } from "@/lib/auth";
-import { json, parsePositiveId } from "@/lib/security";
+import { json, parsePositiveId, securityHeaders } from "@/lib/security";
 
 export const runtime = "edge";
 
 function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64.replace(/\s/g, ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const imageId = parsePositiveId(params.id);
+    if (!imageId) {
+      return json({ error: "Invalid image id" }, { status: 400 });
+    }
+
+    const ctx = getRequestContext();
+    const env = ctx.env as any;
+    const db = env.DB;
+    const image = await db.prepare("SELECT * FROM images WHERE id = ?").bind(imageId).first();
+    if (!image) {
+      return json({ error: "Image not found" }, { status: 404 });
+    }
+    if (!env.GITHUB_TOKEN || !env.GITHUB_OWNER || !env.GITHUB_REPO) {
+      return json({ error: "GitHub image storage is not configured" }, { status: 500 });
+    }
+
+    const branch = env.GITHUB_BRANCH || "main";
+    const githubRes = await fetch(
+      `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${encodePath(image.storage_key)}?ref=${encodeURIComponent(branch)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "binchen-blog",
+        },
+      }
+    );
+
+    if (!githubRes.ok) {
+      return json({ error: "Image not found" }, { status: githubRes.status === 404 ? 404 : 502 });
+    }
+
+    const githubData = await githubRes.json() as any;
+    if (!githubData?.content || githubData.encoding !== "base64") {
+      return json({ error: "Invalid image content" }, { status: 502 });
+    }
+
+    const bytes = base64ToBytes(githubData.content);
+    const body = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(body).set(bytes);
+    return new Response(body, {
+      headers: {
+        ...securityHeaders(),
+        "Content-Type": image.mime_type || "application/octet-stream",
+        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "Content-Length": String(bytes.byteLength),
+      },
+    });
+  } catch (error) {
+    console.error("Get proxied image error:", error);
+    return json({ error: "Failed to fetch image" }, { status: 500 });
+  }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {

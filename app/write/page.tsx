@@ -37,6 +37,9 @@ interface PostDetail extends ManagePost {
   tags: string | null;
 }
 
+const MAX_CLIENT_UPLOAD_MB = 25;
+const MAX_CLIENT_UPLOAD_BYTES = MAX_CLIENT_UPLOAD_MB * 1024 * 1024;
+
 export default function WritePage() {
   const router = useRouter();
   const searchParams = useSearchParams();

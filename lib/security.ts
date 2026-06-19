@@ -65,8 +65,10 @@ export function requireText(value: unknown, maxLength: number): string | null {
 
 export function isSafePublicUrl(value: unknown): boolean {
   if (!value) return true;
+  const text = String(value).trim();
+  if (text.startsWith("/") && !text.startsWith("//") && text.length <= 2048) return true;
   try {
-    const url = new URL(String(value));
+    const url = new URL(text);
     return url.protocol === "https:" && !url.username && !url.password && url.href.length <= 2048;
   } catch {
     return false;
