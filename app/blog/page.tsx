@@ -12,6 +12,8 @@ interface Post {
   slug: string;
   excerpt: string;
   cover_image: string | null;
+  images: string | null;
+  mode: "article" | "moment";
   created_at: string;
   published_at: string;
   tags: string | null;
@@ -83,6 +85,7 @@ export default function BlogPage() {
                   )}
                   <div className="flex flex-1 flex-col p-6">
                     <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink-muted">
+                      <span className="border border-bronze/25 px-2 py-0.5 text-bronze">{post.mode === "moment" ? "动态" : "文章"}</span>
                       <span className="inline-flex items-center gap-1 font-mono-tech">
                         <Calendar size={12} />
                         {formatDate(post.published_at || post.created_at)}

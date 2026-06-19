@@ -14,6 +14,8 @@ interface Post {
   content: string;
   excerpt: string;
   cover_image: string | null;
+  images: string | null;
+  mode: "article" | "moment";
   created_at: string;
   published_at: string;
   tags: string | null;
@@ -36,9 +38,19 @@ export default function BlogPostPage() {
   const [loading, setLoading] = useState(true);
   const [renderedContent, setRenderedContent] = useState("");
   const [commentForm, setCommentForm] = useState({ name: "", email: "", content: "" });
+  const [loggedInUser, setLoggedInUser] = useState<{ username: string; email?: string; display_name?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        setLoggedInUser(JSON.parse(userStr));
+      } catch {
+        localStorage.removeItem("user");
+      }
+    }
+
     if (!slug) return;
     let cancelled = false;
 
@@ -93,9 +105,13 @@ export default function BlogPostPage() {
     if (!commentForm.name || !commentForm.email || !commentForm.content) return;
     setSubmitting(true);
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch(`/api/posts/${slug}/comments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(commentForm),
       });
       const data = (await res.json()) as { comment?: Comment };
@@ -139,6 +155,12 @@ export default function BlogPostPage() {
 
   const readingTime = getReadingTime(post.content);
   const tags = post.tags?.split(",").map((tag) => tag.trim()).filter(Boolean) || [];
+  let postImages: string[] = [];
+  try {
+    postImages = post.images ? JSON.parse(post.images) : [];
+  } catch {
+    postImages = [];
+  }
 
   return (
     <SiteShell>
@@ -182,7 +204,22 @@ export default function BlogPostPage() {
 
           <div className="my-8 h-px w-20 bg-gradient-to-r from-transparent via-bronze to-transparent" />
 
-          <div className="markdown-content text-ink-light" dangerouslySetInnerHTML={{ __html: renderedContent }} />
+          {post.mode === "moment" ? (
+            <div className="space-y-7">
+              <p className="whitespace-pre-wrap text-base leading-loose text-ink-light">{post.content}</p>
+              {postImages.length > 0 && (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  {postImages.map((url) => (
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className="aspect-square overflow-hidden border border-cyan-dark/10 bg-paper-warm">
+                      <img src={url} alt={post.title} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 hover:scale-105" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="markdown-content text-ink-light" dangerouslySetInnerHTML={{ __html: renderedContent }} />
+          )}
         </SurfacePanel>
 
         <section className="mt-14 border-t border-cyan-dark/10 pt-12">
@@ -192,24 +229,29 @@ export default function BlogPostPage() {
           </h2>
 
           <SurfacePanel as="form" onSubmit={handleSubmitComment} className="mb-10 space-y-4 p-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <input
-                type="text"
-                placeholder="姓名"
-                value={commentForm.name}
-                onChange={(e) => setCommentForm({ ...commentForm, name: e.target.value })}
-                className="w-full bg-paper/60"
-                required
-              />
-              <input
-                type="email"
-                placeholder="邮箱"
-                value={commentForm.email}
-                onChange={(e) => setCommentForm({ ...commentForm, email: e.target.value })}
-                className="w-full bg-paper/60"
-                required
-              />
-            </div>
+            {!loggedInUser && (
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  type="text"
+                  placeholder="姓名"
+                  value={commentForm.name}
+                  onChange={(e) => setCommentForm({ ...commentForm, name: e.target.value })}
+                  className="w-full bg-paper/60"
+                  required
+                />
+                <input
+                  type="email"
+                  placeholder="邮箱"
+                  value={commentForm.email}
+                  onChange={(e) => setCommentForm({ ...commentForm, email: e.target.value })}
+                  className="w-full bg-paper/60"
+                  required
+                />
+              </div>
+            )}
+            {loggedInUser && (
+              <p className="text-sm text-ink-muted">将以 {loggedInUser.display_name || loggedInUser.username} 的身份发表评论。</p>
+            )}
             <textarea
               placeholder="写下你的想法..."
               value={commentForm.content}

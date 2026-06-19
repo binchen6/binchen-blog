@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { verifyToken } from "@/lib/auth";
+import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
 
 export const runtime = "edge";
 
@@ -45,14 +45,12 @@ function encodePath(path: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get("authorization")?.replace("Bearer ", "");
-    if (!token) {
+    const currentUser = await getCurrentUserFromRequest(request);
+    if (!currentUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const payload = await verifyToken(token);
-    if (!payload) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    if (!hasPermission(currentUser, "images:upload")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const formData = await request.formData();
@@ -74,6 +72,7 @@ export async function POST(request: NextRequest) {
 
     const ctx = getRequestContext();
     const env = ctx.env as any;
+    const db = env.DB;
     const githubToken = env.GITHUB_TOKEN;
     const owner = env.GITHUB_OWNER;
     const repo = env.GITHUB_REPO;
@@ -127,11 +126,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "GitHub upload failed" }, { status: 502 });
     }
 
+    const githubData = await githubRes.json() as any;
     const publicUrl = `https://cdn.jsdelivr.net/gh/${owner}/${repo}@${branch}/${encodePath(key)}`;
+    const image = await db.prepare(
+      `INSERT INTO images (user_id, url, storage_key, filename, mime_type, size, sha)
+       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`
+    ).bind(currentUser.id, publicUrl, key, file.name, file.type, file.size, githubData?.content?.sha || null).first();
 
-    return NextResponse.json({ url: publicUrl, key });
+    return NextResponse.json({ url: publicUrl, key, image });
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const currentUser = await getCurrentUserFromRequest(request);
+    if (!currentUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
+    const offset = parseInt(searchParams.get("offset") || "0");
+    const all = searchParams.get("all") === "1";
+
+    const ctx = getRequestContext();
+    const db = (ctx.env as any).DB;
+    const canSeeAll = all && hasPermission(currentUser, "images:manage_all");
+    const results = canSeeAll
+      ? await db.prepare(
+          "SELECT images.*, users.username, users.display_name FROM images LEFT JOIN users ON users.id = images.user_id ORDER BY images.created_at DESC LIMIT ? OFFSET ?"
+        ).bind(limit, offset).all()
+      : await db.prepare(
+          "SELECT * FROM images WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        ).bind(currentUser.id, limit, offset).all();
+
+    return NextResponse.json({ images: results.results });
+  } catch (error) {
+    console.error("Get images error:", error);
+    return NextResponse.json({ error: "Failed to fetch images" }, { status: 500 });
   }
 }

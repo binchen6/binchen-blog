@@ -1,6 +1,26 @@
 import { SignJWT, jwtVerify } from "jose";
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { User } from "./types";
+import { User, UserRole } from "./types";
+
+export const OWNER_USERNAME = "binchen";
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  owner: "站主",
+  admin: "管理员",
+  editor: "编辑",
+  author: "作者",
+  member: "成员",
+};
+
+export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  owner: ["*"],
+  admin: ["admin:access", "posts:manage_all", "comments:manage_all", "guestbook:manage_all", "users:manage", "images:manage_all"],
+  editor: ["posts:create", "posts:manage_own", "images:upload", "images:manage_own", "comments:create", "guestbook:create"],
+  author: ["posts:create", "posts:manage_own", "images:upload", "images:manage_own", "comments:create", "guestbook:create"],
+  member: ["comments:create", "guestbook:create"],
+};
+
+export type AuthUser = Pick<User, "id" | "username" | "email" | "display_name" | "avatar" | "role" | "bio" | "is_active" | "created_at">;
 
 // Use Web Crypto API instead of bcryptjs (Edge-compatible)
 async function hashPassword(password: string): Promise<string> {
@@ -42,19 +62,19 @@ export { hashPassword, verifyPassword };
 export async function createToken(user: User): Promise<string> {
   const ctx = getRequestContext();
   const secret = new TextEncoder().encode((ctx.env as any).JWT_SECRET || "default-secret");
-  return new SignJWT({ userId: user.id, username: user.username })
+  return new SignJWT({ userId: user.id, username: user.username, role: getEffectiveRole(user) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
     .sign(secret);
 }
 
-export async function verifyToken(token: string): Promise<{ userId: number; username: string } | null> {
+export async function verifyToken(token: string): Promise<{ userId: number; username: string; role?: UserRole } | null> {
   try {
     const ctx = getRequestContext();
     const secret = new TextEncoder().encode((ctx.env as any).JWT_SECRET || "default-secret");
     const { payload } = await jwtVerify(token, secret, { clockTolerance: 60 });
-    return payload as { userId: number; username: string };
+    return payload as { userId: number; username: string; role?: UserRole };
   } catch {
     return null;
   }
@@ -63,4 +83,58 @@ export async function verifyToken(token: string): Promise<{ userId: number; user
 export function getJwtSecret(): string {
   const ctx = getRequestContext();
   return (ctx.env as any).JWT_SECRET || "default-secret";
+}
+
+export function getEffectiveRole(user: Pick<User, "username"> & Partial<Pick<User, "role">>): UserRole {
+  if (user.username === OWNER_USERNAME) return "owner";
+  return (user.role || "author") as UserRole;
+}
+
+export function serializeUser(user: any): AuthUser {
+  const role = getEffectiveRole(user);
+  return {
+    id: Number(user.id),
+    username: user.username,
+    email: user.email,
+    display_name: user.display_name ?? null,
+    avatar: user.avatar ?? null,
+    role,
+    bio: user.bio ?? null,
+    is_active: Number(user.is_active ?? 1),
+    created_at: user.created_at,
+  };
+}
+
+export function hasPermission(user: Pick<User, "username"> & Partial<Pick<User, "role">>, permission: string): boolean {
+  const permissions = ROLE_PERMISSIONS[getEffectiveRole(user)] || [];
+  return permissions.includes("*") || permissions.includes(permission);
+}
+
+export function canManagePost(user: Pick<User, "id" | "username"> & Partial<Pick<User, "role">>, authorId: number): boolean {
+  return hasPermission(user, "posts:manage_all") || (Number(user.id) === Number(authorId) && hasPermission(user, "posts:manage_own"));
+}
+
+export function canManageImage(user: Pick<User, "id" | "username"> & Partial<Pick<User, "role">>, imageUserId: number): boolean {
+  return hasPermission(user, "images:manage_all") || (Number(user.id) === Number(imageUserId) && hasPermission(user, "images:manage_own"));
+}
+
+export function canAccessAdmin(user: Pick<User, "username"> & Partial<Pick<User, "role">>): boolean {
+  return hasPermission(user, "admin:access");
+}
+
+export async function getCurrentUserFromRequest(request: Request): Promise<AuthUser | null> {
+  const token = request.headers.get("authorization")?.replace("Bearer ", "");
+  if (!token) return null;
+
+  const payload = await verifyToken(token);
+  if (!payload) return null;
+
+  const ctx = getRequestContext();
+  const db = (ctx.env as any).DB;
+  const user = await db.prepare(
+    "SELECT id, username, email, display_name, avatar, role, bio, is_active, created_at FROM users WHERE id = ?"
+  ).bind(payload.userId).first();
+
+  if (!user || Number(user.is_active ?? 1) !== 1) return null;
+  return serializeUser(user);
 }

@@ -1,5 +1,6 @@
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { User, Post, GuestbookEntry, Comment } from "./types";
+import { User, Post, GuestbookEntry, Comment, PostMode } from "./types";
+import { OWNER_USERNAME, ROLE_PERMISSIONS } from "./auth";
 
 export function getDB() {
   const ctx = getRequestContext();
@@ -17,6 +18,18 @@ export async function createTables() {
         password_hash TEXT NOT NULL,
         display_name TEXT,
         avatar TEXT,
+        role TEXT DEFAULT 'author' CHECK (role IN ('owner', 'admin', 'editor', 'author', 'member')),
+        bio TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS user_groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        label TEXT NOT NULL,
+        permissions TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `),
@@ -28,6 +41,8 @@ export async function createTables() {
         content TEXT NOT NULL,
         excerpt TEXT,
         cover_image TEXT,
+        images TEXT,
+        mode TEXT DEFAULT 'article' CHECK (mode IN ('article', 'moment')),
         author_id INTEGER NOT NULL,
         status TEXT DEFAULT 'draft' CHECK (status IN ('published', 'draft')),
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -35,6 +50,19 @@ export async function createTables() {
         published_at DATETIME,
         tags TEXT,
         view_count INTEGER DEFAULT 0
+      )
+    `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        url TEXT NOT NULL,
+        storage_key TEXT NOT NULL,
+        filename TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        sha TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `),
     db.prepare(`
@@ -63,8 +91,46 @@ export async function createTables() {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_images_user ON images(user_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id)`),
   ]);
+
+  await migrateSchema(db);
+  await seedUserGroups(db);
+  await db.prepare("UPDATE users SET role = 'owner' WHERE username = ?").bind(OWNER_USERNAME).run();
+}
+
+async function addColumnIfMissing(db: any, table: string, column: string, definition: string) {
+  const columns = await db.prepare(`PRAGMA table_info(${table})`).all();
+  const exists = (columns.results || []).some((item: any) => item.name === column);
+  if (!exists) {
+    await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+  }
+}
+
+async function migrateSchema(db: any) {
+  await addColumnIfMissing(db, "users", "role", "TEXT DEFAULT 'author'");
+  await addColumnIfMissing(db, "users", "bio", "TEXT");
+  await addColumnIfMissing(db, "users", "is_active", "INTEGER DEFAULT 1");
+  await addColumnIfMissing(db, "posts", "images", "TEXT");
+  await addColumnIfMissing(db, "posts", "mode", "TEXT DEFAULT 'article'");
+}
+
+async function seedUserGroups(db: any) {
+  const rows = [
+    ["owner", "站主", JSON.stringify(ROLE_PERMISSIONS.owner)],
+    ["admin", "管理员", JSON.stringify(ROLE_PERMISSIONS.admin)],
+    ["editor", "编辑", JSON.stringify(ROLE_PERMISSIONS.editor)],
+    ["author", "作者", JSON.stringify(ROLE_PERMISSIONS.author)],
+    ["member", "成员", JSON.stringify(ROLE_PERMISSIONS.member)],
+  ];
+
+  for (const row of rows) {
+    await db.prepare(
+      "INSERT OR IGNORE INTO user_groups (name, label, permissions) VALUES (?, ?, ?)"
+    ).bind(...row).run();
+  }
 }
 
 export async function getUserByUsername(username: string): Promise<User | null> {
@@ -81,9 +147,10 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 
 export async function createUser(username: string, email: string, passwordHash: string, displayName?: string): Promise<User> {
   const db = getDB();
+  const role = username === OWNER_USERNAME ? "owner" : "author";
   const result = await db.prepare(
-    "INSERT INTO users (username, email, password_hash, display_name) VALUES (?, ?, ?, ?) RETURNING *"
-  ).bind(username, email, passwordHash, displayName || null).first();
+    "INSERT INTO users (username, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?) RETURNING *"
+  ).bind(username, email, passwordHash, displayName || null, role).first();
   return result as any;
 }
 
@@ -119,14 +186,16 @@ export async function createPost(
   authorId: number,
   coverImage?: string,
   tags?: string,
-  status: "published" | "draft" = "published"
+  status: "published" | "draft" = "published",
+  mode: PostMode = "article",
+  images?: string
 ): Promise<Post> {
   const db = getDB();
   const publishedAt = status === "published" ? new Date().toISOString() : null;
   const result = await db.prepare(
-    `INSERT INTO posts (title, slug, content, excerpt, cover_image, author_id, status, published_at, tags)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
-  ).bind(title, slug, content, excerpt, coverImage || null, authorId, status, publishedAt, tags || null).first();
+    `INSERT INTO posts (title, slug, content, excerpt, cover_image, images, mode, author_id, status, published_at, tags)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
+  ).bind(title, slug, content, excerpt, coverImage || null, images || null, mode, authorId, status, publishedAt, tags || null).first();
   return result as any;
 }
 

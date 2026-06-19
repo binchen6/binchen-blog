@@ -9,12 +9,19 @@ export interface Env {
   GITHUB_UPLOAD_DIR?: string;
 }
 
+export type UserRole = "owner" | "admin" | "editor" | "author" | "member";
+export type PostMode = "article" | "moment";
+export type PostStatus = "published" | "draft";
+
 export interface User {
   id: number;
   username: string;
   email: string;
   display_name: string | null;
   avatar: string | null;
+  role: UserRole;
+  bio: string | null;
+  is_active: number;
   created_at: string;
 }
 
@@ -25,13 +32,27 @@ export interface Post {
   content: string;
   excerpt: string | null;
   cover_image: string | null;
+  images: string | null;
+  mode: PostMode;
   author_id: number;
-  status: "published" | "draft";
+  status: PostStatus;
   created_at: string;
   updated_at: string;
   published_at: string | null;
   tags: string | null;
   view_count: number;
+}
+
+export interface ImageAsset {
+  id: number;
+  user_id: number;
+  url: string;
+  storage_key: string;
+  filename: string;
+  mime_type: string;
+  size: number;
+  sha: string | null;
+  created_at: string;
 }
 
 export interface GuestbookEntry {

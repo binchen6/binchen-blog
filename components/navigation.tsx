@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Compass, LogIn, LogOut, Menu, MessageCircle, Pen, X } from "lucide-react";
+import { BookOpen, Compass, LogIn, LogOut, Menu, MessageCircle, Pen, Shield, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface UserData {
   username: string;
   display_name?: string;
+  role?: string;
 }
 
 const navItems = [
@@ -95,6 +96,18 @@ export default function Navigation() {
               </Link>
             );
           })}
+          {user && ["owner", "admin"].includes(user.role || "") && (
+            <Link
+              href="/admin"
+              className={cn(
+                "group inline-flex h-10 items-center gap-2 px-3 text-sm transition-colors",
+                isActive("/admin") ? "text-cyan-dark" : "text-ink-light hover:text-ink"
+              )}
+            >
+              <Shield size={15} className={isActive("/admin") ? "text-bronze" : "text-ink-muted group-hover:text-bronze"} />
+              <span className="font-serif-zh tracking-[0.12em]">控制台</span>
+            </Link>
+          )}
 
           <div className="mx-2 h-5 w-px bg-cyan-dark/10" />
 
@@ -153,6 +166,12 @@ export default function Navigation() {
                 </Link>
               );
             })}
+            {user && ["owner", "admin"].includes(user.role || "") && (
+              <Link href="/admin" className={cn("flex items-center gap-3 px-2 py-3 text-sm", isActive("/admin") ? "text-cyan-dark" : "text-ink-light")}>
+                <Shield size={16} className="text-bronze" />
+                <span className="font-serif-zh tracking-[0.12em]">控制台</span>
+              </Link>
+            )}
             <div className="mt-3 border-t border-mist/60 pt-3">
               {user ? (
                 <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-2 py-3 text-sm text-cinnabar">
