@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { canManageImage, getCurrentUserFromRequest } from "@/lib/auth";
+import { getGithubImageConfig } from "@/lib/github-config";
 import { json, parsePositiveId, securityHeaders } from "@/lib/security";
 
 export const runtime = "edge";
@@ -32,16 +33,19 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     if (!image) {
       return json({ error: "Image not found" }, { status: 404 });
     }
-    if (!env.GITHUB_TOKEN || !env.GITHUB_OWNER || !env.GITHUB_REPO) {
-      return json({ error: "GitHub image storage is not configured" }, { status: 500 });
+    const github = getGithubImageConfig(env);
+    if (github.missing.length > 0) {
+      return json(
+        { error: `GitHub image storage is not configured. Missing: ${github.missing.join(", ")}` },
+        { status: 500 }
+      );
     }
 
-    const branch = env.GITHUB_BRANCH || "main";
     const githubRes = await fetch(
-      `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${encodePath(image.storage_key)}?ref=${encodeURIComponent(branch)}`,
+      `https://api.github.com/repos/${github.owner}/${github.repo}/contents/${encodePath(image.storage_key)}?ref=${encodeURIComponent(github.branch)}`,
       {
         headers: {
-          Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+          Authorization: `Bearer ${github.token}`,
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
           "User-Agent": "binchen-blog",
@@ -97,14 +101,14 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (image.sha && env.GITHUB_TOKEN && env.GITHUB_OWNER && env.GITHUB_REPO) {
-      const branch = env.GITHUB_BRANCH || "main";
+    const github = getGithubImageConfig(env);
+    if (image.sha && github.missing.length === 0) {
       const githubRes = await fetch(
-        `https://api.github.com/repos/${env.GITHUB_OWNER}/${env.GITHUB_REPO}/contents/${encodePath(image.storage_key)}`,
+        `https://api.github.com/repos/${github.owner}/${github.repo}/contents/${encodePath(image.storage_key)}`,
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+            Authorization: `Bearer ${github.token}`,
             Accept: "application/vnd.github+json",
             "Content-Type": "application/json",
             "X-GitHub-Api-Version": "2022-11-28",
@@ -113,7 +117,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
           body: JSON.stringify({
             message: `delete image: ${image.storage_key}`,
             sha: image.sha,
-            branch,
+            branch: github.branch,
             committer: {
               name: "binchen-blog",
               email: "noreply@binchen-blog.pages.dev",

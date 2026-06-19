@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
+import { getGithubImageConfig } from "@/lib/github-config";
 import { json, parseBoundedInt, rateLimit } from "@/lib/security";
 
 export const runtime = "edge";
@@ -87,15 +88,11 @@ export async function POST(request: NextRequest) {
     const ctx = getRequestContext();
     const env = ctx.env as any;
     const db = env.DB;
-    const githubToken = env.GITHUB_TOKEN;
-    const owner = env.GITHUB_OWNER;
-    const repo = env.GITHUB_REPO;
-    const branch = env.GITHUB_BRANCH || "main";
-    const uploadDir = (env.GITHUB_UPLOAD_DIR || "uploads").replace(/^\/+|\/+$/g, "");
+    const github = getGithubImageConfig(env);
 
-    if (!githubToken || !owner || !repo) {
+    if (github.missing.length > 0) {
       return json(
-        { error: "GitHub image storage is not configured" },
+        { error: `GitHub image storage is not configured. Missing: ${github.missing.join(", ")}` },
         { status: 500 }
       );
     }
@@ -120,15 +117,15 @@ export async function POST(request: NextRequest) {
     ].join("/");
     const ext = MIME_TO_EXT[file.type];
     const randomId = crypto.randomUUID().slice(0, 8);
-    const key = `${uploadDir}/${datePath}/${Date.now()}-${randomId}-${sanitizeName(file.name)}.${ext}`;
+    const key = `${github.uploadDir}/${datePath}/${Date.now()}-${randomId}-${sanitizeName(file.name)}.${ext}`;
     const content = arrayBufferToBase64(buffer);
 
     const githubRes = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/${encodePath(key)}`,
+      `https://api.github.com/repos/${github.owner}/${github.repo}/contents/${encodePath(key)}`,
       {
         method: "PUT",
         headers: {
-          Authorization: `Bearer ${githubToken}`,
+          Authorization: `Bearer ${github.token}`,
           Accept: "application/vnd.github+json",
           "Content-Type": "application/json",
           "X-GitHub-Api-Version": "2022-11-28",
@@ -137,7 +134,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           message: `upload image: ${key}`,
           content,
-          branch,
+          branch: github.branch,
           committer: {
             name: "binchen-blog",
             email: "noreply@binchen-blog.pages.dev",
