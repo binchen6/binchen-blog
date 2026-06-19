@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Navigation from "@/components/navigation";
 import Footer from "@/components/footer";
-import { Upload, Send, Image, Tag as TagIcon, FileText } from "lucide-react";
+import { Upload, Send, Image, Tag as TagIcon, FileText, Pen, Compass } from "lucide-react";
 
 export default function WritePage() {
   const router = useRouter();
@@ -87,9 +87,14 @@ export default function WritePage() {
   };
 
   return (
-    <main className="min-h-screen bg-paper">
+    <main className="min-h-screen relative overflow-hidden">
       <Navigation />
-      <section className="pt-24 pb-16 px-6">
+      
+      {/* 背景 */}
+      <div className="absolute inset-0 paper-texture-bg opacity-80 pointer-events-none" />
+      <div className="absolute inset-0 star-grid-bg opacity-40 pointer-events-none" />
+
+      <section className="pt-24 pb-16 px-6 relative z-10">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -97,68 +102,123 @@ export default function WritePage() {
             transition={{ duration: 0.8 }}
           >
             <div className="text-center mb-12">
-              <span className="text-xs text-stone tracking-widest uppercase mb-2 block">Write</span>
-              <h1 className="font-serif-zh text-3xl md:text-4xl font-bold tracking-wider">撰写文章</h1>
-              <div className="w-16 h-px bg-ink/10 mx-auto mt-4" />
+              <span className="text-xs text-ink-muted tracking-widest uppercase mb-2 block font-mono-tech">
+                Write
+              </span>
+              <h1 className="font-serif-zh text-3xl md:text-4xl font-bold tracking-wider">
+                撰写文章
+              </h1>
+              <div className="w-16 h-px bg-gradient-to-r from-transparent via-bronze to-transparent mx-auto mt-4" />
             </div>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="flex items-center space-x-2 text-sm font-semibold mb-2">
-                  <FileText size={16} />
-                  <span>标题</span>
-                </label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="文章标题..." className="w-full text-lg" required />
-              </div>
-              <div>
-                <label className="flex items-center space-x-2 text-sm font-semibold mb-2">
-                  <TagIcon size={16} />
-                  <span>标签</span>
-                </label>
-                <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="标签1, 标签2, 标签3..." className="w-full" />
-              </div>
-              <div>
-                <label className="flex items-center space-x-2 text-sm font-semibold mb-2">
-                  <Image size={16} />
-                  <span>封面图片</span>
-                </label>
-                <div className="flex items-center space-x-4">
-                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="btn-outline flex items-center space-x-2 disabled:opacity-50">
-                    <Upload size={16} />
-                    <span>{uploading ? "上传中..." : "上传图片"}</span>
-                  </button>
-                  {coverImage && (
-                    <div className="aspect-video w-32 h-20 overflow-hidden rounded-sm">
-                      <img src={coverImage} alt="封面" className="w-full h-full object-cover" />
-                    </div>
-                  )}
+            
+            <div className="bg-paper/80 backdrop-blur-sm border border-cyan-dark/10 rounded-lg p-8 shadow-lg relative overflow-hidden">
+              {/* 顶部装饰线 */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-bronze to-transparent" />
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <label className="flex items-center space-x-2 text-sm font-semibold mb-2 text-ink-light">
+                    <FileText size={16} className="text-bronze" />
+                    <span>标题</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    value={title} 
+                    onChange={(e) => setTitle(e.target.value)} 
+                    placeholder="文章标题..." 
+                    className="w-full text-lg bg-paper/50 border-mist focus:border-cyan-dark focus:shadow-tech-glow-sm transition-all" 
+                    required 
+                  />
                 </div>
-                <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-              </div>
-              <div>
-                <label className="flex items-center space-x-2 text-sm font-semibold mb-2">
-                  <FileText size={16} />
-                  <span>内容</span>
-                </label>
-                <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="支持 Markdown 格式..." className="w-full h-96 resize-none" required />
-              </div>
-              <div className="flex items-center space-x-4">
-                <label className="flex items-center space-x-2">
-                  <input type="radio" checked={status === "published"} onChange={() => setStatus("published")} />
-                  <span className="text-sm">直接发布</span>
-                </label>
-                <label className="flex items-center space-x-2">
-                  <input type="radio" checked={status === "draft"} onChange={() => setStatus("draft")} />
-                  <span className="text-sm">保存草稿</span>
-                </label>
-              </div>
-              <button type="submit" disabled={publishing} className="btn-ink w-full flex items-center justify-center space-x-2 disabled:opacity-50">
-                <Send size={16} />
-                <span>{publishing ? "发布中..." : "发布文章"}</span>
-              </button>
-            </form>
+                
+                <div>
+                  <label className="flex items-center space-x-2 text-sm font-semibold mb-2 text-ink-light">
+                    <TagIcon size={16} className="text-bronze" />
+                    <span>标签</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    value={tags} 
+                    onChange={(e) => setTags(e.target.value)} 
+                    placeholder="标签1, 标签2, 标签3..." 
+                    className="w-full bg-paper/50 border-mist focus:border-cyan-dark focus:shadow-tech-glow-sm transition-all" 
+                  />
+                </div>
+                
+                <div>
+                  <label className="flex items-center space-x-2 text-sm font-semibold mb-2 text-ink-light">
+                    <Image size={16} className="text-bronze" />
+                    <span>封面图片</span>
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <button 
+                      type="button" 
+                      onClick={() => fileInputRef.current?.click()} 
+                      disabled={uploading} 
+                      className="btn-outline flex items-center space-x-2 disabled:opacity-50"
+                    >
+                      <Upload size={16} />
+                      <span>{uploading ? "上传中..." : "上传图片"}</span>
+                    </button>
+                    {coverImage && (
+                      <div className="aspect-video w-32 h-20 overflow-hidden rounded-sm border border-cyan-dark/10">
+                        <img src={coverImage} alt="封面" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                  <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                </div>
+                
+                <div>
+                  <label className="flex items-center space-x-2 text-sm font-semibold mb-2 text-ink-light">
+                    <Pen size={16} className="text-bronze" />
+                    <span>内容</span>
+                  </label>
+                  <textarea 
+                    value={content} 
+                    onChange={(e) => setContent(e.target.value)} 
+                    placeholder="支持 Markdown 格式..." 
+                    className="w-full h-96 resize-none bg-paper/50 border-mist focus:border-cyan-dark focus:shadow-tech-glow-sm transition-all" 
+                    required 
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-6">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      checked={status === "published"} 
+                      onChange={() => setStatus("published")} 
+                      className="text-cyan-dark focus:ring-cyan-dark" 
+                    />
+                    <span className="text-sm text-ink-light">直接发布</span>
+                  </label>
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      checked={status === "draft"} 
+                      onChange={() => setStatus("draft")} 
+                      className="text-cyan-dark focus:ring-cyan-dark" 
+                    />
+                    <span className="text-sm text-ink-light">保存草稿</span>
+                  </label>
+                </div>
+                
+                <button 
+                  type="submit" 
+                  disabled={publishing} 
+                  className="btn-tech w-full flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  <Send size={16} />
+                  <span>{publishing ? "发布中..." : "发布文章"}</span>
+                  <ArrowRight size={14} />
+                </button>
+              </form>
+            </div>
           </motion.div>
         </div>
       </section>
+      
       <Footer />
     </main>
   );

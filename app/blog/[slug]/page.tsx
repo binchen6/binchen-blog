@@ -86,9 +86,10 @@ export default function BlogPostPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-paper">
+      <main className="min-h-screen relative">
         <Navigation />
-        <div className="pt-24 px-6">
+        <div className="absolute inset-0 paper-texture-bg opacity-80 pointer-events-none" />
+        <div className="pt-24 px-6 relative z-10">
           <div className="ink-loading h-1 max-w-md mx-auto" />
         </div>
       </main>
@@ -97,9 +98,10 @@ export default function BlogPostPage() {
 
   if (!post) {
     return (
-      <main className="min-h-screen bg-paper">
+      <main className="min-h-screen relative">
         <Navigation />
-        <div className="pt-24 px-6 text-center">
+        <div className="absolute inset-0 paper-texture-bg opacity-80 pointer-events-none" />
+        <div className="pt-24 px-6 text-center relative z-10">
           <h1 className="font-serif-zh text-2xl text-ink-light">文章未找到</h1>
           <Link href="/blog" className="btn-ink mt-8 inline-block">返回文章列表</Link>
         </div>
@@ -110,23 +112,27 @@ export default function BlogPostPage() {
   const readingTime = getReadingTime(post.content);
 
   return (
-    <main className="min-h-screen bg-paper">
+    <main className="min-h-screen relative">
       <Navigation />
+      
+      {/* 背景 */}
+      <div className="absolute inset-0 paper-texture-bg opacity-80 pointer-events-none" />
+      <div className="absolute inset-0 star-grid-bg opacity-40 pointer-events-none" />
 
-      <article className="pt-24 pb-16">
+      <article className="pt-24 pb-16 relative z-10">
         <div className="max-w-4xl mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <Link href="/blog" className="inline-flex items-center space-x-2 text-sm text-ink-light hover:text-ink transition-colors mb-8">
+            <Link href="/blog" className="inline-flex items-center space-x-2 text-sm text-ink-muted hover:text-cyan-dark transition-colors mb-8">
               <ArrowLeft size={16} />
               <span>返回文章列表</span>
             </Link>
 
             {post.cover_image && (
-              <div className="aspect-video overflow-hidden rounded-sm mb-8">
+              <div className="aspect-video overflow-hidden rounded-lg mb-8 border border-cyan-dark/10">
                 <img
                   src={post.cover_image}
                   alt={post.title}
@@ -135,7 +141,7 @@ export default function BlogPostPage() {
               </div>
             )}
 
-            <div className="flex items-center space-x-4 mb-6 text-xs text-stone">
+            <div className="flex items-center space-x-4 mb-6 text-xs text-ink-muted font-mono-tech">
               <span className="flex items-center space-x-1">
                 <Calendar size={12} />
                 <span>{formatDate(post.published_at || post.created_at)}</span>
@@ -162,7 +168,7 @@ export default function BlogPostPage() {
               </div>
             )}
 
-            <div className="w-16 h-px bg-ink/10 mb-8" />
+            <div className="w-16 h-px bg-gradient-to-r from-transparent via-bronze to-transparent mb-8" />
 
             <div
               className="markdown-content text-ink-light leading-relaxed"
@@ -176,10 +182,10 @@ export default function BlogPostPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="mt-16 pt-16 border-t border-ink/5"
+            className="mt-16 pt-16 border-t border-cyan-dark/10"
           >
             <h2 className="font-serif-zh text-2xl font-bold tracking-wider mb-8 flex items-center space-x-2">
-              <MessageCircle size={24} />
+              <MessageCircle size={24} className="text-bronze" />
               <span>评论 ({comments.length})</span>
             </h2>
 
@@ -191,7 +197,7 @@ export default function BlogPostPage() {
                   placeholder="姓名"
                   value={commentForm.name}
                   onChange={(e) => setCommentForm({ ...commentForm, name: e.target.value })}
-                  className="w-full"
+                  className="w-full bg-paper/50 border-mist focus:border-cyan-dark focus:shadow-tech-glow-sm transition-all"
                   required
                 />
                 <input
@@ -199,7 +205,7 @@ export default function BlogPostPage() {
                   placeholder="邮箱"
                   value={commentForm.email}
                   onChange={(e) => setCommentForm({ ...commentForm, email: e.target.value })}
-                  className="w-full"
+                  className="w-full bg-paper/50 border-mist focus:border-cyan-dark focus:shadow-tech-glow-sm transition-all"
                   required
                 />
               </div>
@@ -207,13 +213,13 @@ export default function BlogPostPage() {
                 placeholder="写下你的想法..."
                 value={commentForm.content}
                 onChange={(e) => setCommentForm({ ...commentForm, content: e.target.value })}
-                className="w-full h-32 resize-none"
+                className="w-full h-32 resize-none bg-paper/50 border-mist focus:border-cyan-dark focus:shadow-tech-glow-sm transition-all"
                 required
               />
               <button
                 type="submit"
                 disabled={submitting}
-                className="btn-ink flex items-center space-x-2 disabled:opacity-50"
+                className="btn-tech flex items-center space-x-2 disabled:opacity-50"
               >
                 <Send size={16} />
                 <span>{submitting ? "提交中..." : "发表评论"}</span>
@@ -223,7 +229,9 @@ export default function BlogPostPage() {
             {/* Comments List */}
             <div className="space-y-6">
               {comments.length === 0 ? (
-                <p className="text-stone text-center py-8">暂无评论，来做第一个评论者吧！</p>
+                <div className="text-center py-8">
+                  <p className="text-ink-muted font-serif-zh">暂无评论，来做第一个评论者吧！</p>
+                </div>
               ) : (
                 comments.map((comment) => (
                   <motion.div
@@ -233,12 +241,12 @@ export default function BlogPostPage() {
                     className="paper-card p-6"
                   >
                     <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-ink/10 flex items-center justify-center">
-                        <User size={16} className="text-ink-light" />
+                      <div className="w-8 h-8 rounded-full bg-cyan-dark/10 flex items-center justify-center">
+                        <User size={16} className="text-cyan-dark" />
                       </div>
                       <div>
                         <span className="text-sm font-semibold">{comment.name}</span>
-                        <span className="text-xs text-stone ml-2">{formatDate(comment.created_at)}</span>
+                        <span className="text-xs text-ink-muted ml-2 font-mono-tech">{formatDate(comment.created_at)}</span>
                       </div>
                     </div>
                     <p className="text-sm text-ink-light leading-relaxed">{comment.content}</p>

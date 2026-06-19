@@ -41,8 +41,8 @@ export default function BlogPage() {
       <Navigation />
 
       {/* 背景 */}
-      <div className="absolute inset-0 paper-texture-bg opacity-40 pointer-events-none" />
-      <div className="absolute inset-0 star-grid-bg opacity-20 pointer-events-none" />
+      <div className="absolute inset-0 paper-texture-bg opacity-80 pointer-events-none" />
+      <div className="absolute inset-0 star-grid-bg opacity-40 pointer-events-none" />
 
       <section className="pt-24 pb-16 px-6 relative z-10">
         <div className="max-w-6xl mx-auto">

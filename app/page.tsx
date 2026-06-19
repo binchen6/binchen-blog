@@ -16,20 +16,20 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center">
         {/* 背景层 */}
-        <div className="absolute inset-0 paper-texture-bg opacity-60" />
-        <div className="absolute inset-0 star-grid-bg opacity-40" />
+        <div className="absolute inset-0 paper-texture-bg opacity-80" />
+        <div className="absolute inset-0 star-grid-bg opacity-50" />
         
         {/* 水墨晕染装饰 */}
-        <div className="absolute top-20 left-10 w-96 h-96 opacity-10">
+        <div className="absolute top-20 left-10 w-96 h-96 opacity-20">
           <div className="w-full h-full rounded-full bg-gradient-radial from-cyan-dark/30 to-transparent blur-3xl" />
         </div>
-        <div className="absolute bottom-20 right-10 w-80 h-80 opacity-10">
+        <div className="absolute bottom-20 right-10 w-80 h-80 opacity-20">
           <div className="w-full h-full rounded-full bg-gradient-radial from-bronze/20 to-transparent blur-3xl" />
         </div>
         
         {/* 罗盘装饰 - 右上角 */}
         <motion.div
-          className="absolute top-24 right-10 md:right-24 opacity-15"
+          className="absolute top-24 right-10 md:right-24 opacity-25"
           animate={{ rotate: 360 }}
           transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
         >
@@ -38,7 +38,7 @@ export default function HomePage() {
         
         {/* 齿轮装饰 - 左下角 */}
         <motion.div
-          className="absolute bottom-32 left-10 md:left-20 opacity-10"
+          className="absolute bottom-32 left-10 md:left-20 opacity-20"
           animate={{ rotate: -360 }}
           transition={{ duration: 80, repeat: Infinity, ease: "linear" }}
         >
