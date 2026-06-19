@@ -189,11 +189,20 @@ export default function WritePage() {
           body: formData,
         });
         const data = (await res.json()) as { image?: ImageAsset; url?: string; error?: string };
-        if (!res.ok || !data.url) {
+        const uploadedUrl = data.image?.url || data.url || "";
+        if (!res.ok || !uploadedUrl) {
           alert(data.error || "图片上传失败");
           continue;
         }
-        if (data.image) uploaded.push(data.image);
+        uploaded.push({
+          ...(data.image || {
+            id: Date.now(),
+            filename: uploadFile.name,
+            size: uploadFile.size,
+            created_at: new Date().toISOString(),
+          }),
+          url: uploadedUrl,
+        });
       }
       if (uploaded.length > 0) {
         setAssets((current) => [...uploaded, ...current]);
@@ -361,7 +370,7 @@ export default function WritePage() {
                   <Image size={16} className="text-bronze" />
                   封面图片 URL
                 </label>
-                <input type="url" value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="可从右侧图片库选择" className="w-full bg-paper/60" />
+                <input type="text" value={coverImage} onChange={(e) => setCoverImage(e.target.value)} placeholder="可从右侧图片库选择，支持 /api/images/123" className="w-full bg-paper/60" />
               </div>
             </div>
 

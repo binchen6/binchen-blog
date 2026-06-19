@@ -19,6 +19,49 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
+async function fetchGithubImageBytes(github: ReturnType<typeof getGithubImageConfig>, image: any): Promise<Uint8Array | null> {
+  const commonHeaders = {
+    Authorization: `Bearer ${github.token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "binchen-blog",
+  };
+
+  if (image.sha) {
+    const blobRes = await fetch(
+      `https://api.github.com/repos/${github.owner}/${github.repo}/git/blobs/${image.sha}`,
+      { headers: commonHeaders }
+    );
+
+    if (blobRes.ok) {
+      const blobData = await blobRes.json() as { content?: string; encoding?: string };
+      if (blobData?.content && blobData.encoding === "base64") {
+        return base64ToBytes(blobData.content);
+      }
+    } else if (blobRes.status !== 404) {
+      console.error("GitHub blob fetch error:", blobRes.status, await blobRes.text());
+    }
+  }
+
+  const contentRes = await fetch(
+    `https://api.github.com/repos/${github.owner}/${github.repo}/contents/${encodePath(image.storage_key)}?ref=${encodeURIComponent(github.branch)}`,
+    { headers: commonHeaders }
+  );
+
+  if (!contentRes.ok) {
+    console.error("GitHub content fetch error:", contentRes.status, await contentRes.text());
+    return null;
+  }
+
+  const contentData = await contentRes.json() as { content?: string; encoding?: string };
+  if (!contentData?.content || contentData.encoding !== "base64") {
+    console.error("GitHub content response did not include base64 image bytes:", contentData?.encoding || "missing");
+    return null;
+  }
+
+  return base64ToBytes(contentData.content);
+}
+
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const imageId = parsePositiveId(params.id);
@@ -41,28 +84,11 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
       );
     }
 
-    const githubRes = await fetch(
-      `https://api.github.com/repos/${github.owner}/${github.repo}/contents/${encodePath(image.storage_key)}?ref=${encodeURIComponent(github.branch)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${github.token}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "User-Agent": "binchen-blog",
-        },
-      }
-    );
-
-    if (!githubRes.ok) {
-      return json({ error: "Image not found" }, { status: githubRes.status === 404 ? 404 : 502 });
+    const bytes = await fetchGithubImageBytes(github, image);
+    if (!bytes) {
+      return json({ error: "Image not found" }, { status: 502 });
     }
 
-    const githubData = await githubRes.json() as any;
-    if (!githubData?.content || githubData.encoding !== "base64") {
-      return json({ error: "Invalid image content" }, { status: 502 });
-    }
-
-    const bytes = base64ToBytes(githubData.content);
     const body = new ArrayBuffer(bytes.byteLength);
     new Uint8Array(body).set(bytes);
     return new Response(body, {
