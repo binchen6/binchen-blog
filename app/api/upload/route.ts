@@ -61,6 +61,27 @@ function hasValidImageSignature(type: string, bytes: Uint8Array): boolean {
   return false;
 }
 
+async function getGithubErrorMessage(res: Response): Promise<string> {
+  let githubMessage = "";
+  try {
+    const data = await res.json() as { message?: string };
+    githubMessage = data.message || "";
+  } catch {
+    githubMessage = await res.text();
+  }
+
+  const hint = (() => {
+    if (res.status === 401) return "GitHub Token 无效或已过期。";
+    if (res.status === 403) return "GitHub Token 权限不足，请确认它有该仓库 contents 读写权限。";
+    if (res.status === 404) return "GitHub 仓库不可见，请检查 GITHUB_OWNER、GITHUB_REPO 是否正确，以及 Token 是否能访问私有仓库。";
+    if (res.status === 422) return "GitHub 拒绝写入，请检查 GITHUB_BRANCH 是否存在，以及仓库规则是否允许写入。";
+    return "GitHub 上传接口返回异常。";
+  })();
+
+  const detail = githubMessage ? ` GitHub: ${githubMessage.slice(0, 160)}` : "";
+  return `${hint}${detail}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUserFromRequest(request);
@@ -144,9 +165,9 @@ export async function POST(request: NextRequest) {
     );
 
     if (!githubRes.ok) {
-      const errorText = await githubRes.text();
-      console.error("GitHub upload error:", githubRes.status, errorText);
-      return json({ error: "GitHub upload failed" }, { status: 502 });
+      const errorMessage = await getGithubErrorMessage(githubRes);
+      console.error("GitHub upload error:", githubRes.status, errorMessage);
+      return json({ error: errorMessage }, { status: 502 });
     }
 
     const githubData = await githubRes.json() as any;

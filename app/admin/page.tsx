@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, BookOpen, Image, MessageCircle, Shield, Trash2, UserCog } from "lucide-react";
+import { BarChart3, BookOpen, HardDrive, Image, MessageCircle, Shield, Trash2, UserCog } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { formatDate } from "@/lib/utils";
 
@@ -71,6 +71,23 @@ interface PerformanceTaskRow {
   runs: number;
 }
 
+interface GithubStorageStatus {
+  configured: boolean;
+  missing: string[];
+  owner: string | null;
+  repo: string | null;
+  branch: string;
+  uploadDir: string;
+  tokenPresent: boolean;
+  tokenLength: number;
+  repoCheck: {
+    ok: boolean;
+    status: number | null;
+    message: string;
+  };
+  error?: string;
+}
+
 const roleLabels: Record<string, string> = {
   owner: "站主",
   admin: "管理员",
@@ -92,6 +109,7 @@ export default function AdminPage() {
   const [images, setImages] = useState<ImageRow[]>([]);
   const [usernameRequests, setUsernameRequests] = useState<UsernameRequestRow[]>([]);
   const [performanceTasks, setPerformanceTasks] = useState<PerformanceTaskRow[]>([]);
+  const [githubStorage, setGithubStorage] = useState<GithubStorageStatus | null>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -104,7 +122,7 @@ export default function AdminPage() {
       return;
     }
     try {
-      const [statsRes, usersRes, postsRes, guestbookRes, commentsRes, imagesRes, usernameRequestsRes, performanceRes] = await Promise.all([
+      const [statsRes, usersRes, postsRes, guestbookRes, commentsRes, imagesRes, usernameRequestsRes, performanceRes, githubStorageRes] = await Promise.all([
         fetch("/api/admin", { headers: authHeaders }),
         fetch("/api/admin/users", { headers: authHeaders }),
         fetch("/api/posts?admin=1&limit=100", { headers: authHeaders }),
@@ -113,6 +131,7 @@ export default function AdminPage() {
         fetch("/api/upload?all=1&limit=100", { headers: authHeaders }),
         fetch("/api/admin/username-requests", { headers: authHeaders }),
         fetch("/api/performance", { headers: authHeaders }),
+        fetch("/api/admin/github-storage", { headers: authHeaders }),
       ]);
 
       if (!statsRes.ok) {
@@ -129,6 +148,7 @@ export default function AdminPage() {
       const imagesData = await imagesRes.json() as { images?: ImageRow[] };
       const usernameRequestsData = await usernameRequestsRes.json() as { requests?: UsernameRequestRow[] };
       const performanceData = await performanceRes.json() as { slowTasks?: PerformanceTaskRow[] };
+      const githubStorageData = await githubStorageRes.json() as GithubStorageStatus;
 
       setStats(statsData.stats || {});
       setUsers(usersData.users || []);
@@ -138,6 +158,7 @@ export default function AdminPage() {
       setImages(imagesData.images || []);
       setUsernameRequests(usernameRequestsData.requests || []);
       setPerformanceTasks(performanceData.slowTasks || []);
+      setGithubStorage(githubStorageData);
     } catch {
       setError("管理员数据加载失败。");
     } finally {
@@ -326,6 +347,57 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+            </SurfacePanel>
+
+            <SurfacePanel className="p-6">
+              <h2 className="mb-5 flex items-center gap-2 font-serif-zh text-xl font-semibold tracking-[0.08em]">
+                <HardDrive size={20} className="text-bronze" />
+                GitHub 图片存储
+              </h2>
+              {!githubStorage ? (
+                <p className="text-sm text-ink-muted">暂未读取到存储检查结果。</p>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-[1fr_1.4fr]">
+                  <div className="border border-cyan-dark/10 bg-paper/55 p-4">
+                    <div className="text-sm text-ink-muted">配置状态</div>
+                    <div className={githubStorage.configured && githubStorage.repoCheck.ok ? "mt-2 text-lg font-semibold text-cyan-dark" : "mt-2 text-lg font-semibold text-cinnabar"}>
+                      {githubStorage.configured && githubStorage.repoCheck.ok ? "可用" : "需要处理"}
+                    </div>
+                    <div className="mt-3 text-sm text-ink-light">
+                      {githubStorage.configured
+                        ? `已读取 ${githubStorage.owner || "-"} / ${githubStorage.repo || "-"}`
+                        : `缺少：${githubStorage.missing.join(", ") || "未知变量"}`}
+                    </div>
+                  </div>
+                  <div className="grid gap-3 text-sm md:grid-cols-2">
+                    <div className="border border-cyan-dark/10 bg-paper/55 p-4">
+                      <div className="text-ink-muted">分支 / 目录</div>
+                      <div className="mt-2 font-mono-tech text-xs text-cyan-dark">{githubStorage.branch} / {githubStorage.uploadDir}</div>
+                    </div>
+                    <div className="border border-cyan-dark/10 bg-paper/55 p-4">
+                      <div className="text-ink-muted">Token</div>
+                      <div className="mt-2 font-mono-tech text-xs text-cyan-dark">
+                        {githubStorage.tokenPresent ? `已读取，长度 ${githubStorage.tokenLength}` : "未读取"}
+                      </div>
+                    </div>
+                    <div className="border border-cyan-dark/10 bg-paper/55 p-4 md:col-span-2">
+                      <div className="text-ink-muted">仓库权限检查</div>
+                      <div className="mt-2 font-mono-tech text-xs text-cyan-dark">
+                        {githubStorage.repoCheck.status ? `GitHub 返回 ${githubStorage.repoCheck.status}` : "未执行"}
+                      </div>
+                      {githubStorage.repoCheck.message && (
+                        <div className="mt-2 text-xs text-cinnabar">{githubStorage.repoCheck.message}</div>
+                      )}
+                      {!githubStorage.repoCheck.ok && githubStorage.repoCheck.status === 404 && (
+                        <div className="mt-2 text-xs text-ink-muted">请检查仓库名是否正确，或 Token 是否有访问私有仓库的权限。</div>
+                      )}
+                      {!githubStorage.repoCheck.ok && (githubStorage.repoCheck.status === 401 || githubStorage.repoCheck.status === 403) && (
+                        <div className="mt-2 text-xs text-ink-muted">请检查 Token 是否过期，以及是否包含私有仓库 contents 读写权限。</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </SurfacePanel>
 
             <SurfacePanel className="p-6">
