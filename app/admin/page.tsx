@@ -26,6 +26,8 @@ interface PostRow {
   author_username?: string;
   created_at: string;
   published_at: string | null;
+  is_featured?: number;
+  featured_rank?: number;
 }
 
 interface GuestbookRow {
@@ -167,6 +169,20 @@ export default function AdminPage() {
     const res = await fetch(`/api/posts/${slug}`, { method: "DELETE", headers: authHeaders });
     if (res.ok) setPosts((current) => current.filter((post) => post.slug !== slug));
     else alert("删除文章失败");
+  };
+
+  const updateFeaturedPost = async (post: PostRow, isFeatured: boolean, featuredRank = post.featured_rank || 0) => {
+    const res = await fetch("/api/admin/featured-posts", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ slug: post.slug, isFeatured, featuredRank }),
+    });
+    const data = await res.json() as { post?: PostRow; error?: string };
+    if (!res.ok || !data.post) {
+      alert(data.error || "更新精选状态失败");
+      return;
+    }
+    setPosts((current) => current.map((item) => item.slug === post.slug ? { ...item, ...data.post } : item));
   };
 
   const deleteGuestbook = async (id: number) => {
@@ -324,7 +340,31 @@ export default function AdminPage() {
                       <div className="font-semibold">{post.title}</div>
                       <div className="mt-1 text-xs text-ink-muted">{post.author_username || "未知作者"} · {post.mode === "moment" ? "动态" : "文章"} · {post.status === "published" ? "已发布" : "草稿"}</div>
                     </div>
-                    <div className="flex gap-3 text-sm">
+                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                      {post.status === "published" && (
+                        <label className="inline-flex items-center gap-2 text-xs text-ink-muted">
+                          排序
+                          <input
+                            type="number"
+                            min={0}
+                            max={999}
+                            value={post.featured_rank || 0}
+                            onChange={(e) => {
+                              const featuredRank = Number(e.target.value || 0);
+                              setPosts((current) => current.map((item) => item.slug === post.slug ? { ...item, featured_rank: featuredRank } : item));
+                            }}
+                            onBlur={() => {
+                              if (post.is_featured) updateFeaturedPost(post, true, post.featured_rank || 0);
+                            }}
+                            className="h-8 w-16 bg-paper/70 px-2"
+                          />
+                        </label>
+                      )}
+                      {post.status === "published" && (
+                        <button type="button" onClick={() => updateFeaturedPost(post, !post.is_featured)} className="text-cyan-dark">
+                          {post.is_featured ? "取消精选" : "设为精选"}
+                        </button>
+                      )}
                       {post.status === "published" && <Link href={`/blog/${post.slug}`} className="text-cyan-dark">查看</Link>}
                       <button type="button" onClick={() => deletePost(post.slug)} className="inline-flex items-center gap-1 text-cinnabar">
                         <Trash2 size={14} />

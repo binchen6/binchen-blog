@@ -207,6 +207,14 @@ export default function ProfilePage() {
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="font-serif-zh text-2xl font-semibold tracking-[0.08em]">@{profile.username}</h2>
+                  <div className="mt-4 grid gap-2 text-xs leading-loose text-ink-muted md:grid-cols-2">
+                    <div className="border border-cyan-dark/10 bg-paper/55 p-3">
+                      <span className="font-semibold text-ink-light">用户名</span> 是唯一账号标识，用于登录、审核和站内身份识别，修改需要管理员同意。
+                    </div>
+                    <div className="border border-cyan-dark/10 bg-paper/55 p-3">
+                      <span className="font-semibold text-ink-light">显示名称</span> 是公开昵称，会出现在文章、评论和导航栏，可以随时自己修改。
+                    </div>
+                  </div>
                   <p className="mt-2 text-sm text-ink-muted">{profile.display_name || "未设置显示名称"}</p>
                 </div>
                 {currentGroup && (

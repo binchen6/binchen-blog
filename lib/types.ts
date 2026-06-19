@@ -44,6 +44,8 @@ export interface Post {
   published_at: string | null;
   tags: string | null;
   view_count: number;
+  is_featured: number;
+  featured_rank: number;
 }
 
 export interface ImageAsset {

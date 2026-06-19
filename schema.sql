@@ -48,7 +48,9 @@ CREATE TABLE IF NOT EXISTS posts (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   published_at DATETIME,
   tags TEXT,
-  view_count INTEGER DEFAULT 0
+  view_count INTEGER DEFAULT 0,
+  is_featured INTEGER DEFAULT 0,
+  featured_rank INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS images (
@@ -97,6 +99,7 @@ CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug);
 CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at);
 CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id);
+CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured, featured_rank);
 CREATE INDEX IF NOT EXISTS idx_images_user ON images(user_id);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_username_requests_status ON username_change_requests(status);

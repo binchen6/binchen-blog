@@ -80,7 +80,8 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
 
     const updated = await db.prepare(
       `UPDATE posts
-       SET title = ?, content = ?, excerpt = ?, cover_image = ?, images = ?, mode = ?, status = ?, updated_at = ?, published_at = ?, tags = ?
+       SET title = ?, content = ?, excerpt = ?, cover_image = ?, images = ?, mode = ?, status = ?, updated_at = ?, published_at = ?, tags = ?,
+           is_featured = CASE WHEN ? = 'published' THEN is_featured ELSE 0 END
        WHERE slug = ?
        RETURNING *`
     ).bind(
@@ -94,6 +95,7 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
       new Date().toISOString(),
       publishedAt,
       tags || null,
+      status,
       params.slug
     ).first();
 

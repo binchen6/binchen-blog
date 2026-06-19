@@ -28,8 +28,8 @@ export default function RegisterPage() {
       setError("请输入有效的邮箱地址");
       return;
     }
-    if (password.length < 6) {
-      setError("密码至少 6 位");
+    if (password.length < 8) {
+      setError("密码至少 8 位");
       return;
     }
     if (password !== confirmPassword) {
@@ -72,6 +72,11 @@ export default function RegisterPage() {
 
           {error && <div className="border border-cinnabar/20 bg-cinnabar/10 p-4 text-sm text-cinnabar">{error}</div>}
 
+          <div className="border border-cyan-dark/10 bg-paper/55 p-4 text-xs leading-loose text-ink-muted">
+            <p><span className="font-semibold text-ink-light">用户名</span> 是唯一账号标识，用于登录，注册后修改需要管理员审核。</p>
+            <p><span className="font-semibold text-ink-light">显示名称</span> 是公开昵称，会出现在文章、评论和导航栏，可随时在个人中心修改。</p>
+          </div>
+
           <div>
             <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink-light">
               <User size={16} className="text-bronze" />
@@ -102,7 +107,7 @@ export default function RegisterPage() {
                 <Lock size={16} className="text-bronze" />
                 密码 *
               </label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="至少 6 位" className="w-full bg-paper/60" required />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="至少 8 位" className="w-full bg-paper/60" required />
             </div>
             <div>
               <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink-light">

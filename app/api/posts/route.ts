@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const mine = searchParams.get("mine") === "1";
     const admin = searchParams.get("admin") === "1";
+    const featured = searchParams.get("featured") === "1";
 
     const ctx = getRequestContext();
     const db = (ctx.env as any).DB;
@@ -23,7 +24,10 @@ export async function GET(request: NextRequest) {
     const params: any[] = [];
     const where: string[] = [];
 
-    if (admin) {
+    if (featured) {
+      where.push("posts.status = 'published'");
+      where.push("posts.is_featured = 1");
+    } else if (admin) {
       if (!currentUser || !canAccessAdmin(currentUser)) {
         return json({ error: "Forbidden" }, { status: 403 });
       }
@@ -50,7 +54,9 @@ export async function GET(request: NextRequest) {
       query += ` WHERE ${where.join(" AND ")}`;
     }
 
-    query += " ORDER BY COALESCE(posts.published_at, posts.created_at) DESC LIMIT ? OFFSET ?";
+    query += featured
+      ? " ORDER BY posts.featured_rank ASC, COALESCE(posts.published_at, posts.created_at) DESC LIMIT ? OFFSET ?"
+      : " ORDER BY COALESCE(posts.published_at, posts.created_at) DESC LIMIT ? OFFSET ?";
     params.push(limit, offset);
 
     const results = await db.prepare(query).bind(...params).all();

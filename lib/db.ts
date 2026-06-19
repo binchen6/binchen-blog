@@ -61,7 +61,9 @@ export async function createTables() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         published_at DATETIME,
         tags TEXT,
-        view_count INTEGER DEFAULT 0
+        view_count INTEGER DEFAULT 0,
+        is_featured INTEGER DEFAULT 0,
+        featured_rank INTEGER DEFAULT 0
       )
     `),
     db.prepare(`
@@ -114,6 +116,7 @@ export async function createTables() {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured, featured_rank)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_images_user ON images(user_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_username_requests_status ON username_change_requests(status)`),
@@ -140,11 +143,14 @@ async function migrateSchema(db: any) {
   await addColumnIfMissing(db, "users", "is_active", "INTEGER DEFAULT 1");
   await addColumnIfMissing(db, "posts", "images", "TEXT");
   await addColumnIfMissing(db, "posts", "mode", "TEXT DEFAULT 'article'");
+  await addColumnIfMissing(db, "posts", "is_featured", "INTEGER DEFAULT 0");
+  await addColumnIfMissing(db, "posts", "featured_rank", "INTEGER DEFAULT 0");
   await addColumnIfMissing(db, "images", "sha", "TEXT");
   await addColumnIfMissing(db, "guestbook", "user_id", "INTEGER");
   await addColumnIfMissing(db, "guestbook", "reply_to", "INTEGER");
   await addColumnIfMissing(db, "comments", "user_id", "INTEGER");
   await addColumnIfMissing(db, "comments", "parent_id", "INTEGER");
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured, featured_rank)").run();
 }
 
 async function seedUserGroups(db: any) {
