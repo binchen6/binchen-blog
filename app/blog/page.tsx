@@ -1,13 +1,9 @@
 "use client";
 
-export const runtime = "edge";
-
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import Link from "next/link";
-import Navigation from "@/components/navigation";
-import Footer from "@/components/footer";
-import { ArrowRight, Calendar, Eye, Tag } from "lucide-react";
+import { ArrowRight, Calendar, Eye, FileText, Tag } from "lucide-react";
+import { EmptyState, PageHeader, SiteShell } from "@/components/page-chrome";
 import { formatDate } from "@/lib/utils";
 
 interface Post {
@@ -27,104 +23,96 @@ export default function BlogPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     fetch("/api/posts")
-      .then((res) => res.json() as any)
+      .then((res) => res.json() as Promise<{ posts?: Post[] }>)
       .then((data) => {
-        setPosts(data.posts || []);
-        setLoading(false);
+        if (!cancelled) setPosts(data.posts || []);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        if (!cancelled) setPosts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
-    <main className="min-h-screen relative">
-      <Navigation />
+    <SiteShell>
+      <section className="mx-auto max-w-6xl px-6 pb-20 pt-28">
+        <PageHeader
+          eyebrow="Articles"
+          title="文章列表"
+          icon={<FileText size={22} />}
+          description="把旅行见闻、生活片刻和技术笔记放在同一张安静的纸面上。"
+        />
 
-      {/* 背景 */}
-      <div className="absolute inset-0 paper-texture-bg opacity-80 pointer-events-none" />
-      <div className="absolute inset-0 star-grid-bg opacity-40 pointer-events-none" />
-
-      <section className="pt-24 pb-16 px-6 relative z-10">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-16"
-          >
-            <span className="text-xs text-ink-muted tracking-widest uppercase mb-2 block font-mono-tech">
-              Articles
-            </span>
-            <h1 className="font-serif-zh text-4xl md:text-5xl font-bold tracking-wider mb-4">
-              文章列表
-            </h1>
-            <div className="w-16 h-px bg-gradient-to-r from-transparent via-bronze to-transparent mx-auto" />
-          </motion.div>
-
+        <div className="mt-12">
           {loading ? (
-            <div className="ink-loading h-1 max-w-md mx-auto" />
+            <div className="ink-loading mx-auto h-1 max-w-md" />
           ) : posts.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-ink-muted text-sm font-serif-zh">暂无文章</p>
-              <p className="text-ink-muted text-xs mt-2 font-mono-tech">No articles found</p>
-            </div>
+            <EmptyState
+              title="暂无文章"
+              description="初始化数据库或发布第一篇文章后，这里会出现内容。"
+              action={
+                <Link href="/write" className="btn-tech inline-flex items-center gap-2">
+                  写第一篇
+                  <ArrowRight size={14} />
+                </Link>
+              }
+            />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {posts.map((post, index) => (
-                <motion.article
-                  key={post.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                >
-                  <Link href={`/blog/${post.slug}`} className="paper-card block h-full group">
-                    {post.cover_image && (
-                      <div className="aspect-video overflow-hidden">
-                        <img
-                          src={post.cover_image}
-                          alt={post.title}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        />
+            <div className="grid gap-7 md:grid-cols-2 lg:grid-cols-3">
+              {posts.map((post) => (
+                <Link key={post.id} href={`/blog/${post.slug}`} className="paper-card group flex h-full flex-col">
+                  {post.cover_image && (
+                    <div className="aspect-[16/10] overflow-hidden bg-paper-warm">
+                      <img
+                        src={post.cover_image}
+                        alt={post.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    </div>
+                  )}
+                  <div className="flex flex-1 flex-col p-6">
+                    <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink-muted">
+                      <span className="inline-flex items-center gap-1 font-mono-tech">
+                        <Calendar size={12} />
+                        {formatDate(post.published_at || post.created_at)}
+                      </span>
+                      <span className="inline-flex items-center gap-1 font-mono-tech">
+                        <Eye size={12} />
+                        {post.view_count}
+                      </span>
+                    </div>
+                    <h2 className="font-serif-zh text-xl font-bold tracking-[0.08em] transition-colors group-hover:text-cyan-dark">
+                      {post.title}
+                    </h2>
+                    <p className="mt-4 line-clamp-3 text-sm leading-loose text-ink-light">{post.excerpt}</p>
+                    {post.tags && (
+                      <div className="mt-5 flex items-center gap-2 text-xs text-bronze">
+                        <Tag size={12} />
+                        <span>{post.tags.split(",").map((tag) => tag.trim()).filter(Boolean).join(" · ")}</span>
                       </div>
                     )}
-                    <div className="p-6">
-                      <div className="flex items-center space-x-3 mb-4 text-xs text-ink-muted font-mono-tech">
-                        <span className="flex items-center space-x-1">
-                          <Calendar size={12} />
-                          <span>{formatDate(post.published_at || post.created_at)}</span>
-                        </span>
-                        <span className="flex items-center space-x-1">
-                          <Eye size={12} />
-                          <span>{post.view_count}</span>
-                        </span>
-                      </div>
-                      <h2 className="font-serif-zh text-xl font-bold tracking-wider mb-3 group-hover:text-cyan-dark transition-colors">
-                        {post.title}
-                      </h2>
-                      <p className="text-sm text-ink-light leading-relaxed mb-4 line-clamp-3">
-                        {post.excerpt}
-                      </p>
-                      {post.tags && (
-                        <div className="flex items-center space-x-2">
-                          <Tag size={12} className="text-bronze" />
-                          <span className="text-xs text-bronze">{post.tags.split(",").map(t => t.trim()).join(" · ")}</span>
-                        </div>
-                      )}
-                      <div className="mt-4 flex items-center space-x-1 text-xs text-ink-muted group-hover:text-cyan-dark transition-colors">
-                        <span>阅读全文</span>
-                        <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </div>
-                  </Link>
-                </motion.article>
+                    <span className="mt-6 inline-flex items-center gap-2 text-xs text-cyan-dark">
+                      阅读全文
+                      <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
+                    </span>
+                  </div>
+                </Link>
               ))}
             </div>
           )}
         </div>
       </section>
-
-      <Footer />
-    </main>
+    </SiteShell>
   );
 }
