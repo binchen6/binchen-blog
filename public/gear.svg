@@ -1,0 +1,38 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gearBronze" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c9a84c" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#8a6a2a" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- 齿轮外圈 -->
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#1a3a3a" stroke-width="0.8" opacity="0.3"/>
+  
+  <!-- 齿轮齿 -->
+  <g opacity="0.4">
+    <rect x="95" y="5" width="10" height="20" fill="#1a3a3a" rx="2"/>
+    <rect x="95" y="175" width="10" height="20" fill="#1a3a3a" rx="2"/>
+    <rect x="5" y="95" width="20" height="10" fill="#1a3a3a" rx="2"/>
+    <rect x="175" y="95" width="20" height="10" fill="#1a3a3a" rx="2"/>
+    
+    <rect x="30" y="30" width="10" height="20" fill="#1a3a3a" rx="2" transform="rotate(45 35 40)"/>
+    <rect x="160" y="30" width="10" height="20" fill="#1a3a3a" rx="2" transform="rotate(-45 165 40)"/>
+    <rect x="30" y="150" width="10" height="20" fill="#1a3a3a" rx="2" transform="rotate(-45 35 160)"/>
+    <rect x="160" y="150" width="10" height="20" fill="#1a3a3a" rx="2" transform="rotate(45 165 160)"/>
+  </g>
+  
+  <!-- 内圈 -->
+  <circle cx="100" cy="100" r="70" fill="none" stroke="#c9a84c" stroke-width="0.5" opacity="0.4"/>
+  <circle cx="100" cy="100" r="50" fill="none" stroke="#1a3a3a" stroke-width="0.5" opacity="0.3"/>
+  
+  <!-- 中心孔 -->
+  <circle cx="100" cy="100" r="15" fill="none" stroke="#c9a84c" stroke-width="1.5" opacity="0.6"/>
+  <circle cx="100" cy="100" r="5" fill="#c9a84c" opacity="0.4"/>
+  
+  <!-- 辐条 -->
+  <line x1="100" y1="30" x2="100" y2="170" stroke="#1a3a3a" stroke-width="0.5" opacity="0.2"/>
+  <line x1="30" y1="100" x2="170" y2="100" stroke="#1a3a3a" stroke-width="0.5" opacity="0.2"/>
+  <line x1="50" y1="50" x2="150" y2="150" stroke="#1a3a3a" stroke-width="0.5" opacity="0.2"/>
+  <line x1="150" y1="50" x2="50" y2="150" stroke="#1a3a3a" stroke-width="0.5" opacity="0.2"/>
+</svg>
