@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Navigation from "@/components/navigation";
 import Footer from "@/components/footer";
-import { Upload, Send, Image, Tag as TagIcon, FileText, Pen, Compass } from "lucide-react";
+import { Upload, Send, Image, Tag as TagIcon, FileText, Pen, Compass, ArrowRight } from "lucide-react";
 
 export default function WritePage() {
   const router = useRouter();
