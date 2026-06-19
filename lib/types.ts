@@ -7,6 +7,9 @@ export interface Env {
   GITHUB_REPO: string;
   GITHUB_BRANCH?: string;
   GITHUB_UPLOAD_DIR?: string;
+  INIT_TOKEN?: string;
+  ALLOW_PUBLIC_INIT?: string;
+  CRON_SECRET?: string;
 }
 
 export type UserRole = "owner" | "admin" | "editor" | "author" | "member";

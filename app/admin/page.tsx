@@ -62,6 +62,13 @@ interface UsernameRequestRow {
   created_at: string;
 }
 
+interface PerformanceTaskRow {
+  task: string;
+  avg_duration_ms: number;
+  max_duration_ms: number;
+  runs: number;
+}
+
 const roleLabels: Record<string, string> = {
   owner: "站主",
   admin: "管理员",
@@ -82,6 +89,7 @@ export default function AdminPage() {
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [images, setImages] = useState<ImageRow[]>([]);
   const [usernameRequests, setUsernameRequests] = useState<UsernameRequestRow[]>([]);
+  const [performanceTasks, setPerformanceTasks] = useState<PerformanceTaskRow[]>([]);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -94,7 +102,7 @@ export default function AdminPage() {
       return;
     }
     try {
-      const [statsRes, usersRes, postsRes, guestbookRes, commentsRes, imagesRes, usernameRequestsRes] = await Promise.all([
+      const [statsRes, usersRes, postsRes, guestbookRes, commentsRes, imagesRes, usernameRequestsRes, performanceRes] = await Promise.all([
         fetch("/api/admin", { headers: authHeaders }),
         fetch("/api/admin/users", { headers: authHeaders }),
         fetch("/api/posts?admin=1&limit=100", { headers: authHeaders }),
@@ -102,6 +110,7 @@ export default function AdminPage() {
         fetch("/api/admin/comments", { headers: authHeaders }),
         fetch("/api/upload?all=1&limit=100", { headers: authHeaders }),
         fetch("/api/admin/username-requests", { headers: authHeaders }),
+        fetch("/api/performance", { headers: authHeaders }),
       ]);
 
       if (!statsRes.ok) {
@@ -117,6 +126,7 @@ export default function AdminPage() {
       const commentsData = await commentsRes.json() as { comments?: CommentRow[] };
       const imagesData = await imagesRes.json() as { images?: ImageRow[] };
       const usernameRequestsData = await usernameRequestsRes.json() as { requests?: UsernameRequestRow[] };
+      const performanceData = await performanceRes.json() as { slowTasks?: PerformanceTaskRow[] };
 
       setStats(statsData.stats || {});
       setUsers(usersData.users || []);
@@ -125,6 +135,7 @@ export default function AdminPage() {
       setComments(commentsData.comments || []);
       setImages(imagesData.images || []);
       setUsernameRequests(usernameRequestsData.requests || []);
+      setPerformanceTasks(performanceData.slowTasks || []);
     } catch {
       setError("管理员数据加载失败。");
     } finally {
@@ -385,6 +396,39 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+            </SurfacePanel>
+
+            <SurfacePanel className="p-6">
+              <h2 className="mb-5 flex items-center gap-2 font-serif-zh text-xl font-semibold tracking-[0.08em]">
+                <BarChart3 size={20} className="text-bronze" />
+                服务端性能调度
+              </h2>
+              {performanceTasks.length === 0 ? (
+                <p className="text-sm text-ink-muted">暂无调度记录。部署后配置 CRON_SECRET，并定时 POST /api/cron/performance 即可开始记录。</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[620px] text-left text-sm">
+                    <thead className="border-b border-cyan-dark/10 text-ink-muted">
+                      <tr>
+                        <th className="py-3">任务</th>
+                        <th>7 日运行次数</th>
+                        <th>平均耗时</th>
+                        <th>最大耗时</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {performanceTasks.map((task) => (
+                        <tr key={task.task} className="border-b border-cyan-dark/5">
+                          <td className="py-3 font-mono-tech text-xs text-cyan-dark">{task.task}</td>
+                          <td>{task.runs}</td>
+                          <td>{Math.round(Number(task.avg_duration_ms || 0))}ms</td>
+                          <td>{Math.round(Number(task.max_duration_ms || 0))}ms</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </SurfacePanel>
           </div>
         )}

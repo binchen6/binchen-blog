@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
+import { json, noStoreHeaders, parseBoundedInt, parsePositiveId } from "@/lib/security";
 
 export const runtime = "edge";
 
@@ -8,12 +9,12 @@ export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUserFromRequest(request);
     if (!currentUser || !hasPermission(currentUser, "comments:manage_all")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(parseInt(searchParams.get("limit") || "100"), 200);
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limit = parseBoundedInt(searchParams.get("limit"), 100, 1, 200);
+    const offset = parseBoundedInt(searchParams.get("offset"), 0, 0, 10000);
     const ctx = getRequestContext();
     const db = (ctx.env as any).DB;
     const results = await db.prepare(
@@ -25,10 +26,10 @@ export async function GET(request: NextRequest) {
        LIMIT ? OFFSET ?`
     ).bind(limit, offset).all();
 
-    return NextResponse.json({ comments: results.results });
+    return json({ comments: results.results }, { headers: noStoreHeaders() });
   } catch (error) {
     console.error("Get admin comments error:", error);
-    return NextResponse.json({ error: "Failed to fetch comments" }, { status: 500 });
+    return json({ error: "Failed to fetch comments" }, { status: 500, headers: noStoreHeaders() });
   }
 }
 
@@ -36,21 +37,21 @@ export async function DELETE(request: NextRequest) {
   try {
     const currentUser = await getCurrentUserFromRequest(request);
     if (!currentUser || !hasPermission(currentUser, "comments:manage_all")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
     }
 
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
+    const id = parsePositiveId(searchParams.get("id"));
     if (!id) {
-      return NextResponse.json({ error: "Missing id" }, { status: 400 });
+      return json({ error: "Invalid id" }, { status: 400, headers: noStoreHeaders() });
     }
 
     const ctx = getRequestContext();
     const db = (ctx.env as any).DB;
     await db.prepare("DELETE FROM comments WHERE id = ? OR parent_id = ?").bind(id, id).run();
-    return NextResponse.json({ success: true });
+    return json({ success: true }, { headers: noStoreHeaders() });
   } catch (error) {
     console.error("Delete admin comment error:", error);
-    return NextResponse.json({ error: "Failed to delete comment" }, { status: 500 });
+    return json({ error: "Failed to delete comment" }, { status: 500, headers: noStoreHeaders() });
   }
 }

@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { canAccessAdmin, getCurrentUserFromRequest } from "@/lib/auth";
+import { json, noStoreHeaders } from "@/lib/security";
 
 export const runtime = "edge";
 
@@ -8,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUserFromRequest(request);
     if (!currentUser || !canAccessAdmin(currentUser)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
     }
 
     const ctx = getRequestContext();
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
       db.prepare("SELECT COUNT(*) AS count FROM username_change_requests WHERE status = 'pending'").first(),
     ]);
 
-    return NextResponse.json({
+    return json({
       stats: {
         users: Number(users?.count || 0),
         posts: Number(posts?.count || 0),
@@ -31,9 +32,9 @@ export async function GET(request: NextRequest) {
         images: Number(images?.count || 0),
         usernameRequests: Number(usernameRequests?.count || 0),
       },
-    });
+    }, { headers: noStoreHeaders() });
   } catch (error) {
     console.error("Get admin stats error:", error);
-    return NextResponse.json({ error: "Failed to fetch admin stats" }, { status: 500 });
+    return json({ error: "Failed to fetch admin stats" }, { status: 500, headers: noStoreHeaders() });
   }
 }

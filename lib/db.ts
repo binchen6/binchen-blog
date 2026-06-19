@@ -1,6 +1,6 @@
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { User, Post, GuestbookEntry, Comment, PostMode } from "./types";
-import { OWNER_USERNAME, ROLE_PERMISSIONS } from "./auth";
+import { ROLE_PERMISSIONS } from "./auth";
 
 export function getDB() {
   const ctx = getRequestContext();
@@ -78,6 +78,16 @@ export async function createTables() {
       )
     `),
     db.prepare(`
+      CREATE TABLE IF NOT EXISTS performance_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('ok', 'error')),
+        duration_ms INTEGER NOT NULL,
+        details TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    db.prepare(`
       CREATE TABLE IF NOT EXISTS guestbook (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -108,11 +118,12 @@ export async function createTables() {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_username_requests_status ON username_change_requests(status)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_username_requests_user ON username_change_requests(user_id)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_performance_events_created ON performance_events(created_at)`),
   ]);
 
   await migrateSchema(db);
   await seedUserGroups(db);
-  await db.prepare("UPDATE users SET role = 'owner' WHERE username = ?").bind(OWNER_USERNAME).run();
+  await db.prepare("UPDATE users SET role = 'author' WHERE role IS NULL").run();
 }
 
 async function addColumnIfMissing(db: any, table: string, column: string, definition: string) {
@@ -129,6 +140,11 @@ async function migrateSchema(db: any) {
   await addColumnIfMissing(db, "users", "is_active", "INTEGER DEFAULT 1");
   await addColumnIfMissing(db, "posts", "images", "TEXT");
   await addColumnIfMissing(db, "posts", "mode", "TEXT DEFAULT 'article'");
+  await addColumnIfMissing(db, "images", "sha", "TEXT");
+  await addColumnIfMissing(db, "guestbook", "user_id", "INTEGER");
+  await addColumnIfMissing(db, "guestbook", "reply_to", "INTEGER");
+  await addColumnIfMissing(db, "comments", "user_id", "INTEGER");
+  await addColumnIfMissing(db, "comments", "parent_id", "INTEGER");
 }
 
 async function seedUserGroups(db: any) {
@@ -161,10 +177,9 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 
 export async function createUser(username: string, email: string, passwordHash: string, displayName?: string): Promise<User> {
   const db = getDB();
-  const role = username === OWNER_USERNAME ? "owner" : "author";
   const result = await db.prepare(
     "INSERT INTO users (username, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?) RETURNING *"
-  ).bind(username, email, passwordHash, displayName || null, role).first();
+  ).bind(username, email, passwordHash, displayName || null, "author").first();
   return result as any;
 }
 
@@ -221,7 +236,7 @@ export async function incrementViewCount(slug: string): Promise<void> {
 export async function getGuestbookEntries(limit: number = 50): Promise<GuestbookEntry[]> {
   const db = getDB();
   const results = await db.prepare(
-    "SELECT * FROM guestbook ORDER BY created_at DESC LIMIT ?"
+    "SELECT id, name, content, created_at, user_id, reply_to FROM guestbook ORDER BY created_at DESC LIMIT ?"
   ).bind(limit).all();
   return results.results as any;
 }
@@ -237,7 +252,7 @@ export async function createGuestbookEntry(name: string, email: string, content:
 export async function getCommentsByPostId(postId: number): Promise<Comment[]> {
   const db = getDB();
   const results = await db.prepare(
-    "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC"
+    "SELECT id, post_id, name, content, created_at, user_id, parent_id FROM comments WHERE post_id = ? ORDER BY created_at DESC"
   ).bind(postId).all();
   return results.results as any;
 }

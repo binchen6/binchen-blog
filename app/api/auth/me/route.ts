@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getCurrentUserFromRequest } from "@/lib/auth";
+import { json, noStoreHeaders } from "@/lib/security";
 
 export const runtime = "edge";
 
@@ -7,10 +8,10 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUserFromRequest(request);
     if (!user) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+      return json({ error: "Invalid token" }, { status: 401, headers: noStoreHeaders() });
     }
-    return NextResponse.json({ user });
+    return json({ user }, { headers: noStoreHeaders() });
   } catch (error) {
-    return NextResponse.json({ error: "Authentication failed" }, { status: 500 });
+    return json({ error: "Authentication failed" }, { status: 500, headers: noStoreHeaders() });
   }
 }

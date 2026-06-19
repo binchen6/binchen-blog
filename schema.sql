@@ -63,6 +63,15 @@ CREATE TABLE IF NOT EXISTS images (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS performance_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('ok', 'error')),
+  duration_ms INTEGER NOT NULL,
+  details TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS guestbook (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -92,6 +101,7 @@ CREATE INDEX IF NOT EXISTS idx_images_user ON images(user_id);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);
 CREATE INDEX IF NOT EXISTS idx_username_requests_status ON username_change_requests(status);
 CREATE INDEX IF NOT EXISTS idx_username_requests_user ON username_change_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_performance_events_created ON performance_events(created_at);
 
 INSERT OR IGNORE INTO user_groups (name, label, permissions) VALUES
   ('owner', '站主', '["*"]'),

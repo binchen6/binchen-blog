@@ -2,8 +2,6 @@ import { SignJWT, jwtVerify } from "jose";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { User, UserRole } from "./types";
 
-export const OWNER_USERNAME = "binchen";
-
 export const ROLE_LABELS: Record<UserRole, string> = {
   owner: "站主",
   admin: "管理员",
@@ -42,8 +40,10 @@ async function hashPassword(password: string): Promise<string> {
 
 async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
   const [saltHex, hashHex] = storedHash.split(":");
-  if (!saltHex || !hashHex) return false;
-  const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
+  if (!saltHex || !hashHex || !/^[a-f0-9]+$/i.test(saltHex) || !/^[a-f0-9]+$/i.test(hashHex)) return false;
+  const saltParts = saltHex.match(/.{2}/g);
+  if (!saltParts || saltParts.length !== 16 || hashHex.length !== 64) return false;
+  const salt = new Uint8Array(saltParts.map(byte => parseInt(byte, 16)));
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     "raw", encoder.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]
@@ -54,14 +54,17 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
   );
   const hashArray = Array.from(new Uint8Array(hash));
   const newHashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-  return newHashHex === hashHex;
+  let diff = newHashHex.length ^ hashHex.length;
+  for (let i = 0; i < newHashHex.length && i < hashHex.length; i += 1) {
+    diff |= newHashHex.charCodeAt(i) ^ hashHex.charCodeAt(i);
+  }
+  return diff === 0;
 }
 
 export { hashPassword, verifyPassword };
 
 export async function createToken(user: User): Promise<string> {
-  const ctx = getRequestContext();
-  const secret = new TextEncoder().encode((ctx.env as any).JWT_SECRET || "default-secret");
+  const secret = new TextEncoder().encode(getJwtSecret());
   return new SignJWT({ userId: user.id, username: user.username, role: getEffectiveRole(user) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -71,8 +74,7 @@ export async function createToken(user: User): Promise<string> {
 
 export async function verifyToken(token: string): Promise<{ userId: number; username: string; role?: UserRole } | null> {
   try {
-    const ctx = getRequestContext();
-    const secret = new TextEncoder().encode((ctx.env as any).JWT_SECRET || "default-secret");
+    const secret = new TextEncoder().encode(getJwtSecret());
     const { payload } = await jwtVerify(token, secret, { clockTolerance: 60 });
     return payload as { userId: number; username: string; role?: UserRole };
   } catch {
@@ -82,11 +84,14 @@ export async function verifyToken(token: string): Promise<{ userId: number; user
 
 export function getJwtSecret(): string {
   const ctx = getRequestContext();
-  return (ctx.env as any).JWT_SECRET || "default-secret";
+  const secret = (ctx.env as any).JWT_SECRET;
+  if (!secret || secret.length < 32 || secret === "default-secret") {
+    throw new Error("JWT_SECRET must be configured with at least 32 characters");
+  }
+  return secret;
 }
 
 export function getEffectiveRole(user: Pick<User, "username"> & Partial<Pick<User, "role">>): UserRole {
-  if (user.username === OWNER_USERNAME) return "owner";
   return (user.role || "author") as UserRole;
 }
 

@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { canAccessAdmin, getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
 import { generateSlug, generateExcerpt } from "@/lib/utils";
+import { cacheHeaders, isSafePublicUrl, json, parseBoundedInt, rateLimit, requireText } from "@/lib/security";
 
 export const runtime = "edge";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit") || "10");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limit = parseBoundedInt(searchParams.get("limit"), 10, 1, 100);
+    const offset = parseBoundedInt(searchParams.get("offset"), 0, 0, 10000);
     const status = searchParams.get("status");
     const mine = searchParams.get("mine") === "1";
     const admin = searchParams.get("admin") === "1";
@@ -24,16 +25,20 @@ export async function GET(request: NextRequest) {
 
     if (admin) {
       if (!currentUser || !canAccessAdmin(currentUser)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return json({ error: "Forbidden" }, { status: 403 });
       }
     } else if (mine) {
       if (!currentUser) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return json({ error: "Unauthorized" }, { status: 401 });
       }
       where.push("posts.author_id = ?");
       params.push(currentUser.id);
     } else {
       where.push("posts.status = 'published'");
+    }
+
+    if (status && !["published", "draft"].includes(status)) {
+      return json({ error: "Invalid status" }, { status: 400 });
     }
 
     if (status && (admin || mine)) {
@@ -50,10 +55,10 @@ export async function GET(request: NextRequest) {
 
     const results = await db.prepare(query).bind(...params).all();
 
-    return NextResponse.json({ posts: results.results });
+    return json({ posts: results.results }, { headers: admin || mine ? { "Cache-Control": "no-store" } : cacheHeaders(30, 120) });
   } catch (error) {
     console.error("Get posts error:", error);
-    return NextResponse.json({ error: "Failed to fetch posts" }, { status: 500 });
+    return json({ error: "Failed to fetch posts" }, { status: 500 });
   }
 }
 
@@ -61,20 +66,29 @@ export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUserFromRequest(request);
     if (!currentUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return json({ error: "Unauthorized" }, { status: 401 });
     }
     if (!hasPermission(currentUser, "posts:create")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return json({ error: "Forbidden" }, { status: 403 });
     }
+    const limited = rateLimit(request, { key: `post:${currentUser.id}`, limit: 20, windowMs: 60 * 60 * 1000 });
+    if (limited) return limited;
 
     const body = await request.json() as any;
-    const { title, content, coverImage, tags, status = "published", mode = "article", images = [] } = body;
+    const title = requireText(body.title, 120);
+    const content = requireText(body.content, 50000);
+    const tags = requireText(body.tags, 300) || "";
+    const coverImage = body.coverImage ? String(body.coverImage).trim() : "";
+    const { status = "published", mode = "article", images = [] } = body;
 
     if (!title || !content) {
-      return NextResponse.json({ error: "Title and content are required" }, { status: 400 });
+      return json({ error: "Title and content are required" }, { status: 400 });
     }
     if (!["published", "draft"].includes(status) || !["article", "moment"].includes(mode)) {
-      return NextResponse.json({ error: "Invalid post status or mode" }, { status: 400 });
+      return json({ error: "Invalid post status or mode" }, { status: 400 });
+    }
+    if (!isSafePublicUrl(coverImage) || !Array.isArray(images) || images.length > 30 || images.some((url) => !isSafePublicUrl(url))) {
+      return json({ error: "Invalid image data" }, { status: 400 });
     }
 
     const slug = generateSlug(title) + "-" + Date.now().toString(36);
@@ -101,9 +115,9 @@ export async function POST(request: NextRequest) {
       tags || null
     ).first();
 
-    return NextResponse.json({ post: result }, { status: 201 });
+    return json({ post: result }, { status: 201 });
   } catch (error) {
     console.error("Create post error:", error);
-    return NextResponse.json({ error: "Failed to create post" }, { status: 500 });
+    return json({ error: "Failed to create post" }, { status: 500 });
   }
 }

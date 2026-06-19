@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircle, Send, User, Wind } from "lucide-react";
+import { MessageCircle, Send, Trash2, User, Wind } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { formatDate } from "@/lib/utils";
 
@@ -12,16 +12,26 @@ interface GuestbookEntry {
   content: string;
   created_at: string;
   reply_to: number | null;
+  user_id: number | null;
 }
 
 export default function GuestbookPage() {
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: "", email: "", content: "" });
+  const [currentUser, setCurrentUser] = useState<{ id: number; username: string; display_name?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        setCurrentUser(JSON.parse(userStr));
+      } catch {
+        localStorage.removeItem("user");
+      }
+    }
 
     fetch("/api/guestbook")
       .then((res) => res.json() as Promise<{ entries?: GuestbookEntry[] }>)
@@ -47,7 +57,10 @@ export default function GuestbookPage() {
     try {
       const res = await fetch("/api/guestbook", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(localStorage.getItem("token") ? { Authorization: `Bearer ${localStorage.getItem("token")}` } : {}),
+        },
         body: JSON.stringify(form),
       });
       const data = (await res.json()) as { entry?: GuestbookEntry };
@@ -58,6 +71,18 @@ export default function GuestbookPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const deleteEntry = async (id: number) => {
+    if (!confirm("确定删除这条留言吗？")) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const res = await fetch(`/api/guestbook?id=${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) setEntries((current) => current.filter((entry) => entry.id !== id));
+    else alert("删除失败");
   };
 
   return (
@@ -118,10 +143,16 @@ export default function GuestbookPage() {
                   <span className="grid h-9 w-9 place-items-center border border-cyan-dark/10 bg-cyan-dark/5 text-cyan-dark">
                     <User size={16} />
                   </span>
-                  <div>
+                  <div className="flex-1">
                     <div className="text-sm font-semibold">{entry.name}</div>
                     <div className="font-mono-tech text-xs text-ink-muted">{formatDate(entry.created_at)}</div>
                   </div>
+                  {currentUser && entry.user_id === currentUser.id && (
+                    <button type="button" onClick={() => deleteEntry(entry.id)} className="inline-flex items-center gap-1 text-xs text-cinnabar">
+                      <Trash2 size={13} />
+                      删除
+                    </button>
+                  )}
                 </div>
                 <p className="text-sm leading-loose text-ink-light">{entry.content}</p>
               </div>

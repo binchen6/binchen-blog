@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
+import { json, parseBoundedInt, rateLimit } from "@/lib/security";
 
 export const runtime = "edge";
 
@@ -43,31 +44,45 @@ function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
+function hasValidImageSignature(type: string, bytes: Uint8Array): boolean {
+  if (type === "image/png") return bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+  if (type === "image/jpeg") return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (type === "image/gif") return bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46;
+  if (type === "image/webp") return bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50;
+  return false;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUserFromRequest(request);
     if (!currentUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return json({ error: "Unauthorized" }, { status: 401 });
     }
     if (!hasPermission(currentUser, "images:upload")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return json({ error: "Forbidden" }, { status: 403 });
     }
+    const limited = rateLimit(request, { key: `upload:${currentUser.id}`, limit: 30, windowMs: 60 * 60 * 1000 });
+    if (limited) return limited;
 
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
     if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      return json({ error: "No file provided" }, { status: 400 });
     }
 
     // Validate file type
     if (!MIME_TO_EXT[file.type]) {
-      return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
+      return json({ error: "Invalid file type" }, { status: 400 });
     }
 
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large" }, { status: 400 });
+      return json({ error: "File too large" }, { status: 400 });
+    }
+    const buffer = await file.arrayBuffer();
+    if (!hasValidImageSignature(file.type, new Uint8Array(buffer.slice(0, 16)))) {
+      return json({ error: "Invalid image content" }, { status: 400 });
     }
 
     const ctx = getRequestContext();
@@ -80,7 +95,7 @@ export async function POST(request: NextRequest) {
     const uploadDir = (env.GITHUB_UPLOAD_DIR || "uploads").replace(/^\/+|\/+$/g, "");
 
     if (!githubToken || !owner || !repo) {
-      return NextResponse.json(
+      return json(
         { error: "GitHub image storage is not configured" },
         { status: 500 }
       );
@@ -95,7 +110,7 @@ export async function POST(request: NextRequest) {
     const ext = MIME_TO_EXT[file.type];
     const randomId = crypto.randomUUID().slice(0, 8);
     const key = `${uploadDir}/${datePath}/${Date.now()}-${randomId}-${sanitizeName(file.name)}.${ext}`;
-    const content = arrayBufferToBase64(await file.arrayBuffer());
+    const content = arrayBufferToBase64(buffer);
 
     const githubRes = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/contents/${encodePath(key)}`,
@@ -123,7 +138,7 @@ export async function POST(request: NextRequest) {
     if (!githubRes.ok) {
       const errorText = await githubRes.text();
       console.error("GitHub upload error:", githubRes.status, errorText);
-      return NextResponse.json({ error: "GitHub upload failed" }, { status: 502 });
+      return json({ error: "GitHub upload failed" }, { status: 502 });
     }
 
     const githubData = await githubRes.json() as any;
@@ -133,10 +148,10 @@ export async function POST(request: NextRequest) {
        VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`
     ).bind(currentUser.id, publicUrl, key, file.name, file.type, file.size, githubData?.content?.sha || null).first();
 
-    return NextResponse.json({ url: publicUrl, key, image });
+    return json({ url: publicUrl, key, image });
   } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    return json({ error: "Upload failed" }, { status: 500 });
   }
 }
 
@@ -144,12 +159,12 @@ export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUserFromRequest(request);
     if (!currentUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limit = parseBoundedInt(searchParams.get("limit"), 50, 1, 100);
+    const offset = parseBoundedInt(searchParams.get("offset"), 0, 0, 10000);
     const all = searchParams.get("all") === "1";
 
     const ctx = getRequestContext();
@@ -163,9 +178,9 @@ export async function GET(request: NextRequest) {
           "SELECT * FROM images WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
         ).bind(currentUser.id, limit, offset).all();
 
-    return NextResponse.json({ images: results.results });
+    return json({ images: results.results }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Get images error:", error);
-    return NextResponse.json({ error: "Failed to fetch images" }, { status: 500 });
+    return json({ error: "Failed to fetch images" }, { status: 500 });
   }
 }

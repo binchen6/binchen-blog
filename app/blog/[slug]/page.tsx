@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Calendar, Eye, MessageCircle, Send, Tag, User } from "lucide-react";
+import { ArrowLeft, Calendar, Eye, MessageCircle, Send, Tag, Trash2, User } from "lucide-react";
 import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { formatDate, getReadingTime } from "@/lib/utils";
 
@@ -28,6 +28,7 @@ interface Comment {
   content: string;
   created_at: string;
   parent_id: number | null;
+  user_id: number | null;
 }
 
 export default function BlogPostPage() {
@@ -38,7 +39,7 @@ export default function BlogPostPage() {
   const [loading, setLoading] = useState(true);
   const [renderedContent, setRenderedContent] = useState("");
   const [commentForm, setCommentForm] = useState({ name: "", email: "", content: "" });
-  const [loggedInUser, setLoggedInUser] = useState<{ username: string; email?: string; display_name?: string } | null>(null);
+  const [loggedInUser, setLoggedInUser] = useState<{ id: number; username: string; email?: string; display_name?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -89,10 +90,13 @@ export default function BlogPostPage() {
     }
 
     let cancelled = false;
-    import("markdown-it").then(({ default: MarkdownIt }) => {
+    Promise.all([import("markdown-it"), import("dompurify")]).then(([{ default: MarkdownIt }, { default: DOMPurify }]) => {
       if (cancelled) return;
       const md = new MarkdownIt({ html: false, linkify: true, typographer: true });
-      setRenderedContent(md.render(post.content));
+      const rendered = md.render(post.content);
+      setRenderedContent(DOMPurify.sanitize(rendered, {
+        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+      }));
     });
 
     return () => {
@@ -102,7 +106,8 @@ export default function BlogPostPage() {
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commentForm.name || !commentForm.email || !commentForm.content) return;
+    if (!loggedInUser && (!commentForm.name || !commentForm.email)) return;
+    if (!commentForm.content) return;
     setSubmitting(true);
     try {
       const token = localStorage.getItem("token");
@@ -122,6 +127,18 @@ export default function BlogPostPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const deleteComment = async (id: number) => {
+    if (!confirm("确定删除这条评论吗？")) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const res = await fetch(`/api/posts/${slug}/comments?id=${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) setComments((current) => current.filter((comment) => comment.id !== id));
+    else alert("删除失败");
   };
 
   if (loading) {
@@ -275,10 +292,16 @@ export default function BlogPostPage() {
                     <span className="grid h-9 w-9 place-items-center border border-cyan-dark/10 bg-cyan-dark/5 text-cyan-dark">
                       <User size={16} />
                     </span>
-                    <div>
+                    <div className="flex-1">
                       <div className="text-sm font-semibold">{comment.name}</div>
                       <div className="font-mono-tech text-xs text-ink-muted">{formatDate(comment.created_at)}</div>
                     </div>
+                    {loggedInUser && comment.user_id === loggedInUser.id && (
+                      <button type="button" onClick={() => deleteComment(comment.id)} className="inline-flex items-center gap-1 text-xs text-cinnabar">
+                        <Trash2 size={13} />
+                        删除
+                      </button>
+                    )}
                   </div>
                   <p className="text-sm leading-loose text-ink-light">{comment.content}</p>
                 </div>

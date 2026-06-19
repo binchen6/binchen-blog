@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { canManageImage, getCurrentUserFromRequest } from "@/lib/auth";
+import { json, parsePositiveId } from "@/lib/security";
 
 export const runtime = "edge";
 
@@ -12,18 +13,22 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   try {
     const currentUser = await getCurrentUserFromRequest(request);
     if (!currentUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const imageId = parsePositiveId(params.id);
+    if (!imageId) {
+      return json({ error: "Invalid image id" }, { status: 400 });
     }
 
     const ctx = getRequestContext();
     const env = ctx.env as any;
     const db = env.DB;
-    const image = await db.prepare("SELECT * FROM images WHERE id = ?").bind(params.id).first();
+    const image = await db.prepare("SELECT * FROM images WHERE id = ?").bind(imageId).first();
     if (!image) {
-      return NextResponse.json({ error: "Image not found" }, { status: 404 });
+      return json({ error: "Image not found" }, { status: 404 });
     }
     if (!canManageImage(currentUser, Number(image.user_id))) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return json({ error: "Forbidden" }, { status: 403 });
     }
 
     if (image.sha && env.GITHUB_TOKEN && env.GITHUB_OWNER && env.GITHUB_REPO) {
@@ -54,14 +59,14 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       if (!githubRes.ok && githubRes.status !== 404) {
         const errorText = await githubRes.text();
         console.error("GitHub delete error:", githubRes.status, errorText);
-        return NextResponse.json({ error: "GitHub delete failed" }, { status: 502 });
+        return json({ error: "GitHub delete failed" }, { status: 502 });
       }
     }
 
-    await db.prepare("DELETE FROM images WHERE id = ?").bind(params.id).run();
-    return NextResponse.json({ success: true });
+    await db.prepare("DELETE FROM images WHERE id = ?").bind(imageId).run();
+    return json({ success: true });
   } catch (error) {
     console.error("Delete image error:", error);
-    return NextResponse.json({ error: "Failed to delete image" }, { status: 500 });
+    return json({ error: "Failed to delete image" }, { status: 500 });
   }
 }
