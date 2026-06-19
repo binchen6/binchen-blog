@@ -78,6 +78,10 @@ interface GithubStorageStatus {
   repo: string | null;
   branch: string;
   uploadDir: string;
+  sources?: Record<string, string>;
+  runtimeEnvPresence?: Record<string, boolean>;
+  buildEnvPresence?: Record<string, boolean>;
+  relatedRuntimeEnvKeys?: string[];
   tokenPresent: boolean;
   tokenLength: number;
   repoCheck: {
@@ -380,6 +384,40 @@ export default function AdminPage() {
                         {githubStorage.tokenPresent ? `已读取，长度 ${githubStorage.tokenLength}` : "未读取"}
                       </div>
                     </div>
+                    {githubStorage.sources && (
+                      <div className="border border-cyan-dark/10 bg-paper/55 p-4 md:col-span-2">
+                        <div className="text-ink-muted">变量来源</div>
+                        <div className="mt-2 grid gap-2 font-mono-tech text-xs text-cyan-dark sm:grid-cols-3">
+                          <span>token: {githubStorage.sources.token}</span>
+                          <span>owner: {githubStorage.sources.owner}</span>
+                          <span>repo: {githubStorage.sources.repo}</span>
+                          <span>branch: {githubStorage.sources.branch}</span>
+                          <span>uploadDir: {githubStorage.sources.uploadDir}</span>
+                        </div>
+                      </div>
+                    )}
+                    {githubStorage.runtimeEnvPresence && (
+                      <div className="border border-cyan-dark/10 bg-paper/55 p-4 md:col-span-2">
+                        <div className="text-ink-muted">运行时变量可见性</div>
+                        <div className="mt-2 grid gap-2 font-mono-tech text-xs text-cyan-dark sm:grid-cols-3">
+                          {Object.entries(githubStorage.runtimeEnvPresence).map(([key, present]) => (
+                            <span key={key}>{key}: {present ? "yes" : "no"}</span>
+                          ))}
+                        </div>
+                        {githubStorage.buildEnvPresence && (
+                          <div className="mt-3 grid gap-2 font-mono-tech text-xs text-ink-muted sm:grid-cols-3">
+                            {Object.entries(githubStorage.buildEnvPresence).map(([key, present]) => (
+                              <span key={key}>build {key}: {present ? "yes" : "no"}</span>
+                            ))}
+                          </div>
+                        )}
+                        {githubStorage.relatedRuntimeEnvKeys && (
+                          <div className="mt-3 text-xs text-ink-muted">
+                            当前函数看到的相关键：{githubStorage.relatedRuntimeEnvKeys.join(", ") || "无"}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="border border-cyan-dark/10 bg-paper/55 p-4 md:col-span-2">
                       <div className="text-ink-muted">仓库权限检查</div>
                       <div className="mt-2 font-mono-tech text-xs text-cyan-dark">

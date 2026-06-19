@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { canAccessAdmin, getCurrentUserFromRequest } from "@/lib/auth";
-import { getGithubImageConfig } from "@/lib/github-config";
+import { getGithubBuildEnvPresence, getGithubImageConfig, getGithubRuntimeEnvPresence, getRelatedRuntimeEnvKeys } from "@/lib/github-config";
 import { json, noStoreHeaders } from "@/lib/security";
 
 export const runtime = "edge";
@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
     }
 
     const ctx = getRequestContext();
-    const github = getGithubImageConfig((ctx.env as any));
+    const env = ctx.env as any;
+    const github = getGithubImageConfig(env);
     let repoStatus: number | null = null;
     let repoOk = false;
     let repoMessage = "";
@@ -47,6 +48,10 @@ export async function GET(request: NextRequest) {
       repo: github.repo || null,
       branch: github.branch,
       uploadDir: github.uploadDir,
+      sources: github.sources,
+      runtimeEnvPresence: getGithubRuntimeEnvPresence(env),
+      buildEnvPresence: getGithubBuildEnvPresence(),
+      relatedRuntimeEnvKeys: getRelatedRuntimeEnvKeys(env),
       tokenPresent: Boolean(github.token),
       tokenLength: github.token.length,
       repoCheck: {
