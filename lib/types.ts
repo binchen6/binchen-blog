@@ -75,3 +75,14 @@ export interface Comment {
   user_id: number | null;
   parent_id: number | null;
 }
+
+export interface UsernameChangeRequest {
+  id: number;
+  user_id: number;
+  current_username: string;
+  requested_username: string;
+  status: "pending" | "approved" | "rejected";
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+  created_at: string;
+}

@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpen, FileText, Image, Images, LayoutList, Pen, Save, Send, Tag as TagIcon, Trash2, Upload } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { cn, formatDate } from "@/lib/utils";
@@ -39,6 +39,7 @@ interface PostDetail extends ManagePost {
 
 export default function WritePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
@@ -85,6 +86,13 @@ export default function WritePage() {
       cancelled = true;
     };
   }, [router, token]);
+
+  useEffect(() => {
+    const editSlug = searchParams.get("edit");
+    if (!editSlug || !token || editingSlug === editSlug) return;
+    editPost(editSlug);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, token]);
 
   const modeHelp = useMemo(() => {
     return mode === "moment"

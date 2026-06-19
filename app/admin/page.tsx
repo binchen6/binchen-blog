@@ -52,6 +52,16 @@ interface ImageRow {
   created_at: string;
 }
 
+interface UsernameRequestRow {
+  id: number;
+  user_id: number;
+  current_username: string;
+  requested_username: string;
+  display_name: string | null;
+  email: string | null;
+  created_at: string;
+}
+
 const roleLabels: Record<string, string> = {
   owner: "站主",
   admin: "管理员",
@@ -71,6 +81,7 @@ export default function AdminPage() {
   const [guestbook, setGuestbook] = useState<GuestbookRow[]>([]);
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [images, setImages] = useState<ImageRow[]>([]);
+  const [usernameRequests, setUsernameRequests] = useState<UsernameRequestRow[]>([]);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -83,13 +94,14 @@ export default function AdminPage() {
       return;
     }
     try {
-      const [statsRes, usersRes, postsRes, guestbookRes, commentsRes, imagesRes] = await Promise.all([
+      const [statsRes, usersRes, postsRes, guestbookRes, commentsRes, imagesRes, usernameRequestsRes] = await Promise.all([
         fetch("/api/admin", { headers: authHeaders }),
         fetch("/api/admin/users", { headers: authHeaders }),
         fetch("/api/posts?admin=1&limit=100", { headers: authHeaders }),
         fetch("/api/guestbook", { headers: authHeaders }),
         fetch("/api/admin/comments", { headers: authHeaders }),
         fetch("/api/upload?all=1&limit=100", { headers: authHeaders }),
+        fetch("/api/admin/username-requests", { headers: authHeaders }),
       ]);
 
       if (!statsRes.ok) {
@@ -104,6 +116,7 @@ export default function AdminPage() {
       const guestbookData = await guestbookRes.json() as { entries?: GuestbookRow[] };
       const commentsData = await commentsRes.json() as { comments?: CommentRow[] };
       const imagesData = await imagesRes.json() as { images?: ImageRow[] };
+      const usernameRequestsData = await usernameRequestsRes.json() as { requests?: UsernameRequestRow[] };
 
       setStats(statsData.stats || {});
       setUsers(usersData.users || []);
@@ -111,6 +124,7 @@ export default function AdminPage() {
       setGuestbook(guestbookData.entries || []);
       setComments(commentsData.comments || []);
       setImages(imagesData.images || []);
+      setUsernameRequests(usernameRequestsData.requests || []);
     } catch {
       setError("管理员数据加载失败。");
     } finally {
@@ -162,6 +176,23 @@ export default function AdminPage() {
     else alert("删除图片失败");
   };
 
+  const reviewUsernameRequest = async (id: number, action: "approve" | "reject") => {
+    const res = await fetch(`/api/admin/username-requests/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ action }),
+    });
+    const data = await res.json() as { error?: string };
+    if (!res.ok) {
+      alert(data.error || "处理用户名申请失败");
+      return;
+    }
+    setUsernameRequests((current) => current.filter((item) => item.id !== id));
+    if (action === "approve") {
+      loadAdminData();
+    }
+  };
+
   if (ready && error) {
     return (
       <SiteShell>
@@ -186,9 +217,10 @@ export default function AdminPage() {
           <div className="mt-12 ink-loading mx-auto h-1 max-w-md" />
         ) : (
           <div className="mt-12 space-y-8">
-            <div className="grid gap-4 md:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-6">
               {([
                 ["用户", stats.users, UserCog],
+                ["待审", stats.usernameRequests, Shield],
                 ["文章", stats.posts, BookOpen],
                 ["评论", stats.comments, MessageCircle],
                 ["留言", stats.guestbook, MessageCircle],
@@ -209,6 +241,30 @@ export default function AdminPage() {
                 <UserCog size={20} className="text-bronze" />
                 用户与用户组
               </h2>
+              {usernameRequests.length > 0 && (
+                <div className="mb-6 space-y-3 border-b border-cyan-dark/10 pb-6">
+                  <div className="text-sm font-semibold text-ink-light">待审核用户名申请</div>
+                  {usernameRequests.map((request) => (
+                    <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 border border-bronze/20 bg-paper/60 p-4">
+                      <div>
+                        <div className="font-semibold">{request.display_name || request.current_username}</div>
+                        <div className="mt-1 text-sm text-ink-muted">
+                          @{request.current_username} → <span className="text-cyan-dark">@{request.requested_username}</span>
+                        </div>
+                        <div className="mt-1 font-mono-tech text-xs text-ink-muted">{formatDate(request.created_at)}</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => reviewUsernameRequest(request.id, "approve")} className="btn-tech px-4 py-2 text-xs">
+                          同意
+                        </button>
+                        <button type="button" onClick={() => reviewUsernameRequest(request.id, "reject")} className="btn-outline px-4 py-2 text-xs">
+                          拒绝
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">
                   <thead className="border-b border-cyan-dark/10 text-ink-muted">

@@ -113,7 +113,9 @@ export default function Navigation() {
 
           {user ? (
             <div className="flex items-center gap-3">
-              <span className="max-w-[9rem] truncate text-sm text-ink-light">{user.display_name || user.username}</span>
+              <Link href="/profile" className="max-w-[9rem] truncate text-sm text-ink-light transition-colors hover:text-cyan-dark">
+                {user.display_name || user.username}
+              </Link>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -174,10 +176,16 @@ export default function Navigation() {
             )}
             <div className="mt-3 border-t border-mist/60 pt-3">
               {user ? (
-                <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-2 py-3 text-sm text-cinnabar">
-                  <LogOut size={16} />
-                  <span>退出登录</span>
-                </button>
+                <>
+                  <Link href="/profile" className="flex items-center gap-3 px-2 py-3 text-sm text-cyan-dark">
+                    <LogIn size={16} />
+                    <span>{user.display_name || user.username}</span>
+                  </Link>
+                  <button type="button" onClick={handleLogout} className="flex w-full items-center gap-3 px-2 py-3 text-sm text-cinnabar">
+                    <LogOut size={16} />
+                    <span>退出登录</span>
+                  </button>
+                </>
               ) : (
                 <Link href="/login" className="flex items-center gap-3 px-2 py-3 text-sm text-cyan-dark">
                   <LogIn size={16} />

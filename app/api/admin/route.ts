@@ -13,12 +13,13 @@ export async function GET(request: NextRequest) {
 
     const ctx = getRequestContext();
     const db = (ctx.env as any).DB;
-    const [users, posts, comments, guestbook, images] = await Promise.all([
+    const [users, posts, comments, guestbook, images, usernameRequests] = await Promise.all([
       db.prepare("SELECT COUNT(*) AS count FROM users").first(),
       db.prepare("SELECT COUNT(*) AS count FROM posts").first(),
       db.prepare("SELECT COUNT(*) AS count FROM comments").first(),
       db.prepare("SELECT COUNT(*) AS count FROM guestbook").first(),
       db.prepare("SELECT COUNT(*) AS count FROM images").first(),
+      db.prepare("SELECT COUNT(*) AS count FROM username_change_requests WHERE status = 'pending'").first(),
     ]);
 
     return NextResponse.json({
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
         comments: Number(comments?.count || 0),
         guestbook: Number(guestbook?.count || 0),
         images: Number(images?.count || 0),
+        usernameRequests: Number(usernameRequests?.count || 0),
       },
     });
   } catch (error) {
