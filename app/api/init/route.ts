@@ -29,8 +29,9 @@ export async function GET(request: Request) {
     return json({ success: true, message: "Database initialized and migrated successfully" }, { headers: noStoreHeaders() });
   } catch (error) {
     console.error("Database initialization error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return json(
-      { success: false, error: "Failed to initialize database" },
+      { success: false, error: "Failed to initialize database", detail: message.slice(0, 300) },
       { status: 500, headers: noStoreHeaders() }
     );
   }

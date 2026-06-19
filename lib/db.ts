@@ -116,7 +116,6 @@ export async function createTables() {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_author ON posts(author_id)`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured, featured_rank)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_images_user ON images(user_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_username_requests_status ON username_change_requests(status)`),
