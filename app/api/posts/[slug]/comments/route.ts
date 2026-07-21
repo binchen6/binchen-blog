@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
     }
     const results = await db.prepare(
       `SELECT comments.id, comments.post_id, comments.name, comments.content, comments.created_at, comments.user_id, comments.parent_id,
-              users.display_name AS user_display_name, users.username AS username
+              users.display_name AS user_display_name, users.username AS username, users.avatar AS user_avatar
        FROM comments
        LEFT JOIN users ON users.id = comments.user_id
        WHERE post_id = ?

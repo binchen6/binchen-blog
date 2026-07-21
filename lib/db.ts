@@ -150,6 +150,8 @@ async function migrateSchema(db: any) {
   await addColumnIfMissing(db, "guestbook", "reply_to", "INTEGER");
   await addColumnIfMissing(db, "comments", "user_id", "INTEGER");
   await addColumnIfMissing(db, "comments", "parent_id", "INTEGER");
+  await addColumnIfMissing(db, "users", "avatar_history", "TEXT");
+  await addColumnIfMissing(db, "images", "purpose", "TEXT DEFAULT 'general'");
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured, featured_rank)").run();
 }
 

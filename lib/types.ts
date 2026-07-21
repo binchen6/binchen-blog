@@ -22,6 +22,7 @@ export interface User {
   email: string;
   display_name: string | null;
   avatar: string | null;
+  avatar_history?: string | null;
   role: UserRole;
   bio: string | null;
   is_active: number;
@@ -57,6 +58,7 @@ export interface ImageAsset {
   mime_type: string;
   size: number;
   sha: string | null;
+  purpose?: string;
   created_at: string;
 }
 

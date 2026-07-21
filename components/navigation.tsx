@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, Compass, LogIn, LogOut, Menu, MessageCircle, Pen, Shield, X } from "lucide-react";
+import { UserAvatar } from "@/components/user-avatar";
 import { useAuth } from "@/lib/client-auth";
 import { cn } from "@/lib/utils";
 
@@ -97,8 +98,9 @@ export default function Navigation() {
 
           {user ? (
             <div className="flex items-center gap-3">
-              <Link href="/profile" className="max-w-[9rem] truncate text-sm text-ink-light transition-colors hover:text-cyan-dark">
-                {user.display_name || user.username}
+              <Link href="/profile" className="flex max-w-[10rem] items-center gap-2 truncate text-sm text-ink-light transition-colors hover:text-cyan-dark">
+                <UserAvatar username={null} avatar={user.avatar} size={26} linkToProfile={false} className="!rounded-full" />
+                <span className="truncate">{user.display_name || user.username}</span>
               </Link>
               <button
                 type="button"

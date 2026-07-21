@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
     const slug = params.slug;
     const currentUser = await getCurrentUserFromRequest(request);
     const post = await db.prepare(
-      "SELECT posts.*, users.display_name AS author_name, users.username AS author_username FROM posts LEFT JOIN users ON users.id = posts.author_id WHERE posts.slug = ?"
+      "SELECT posts.*, users.display_name AS author_name, users.username AS author_username, users.avatar AS author_avatar, users.bio AS author_bio FROM posts LEFT JOIN users ON users.id = posts.author_id WHERE posts.slug = ?"
     ).bind(slug).first();
     if (!post) {
       return json({ error: "Post not found" }, { status: 404 });

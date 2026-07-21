@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Copy, Image, Info, Lock, Pen, Save, Send, Shield, Trash2, UserCog, X } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { toast } from "@/components/toast";
+import { UserAvatar } from "@/components/user-avatar";
 import { storeAuth } from "@/lib/client-auth";
+import { compressAvatarFile } from "@/lib/image-compress";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { formatDate } from "@/lib/utils";
 
@@ -69,7 +71,7 @@ export default function ProfilePage() {
   useDocumentTitle("个人中心");
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileUser | null>(null);
-  const [profileForm, setProfileForm] = useState({ displayName: "", email: "", avatar: "", bio: "" });
+  const [profileForm, setProfileForm] = useState({ displayName: "", email: "", bio: "" });
   const [groups, setGroups] = useState<UserGroupInfo[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<UserGroupInfo | null>(null);
   const [pendingUsernameRequest, setPendingUsernameRequest] = useState<UsernameRequest | null>(null);
@@ -80,6 +82,9 @@ export default function ProfilePage() {
   const [requestingUsername, setRequestingUsername] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [changingPassword, setChangingPassword] = useState(false);
+  const [avatarHistory, setAvatarHistory] = useState<string[]>([]);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -98,7 +103,7 @@ export default function ProfilePage() {
           fetch("/api/posts?mine=1&limit=100", { headers: authHeaders }),
           fetch("/api/upload", { headers: authHeaders }),
         ]);
-        const profileData = await profileRes.json() as { user?: ProfileUser; groups?: UserGroupInfo[]; pendingUsernameRequest?: UsernameRequest | null };
+        const profileData = await profileRes.json() as { user?: ProfileUser; groups?: UserGroupInfo[]; pendingUsernameRequest?: UsernameRequest | null; avatarHistory?: string[] };
         const postData = await postRes.json() as { posts?: ManagePost[] };
         const imageData = await imageRes.json() as { images?: ImageAsset[] };
 
@@ -106,13 +111,13 @@ export default function ProfilePage() {
           setProfile(profileData.user || null);
           setGroups(profileData.groups || []);
           setPendingUsernameRequest(profileData.pendingUsernameRequest || null);
+          setAvatarHistory(profileData.avatarHistory || []);
           setPosts(postData.posts || []);
           setImages(imageData.images || []);
           if (profileData.user) {
             setProfileForm({
               displayName: profileData.user.display_name || "",
               email: profileData.user.email || "",
-              avatar: profileData.user.avatar || "",
               bio: profileData.user.bio || "",
             });
           }
@@ -218,6 +223,53 @@ export default function ProfilePage() {
     toast("图片链接已复制");
   };
 
+  // 头像上传：压缩 → 上传（purpose=avatar，不进图库）→ 更新头像（历史轮换）
+  const handleAvatarUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAvatar(true);
+    try {
+      const compressed = await compressAvatarFile(file);
+      const formData = new FormData();
+      formData.append("file", compressed);
+      formData.append("purpose", "avatar");
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        headers: authHeaders,
+        body: formData,
+      });
+      const uploadData = (await uploadRes.json()) as { url?: string; error?: string };
+      if (!uploadRes.ok || !uploadData.url) {
+        toast(uploadData.error || "头像上传失败", "error");
+        return;
+      }
+      await updateAvatar(uploadData.url);
+    } catch {
+      toast("头像上传失败", "error");
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = "";
+    }
+  };
+
+  // 更新/恢复头像（服务端做历史轮换，最多 3 次）
+  const updateAvatar = async (url: string) => {
+    const res = await fetch("/api/profile/avatar", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ url }),
+    });
+    const data = (await res.json()) as { user?: ProfileUser; avatarHistory?: string[]; error?: string };
+    if (!res.ok || !data.user) {
+      toast(data.error || "头像更新失败", "error");
+      return;
+    }
+    setProfile(data.user);
+    setAvatarHistory(data.avatarHistory || []);
+    storeAuth(data.user as any, token!);
+    toast("头像已更新");
+  };
+
   return (
     <SiteShell>
       <section className="mx-auto max-w-7xl px-6 pb-20 pt-28">
@@ -236,17 +288,41 @@ export default function ProfilePage() {
           <div className="mt-12 space-y-8">
             <SurfacePanel className="p-6 md:p-8">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h2 className="font-serif-zh text-2xl font-semibold tracking-[0.08em]">@{profile.username}</h2>
-                  <div className="mt-4 grid gap-2 text-xs leading-loose text-ink-muted md:grid-cols-2">
-                    <div className="border border-cyan-dark/10 bg-paper/55 p-3">
-                      <span className="font-semibold text-ink-light">用户名</span> 是唯一账号标识，用于登录、审核和站内身份识别，修改需要管理员同意。
-                    </div>
-                    <div className="border border-cyan-dark/10 bg-paper/55 p-3">
-                      <span className="font-semibold text-ink-light">显示名称</span> 是公开昵称，会出现在文章、评论和导航栏，可以随时自己修改。
-                    </div>
+                <div className="flex items-start gap-5">
+                  <div className="flex flex-col items-center gap-2">
+                    <UserAvatar username={null} avatar={profile.avatar} size={80} linkToProfile={false} className="!rounded-full border-2 border-bronze/40" />
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={uploadingAvatar}
+                      className="text-xs text-cyan-dark transition-colors hover:text-bronze disabled:opacity-50"
+                    >
+                      {uploadingAvatar ? "上传中..." : "更换头像"}
+                    </button>
+                    <input type="file" accept="image/*" ref={avatarInputRef} onChange={handleAvatarUpload} className="hidden" />
                   </div>
-                  <p className="mt-2 text-sm text-ink-muted">{profile.display_name || "未设置显示名称"}</p>
+                  <div>
+                    <h2 className="font-serif-zh text-2xl font-semibold tracking-[0.08em]">@{profile.username}</h2>
+                    <p className="mt-2 text-sm text-ink-muted">{profile.display_name || "未设置显示名称"}</p>
+                    {avatarHistory.length > 0 && (
+                      <div className="mt-3">
+                        <div className="mb-1.5 text-xs text-ink-muted">历史头像（点击可换回，最多保留 3 次）</div>
+                        <div className="flex gap-2">
+                          {avatarHistory.map((url) => (
+                            <button
+                              key={url}
+                              type="button"
+                              onClick={() => updateAvatar(url)}
+                              className="h-10 w-10 overflow-hidden rounded-full border border-mist transition-all hover:border-bronze hover:ring-2 hover:ring-bronze/30"
+                              title="换回这个头像"
+                            >
+                              <img src={url} alt="历史头像" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {currentGroup && (
                   <button type="button" onClick={() => setSelectedGroup(currentGroup)} className="inline-flex items-center gap-2 border border-bronze/30 bg-paper/70 px-4 py-2 text-sm text-cyan-dark transition-colors hover:border-bronze">
@@ -256,11 +332,19 @@ export default function ProfilePage() {
                 )}
               </div>
 
+              <div className="mb-6 grid gap-2 text-xs leading-loose text-ink-muted md:grid-cols-2">
+                <div className="border border-cyan-dark/10 bg-paper/55 p-3">
+                  <span className="font-semibold text-ink-light">用户名</span> 是唯一账号标识，用于登录、审核和站内身份识别，修改需要管理员同意。
+                </div>
+                <div className="border border-cyan-dark/10 bg-paper/55 p-3">
+                  <span className="font-semibold text-ink-light">显示名称</span> 是公开昵称，会出现在文章、评论和导航栏，可以随时自己修改。
+                </div>
+              </div>
+
               <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_22rem]">
                 <form onSubmit={handleSaveProfile} className="grid gap-4 md:grid-cols-2">
                   <input value={profileForm.displayName} onChange={(e) => setProfileForm({ ...profileForm, displayName: e.target.value })} className="w-full bg-paper/60" placeholder="显示名称" />
                   <input type="email" value={profileForm.email} onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })} className="w-full bg-paper/60" required />
-                  <input type="url" value={profileForm.avatar} onChange={(e) => setProfileForm({ ...profileForm, avatar: e.target.value })} className="w-full bg-paper/60 md:col-span-2" placeholder="头像 URL" />
                   <textarea value={profileForm.bio} onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })} className="h-28 w-full resize-none bg-paper/60 md:col-span-2" maxLength={240} placeholder="个人简介" />
                   <button type="submit" disabled={savingProfile} className="btn-tech inline-flex items-center gap-2 disabled:opacity-50">
                     <Save size={16} />

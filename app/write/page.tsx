@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpen, FileText, Image, Images, LayoutList, Pen, Save, Send, Tag as TagIcon, Trash2, Upload } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { toast } from "@/components/toast";
+import { compressImageFile } from "@/lib/image-compress";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -41,48 +42,6 @@ interface PostDetail extends ManagePost {
 
 const MAX_CLIENT_UPLOAD_MB = 25;
 const MAX_CLIENT_UPLOAD_BYTES = MAX_CLIENT_UPLOAD_MB * 1024 * 1024;
-const IMAGE_COMPRESSION_THRESHOLD_BYTES = 2 * 1024 * 1024;
-const IMAGE_COMPRESSION_MAX_EDGE = 2560;
-const IMAGE_COMPRESSION_QUALITY = 0.82;
-
-function renameAsWebp(filename: string): string {
-  return filename.replace(/\.[^.]+$/, "") + ".webp";
-}
-
-function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob | null> {
-  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
-}
-
-async function compressImageFile(file: File): Promise<File> {
-  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return file;
-
-  let bitmap: ImageBitmap | null = null;
-  try {
-    bitmap = await createImageBitmap(file);
-    const maxEdge = Math.max(bitmap.width, bitmap.height);
-    const scale = Math.min(1, IMAGE_COMPRESSION_MAX_EDGE / maxEdge);
-    if (file.size <= IMAGE_COMPRESSION_THRESHOLD_BYTES && scale >= 1) return file;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const context = canvas.getContext("2d");
-    if (!context) return file;
-
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await canvasToBlob(canvas, "image/webp", IMAGE_COMPRESSION_QUALITY);
-    if (!blob || blob.size >= file.size) return file;
-
-    return new File([blob], renameAsWebp(file.name), {
-      type: "image/webp",
-      lastModified: Date.now(),
-    });
-  } catch {
-    return file;
-  } finally {
-    bitmap?.close();
-  }
-}
 
 export default function WritePage() {
   useDocumentTitle("撰写");

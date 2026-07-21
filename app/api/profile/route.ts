@@ -3,7 +3,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getCurrentUserFromRequest, ROLE_LABELS, ROLE_PERMISSIONS, serializeUser } from "@/lib/auth";
 import { validateEmail } from "@/lib/utils";
 import { UserRole } from "@/lib/types";
-import { clampText, isSafePublicUrl, json, rateLimit } from "@/lib/security";
+import { clampText, json, rateLimit } from "@/lib/security";
 
 export const runtime = "edge";
 
@@ -26,17 +26,29 @@ export async function GET(request: NextRequest) {
 
     const ctx = getRequestContext();
     const db = (ctx.env as any).DB;
-    const pendingRequest = await db.prepare(
-      `SELECT * FROM username_change_requests
-       WHERE user_id = ? AND status = 'pending'
-       ORDER BY created_at DESC
-       LIMIT 1`
-    ).bind(currentUser.id).first();
+    const [pendingRequest, historyRow] = await Promise.all([
+      db.prepare(
+        `SELECT * FROM username_change_requests
+         WHERE user_id = ? AND status = 'pending'
+         ORDER BY created_at DESC
+         LIMIT 1`
+      ).bind(currentUser.id).first(),
+      db.prepare("SELECT avatar_history FROM users WHERE id = ?").bind(currentUser.id).first(),
+    ]);
+
+    let avatarHistory: string[] = [];
+    try {
+      const parsed = historyRow?.avatar_history ? JSON.parse(historyRow.avatar_history as string) : [];
+      avatarHistory = Array.isArray(parsed) ? parsed.filter((u) => typeof u === "string").slice(0, 3) : [];
+    } catch {
+      avatarHistory = [];
+    }
 
     return json({
       user: currentUser,
       groups: roleGroups(),
       pendingUsernameRequest: pendingRequest || null,
+      avatarHistory,
     });
   } catch (error) {
     console.error("Get profile error:", error);
@@ -54,14 +66,10 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json() as any;
     const displayName = clampText(body.displayName, 40) || null;
     const email = clampText(body.email, 254).toLowerCase();
-    const avatar = clampText(body.avatar, 2048) || null;
     const bio = clampText(body.bio, 240) || null;
 
     if (!email || !validateEmail(email)) {
       return json({ error: "Invalid email" }, { status: 400 });
-    }
-    if (!isSafePublicUrl(avatar)) {
-      return json({ error: "Invalid avatar URL" }, { status: 400 });
     }
 
     const ctx = getRequestContext();
@@ -71,12 +79,13 @@ export async function PATCH(request: NextRequest) {
       return json({ error: "Email already exists" }, { status: 409 });
     }
 
+    // 头像仅通过 /api/profile/avatar 修改，这里不再触碰 avatar 字段
     const updated = await db.prepare(
       `UPDATE users
-       SET display_name = ?, email = ?, avatar = ?, bio = ?
+       SET display_name = ?, email = ?, bio = ?
        WHERE id = ?
        RETURNING id, username, email, display_name, avatar, role, bio, is_active, created_at`
-    ).bind(displayName, email, avatar, bio, currentUser.id).first();
+    ).bind(displayName, email, bio, currentUser.id).first();
 
     return json({ user: serializeUser(updated) });
   } catch (error) {

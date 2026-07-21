@@ -96,6 +96,8 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const file = formData.get("file") as File;
+    const purposeRaw = String(formData.get("purpose") || "general");
+    const purpose = purposeRaw === "avatar" ? "avatar" : "general";
 
     if (!file) {
       return json({ error: "No file provided" }, { status: 400 });
@@ -172,9 +174,9 @@ export async function POST(request: NextRequest) {
 
     const githubData = await githubRes.json() as any;
     const image = await db.prepare(
-      `INSERT INTO images (user_id, url, storage_key, filename, mime_type, size, sha)
-       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`
-    ).bind(currentUser.id, "", key, file.name, file.type, file.size, githubData?.content?.sha || null).first();
+      `INSERT INTO images (user_id, url, storage_key, filename, mime_type, size, sha, purpose)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
+    ).bind(currentUser.id, "", key, file.name, file.type, file.size, githubData?.content?.sha || null, purpose).first();
     const publicUrl = `/api/images/${image.id}`;
     const updatedImage = await db.prepare("UPDATE images SET url = ? WHERE id = ? RETURNING *").bind(publicUrl, image.id).first();
 
@@ -196,16 +198,22 @@ export async function GET(request: NextRequest) {
     const limit = parseBoundedInt(searchParams.get("limit"), 50, 1, 100);
     const offset = parseBoundedInt(searchParams.get("offset"), 0, 0, 10000);
     const all = searchParams.get("all") === "1";
+    const includeAvatars = searchParams.get("includeAvatars") === "1";
 
     const ctx = getRequestContext();
     const db = (ctx.env as any).DB;
     const canSeeAll = all && hasPermission(currentUser, "images:manage_all");
+    // 默认不返回头像图片（头像不占用图库）
     const results = canSeeAll
       ? await db.prepare(
-          "SELECT images.*, users.username, users.display_name FROM images LEFT JOIN users ON users.id = images.user_id ORDER BY images.created_at DESC LIMIT ? OFFSET ?"
+          `SELECT images.*, users.username, users.display_name FROM images LEFT JOIN users ON users.id = images.user_id
+           ${includeAvatars ? "" : "WHERE images.purpose IS NULL OR images.purpose = 'general'"}
+           ORDER BY images.created_at DESC LIMIT ? OFFSET ?`
         ).bind(limit, offset).all()
       : await db.prepare(
-          "SELECT * FROM images WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?"
+          `SELECT * FROM images WHERE user_id = ?
+           ${includeAvatars ? "" : "AND (purpose IS NULL OR purpose = 'general')"}
+           ORDER BY created_at DESC LIMIT ? OFFSET ?`
         ).bind(currentUser.id, limit, offset).all();
 
     return json({ images: results.results }, { headers: { "Cache-Control": "no-store" } });

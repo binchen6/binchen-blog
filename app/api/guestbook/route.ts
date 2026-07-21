@@ -12,7 +12,7 @@ export async function GET() {
     const db = (ctx.env as any).DB;
     const results = await db.prepare(
       `SELECT guestbook.id, guestbook.name, guestbook.content, guestbook.created_at, guestbook.user_id, guestbook.reply_to,
-              users.display_name AS user_display_name, users.username AS username
+              users.display_name AS user_display_name, users.username AS username, users.avatar AS user_avatar
        FROM guestbook
        LEFT JOIN users ON users.id = guestbook.user_id
        ORDER BY guestbook.created_at DESC

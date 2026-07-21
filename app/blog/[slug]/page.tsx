@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Calendar, Copy, Eye, ListTree, MessageCircle, Se
 import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { ReadingProgress } from "@/components/site-widgets";
 import { toast } from "@/components/toast";
+import { UserAvatar } from "@/components/user-avatar";
 import { useAuth, authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate, getReadingTime } from "@/lib/utils";
@@ -25,6 +26,10 @@ interface Post {
   published_at: string;
   tags: string | null;
   view_count: number;
+  author_name?: string | null;
+  author_username?: string | null;
+  author_avatar?: string | null;
+  author_bio?: string | null;
 }
 
 interface Comment {
@@ -36,6 +41,7 @@ interface Comment {
   user_id: number | null;
   user_display_name?: string | null;
   username?: string | null;
+  user_avatar?: string | null;
 }
 
 interface TocItem {
@@ -491,6 +497,24 @@ export default function BlogPostPage() {
           )}
         </SurfacePanel>
 
+        {/* 作者卡片 */}
+        {post.author_username && (
+          <Link href={`/users/${encodeURIComponent(post.author_username)}`} className="paper-card group mt-8 flex items-center gap-4 p-5">
+            <UserAvatar username={null} avatar={post.author_avatar} size={52} linkToProfile={false} className="!rounded-full" />
+            <div className="min-w-0 flex-1">
+              <div className="font-serif-zh text-base font-semibold tracking-[0.06em] transition-colors group-hover:text-cyan-dark">
+                {post.author_name || post.author_username}
+              </div>
+              {post.author_bio ? (
+                <p className="mt-1 line-clamp-1 text-sm text-ink-muted">{post.author_bio}</p>
+              ) : (
+                <p className="mt-1 font-mono-tech text-xs text-ink-muted">@{post.author_username}</p>
+              )}
+            </div>
+            <ArrowRight size={16} className="shrink-0 text-bronze opacity-0 transition-opacity group-hover:opacity-100" />
+          </Link>
+        )}
+
         {/* 上一篇 / 下一篇 */}
         {(prevPost || nextPost) && (
           <nav className="mt-10 grid gap-4 sm:grid-cols-2" aria-label="文章导航">
@@ -585,12 +609,16 @@ export default function BlogPostPage() {
                   return (
                     <div key={comment.id} className={cn("paper-card p-6", isReply && "ml-6 border-l-2 border-l-bronze/40 md:ml-10")}>
                       <div className="mb-3 flex items-center gap-3">
-                        <span className="grid h-9 w-9 place-items-center border border-cyan-dark/10 bg-cyan-dark/5 text-cyan-dark">
-                          <User size={16} />
-                        </span>
+                        <UserAvatar username={comment.username} avatar={comment.user_avatar} size={36} />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 text-sm font-semibold">
-                            {displayName}
+                            {comment.username ? (
+                              <Link href={`/users/${encodeURIComponent(comment.username)}`} className="transition-colors hover:text-cyan-dark">
+                                {displayName}
+                              </Link>
+                            ) : (
+                              displayName
+                            )}
                             {isAuthor && <span className="border border-cinnabar/40 px-1.5 py-px text-[10px] font-normal text-cinnabar">作者</span>}
                           </div>
                           <div className="font-mono-tech text-xs text-ink-muted">{formatDate(comment.created_at)}</div>

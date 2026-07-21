@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageCircle, Send, Trash2, User, Wind, X } from "lucide-react";
+import { MessageCircle, Send, Trash2, Wind, X } from "lucide-react";
+import Link from "next/link";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { toast } from "@/components/toast";
+import { UserAvatar } from "@/components/user-avatar";
 import { useAuth, authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate } from "@/lib/utils";
@@ -18,6 +20,7 @@ interface GuestbookEntry {
   user_id: number | null;
   user_display_name?: string | null;
   username?: string | null;
+  user_avatar?: string | null;
 }
 
 export default function GuestbookPage() {
@@ -170,11 +173,17 @@ export default function GuestbookPage() {
                 return (
                   <div key={entry.id} className={cn("paper-card p-6", isReply && "ml-6 border-l-2 border-l-bronze/40 md:ml-10")}>
                     <div className="mb-3 flex items-center gap-3">
-                      <span className="grid h-9 w-9 place-items-center border border-cyan-dark/10 bg-cyan-dark/5 text-cyan-dark">
-                        <User size={16} />
-                      </span>
+                      <UserAvatar username={entry.username} avatar={entry.user_avatar} size={36} />
                       <div className="flex-1">
-                        <div className="text-sm font-semibold">{displayName}</div>
+                        <div className="text-sm font-semibold">
+                          {entry.username ? (
+                            <Link href={`/users/${encodeURIComponent(entry.username)}`} className="transition-colors hover:text-cyan-dark">
+                              {displayName}
+                            </Link>
+                          ) : (
+                            displayName
+                          )}
+                        </div>
                         <div className="font-mono-tech text-xs text-ink-muted">{formatDate(entry.created_at)}</div>
                       </div>
                       <div className="flex items-center gap-3">
