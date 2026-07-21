@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpen, FileText, Image, Images, LayoutList, Pen, Save, Send, Tag as TagIcon, Trash2, Upload } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate } from "@/lib/utils";
 
 type PostMode = "article" | "moment";
@@ -83,6 +84,7 @@ async function compressImageFile(file: File): Promise<File> {
 }
 
 export default function WritePage() {
+  useDocumentTitle("撰写");
   const router = useRouter();
   const searchParams = useSearchParams();
   const [title, setTitle] = useState("");

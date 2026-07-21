@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Lock, Mail, Sparkles, User, UserPlus } from "lucide-react";
 import { SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { useDocumentTitle } from "@/lib/use-document-title";
 import { validateEmail } from "@/lib/utils";
 
 export default function RegisterPage() {
+  useDocumentTitle("注册");
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");

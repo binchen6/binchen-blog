@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Compass, Lock, LogIn, User } from "lucide-react";
 import { SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { useDocumentTitle } from "@/lib/use-document-title";
 
 export default function LoginPage() {
+  useDocumentTitle("登录");
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");

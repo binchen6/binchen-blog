@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MessageCircle, Send, Trash2, User, Wind } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { useDocumentTitle } from "@/lib/use-document-title";
 import { formatDate } from "@/lib/utils";
 
 interface GuestbookEntry {
@@ -16,10 +17,12 @@ interface GuestbookEntry {
 }
 
 export default function GuestbookPage() {
+  useDocumentTitle("留言板", "欢迎来到 binchen 的留言板，问候、建议或分享，都可以慢慢写下来。");
+
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: "", email: "", content: "" });
-  const [currentUser, setCurrentUser] = useState<{ id: number; username: string; display_name?: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: number; username: string; email?: string; display_name?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -27,7 +30,14 @@ export default function GuestbookPage() {
     const userStr = localStorage.getItem("user");
     if (userStr) {
       try {
-        setCurrentUser(JSON.parse(userStr));
+        const parsed = JSON.parse(userStr);
+        setCurrentUser(parsed);
+        // 登录用户预填姓名与邮箱
+        setForm((current) => ({
+          ...current,
+          name: parsed.display_name || parsed.username || "",
+          email: parsed.email || "",
+        }));
       } catch {
         localStorage.removeItem("user");
       }
@@ -52,7 +62,9 @@ export default function GuestbookPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.content) return;
+    // 未登录才校验姓名邮箱；登录用户由服务端取身份信息
+    if (!currentUser && (!form.name || !form.email)) return;
+    if (!form.content) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/guestbook", {
@@ -66,7 +78,8 @@ export default function GuestbookPage() {
       const data = (await res.json()) as { entry?: GuestbookEntry };
       if (data.entry) {
         setEntries((current) => [data.entry!, ...current]);
-        setForm({ name: "", email: "", content: "" });
+        // 登录用户保留预填的身份信息
+        setForm((current) => currentUser ? { ...current, content: "" } : { name: "", email: "", content: "" });
       }
     } finally {
       setSubmitting(false);
@@ -96,28 +109,35 @@ export default function GuestbookPage() {
         />
 
         <SurfacePanel as="form" onSubmit={handleSubmit} className="mt-12 space-y-5 p-6 md:p-8">
-          <h2 className="flex items-center gap-2 font-serif-zh text-xl font-semibold tracking-[0.08em]">
-            <Wind size={20} className="text-bronze" />
-            写下你的留言
-          </h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            <input
-              type="text"
-              placeholder="姓名"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full bg-paper/60"
-              required
-            />
-            <input
-              type="email"
-              placeholder="邮箱"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full bg-paper/60"
-              required
-            />
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="flex items-center gap-2 font-serif-zh text-xl font-semibold tracking-[0.08em]">
+              <Wind size={20} className="text-bronze" />
+              写下你的留言
+            </h2>
+            {!loading && <span className="font-mono-tech text-xs text-ink-muted">共 {entries.length} 条</span>}
           </div>
+          {currentUser ? (
+            <p className="text-sm text-ink-muted">将以 <span className="text-cyan-dark">{currentUser.display_name || currentUser.username}</span> 的身份发表留言。</p>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              <input
+                type="text"
+                placeholder="姓名"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="w-full bg-paper/60"
+                required
+              />
+              <input
+                type="email"
+                placeholder="邮箱"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="w-full bg-paper/60"
+                required
+              />
+            </div>
+          )}
           <textarea
             placeholder="写下你的想法..."
             value={form.content}

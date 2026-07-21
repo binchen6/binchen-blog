@@ -26,9 +26,10 @@ module.exports = {
         'mist-light': '#e8e4dc',
       },
       fontFamily: {
-        'serif-zh': ['"Noto Serif SC"', '"Source Han Serif SC"', '"Songti SC"', 'serif'],
-        'sans-zh': ['"Noto Sans SC"', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'],
-        'mono-tech': ['"JetBrains Mono"', '"Noto Sans SC"', 'monospace'],
+        // 系统字体栈：零网络下载，首屏秒开（CSP 也不允许外链字体）
+        'serif-zh': ['"Songti SC"', '"STSong"', '"Noto Serif SC"', '"Source Han Serif SC"', '"SimSun"', 'serif'],
+        'sans-zh': ['-apple-system', '"PingFang SC"', '"Hiragino Sans GB"', '"Noto Sans SC"', '"Microsoft YaHei"', 'sans-serif'],
+        'mono-tech': ['"SF Mono"', '"JetBrains Mono"', '"Cascadia Code"', 'Consolas', '"Noto Sans SC"', 'monospace'],
       },
       spacing: {
         '18': '4.5rem',

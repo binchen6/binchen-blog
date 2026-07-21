@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUp, Compass, Github, Mail } from "lucide-react";
+import { ArrowUp, Compass, Github, Mail, Rss } from "lucide-react";
 
 const footerLinks = [
   { href: "/", label: "首页" },
@@ -38,6 +38,9 @@ export default function Footer() {
             </a>
             <a href="mailto:contact@cryoconite.cn" className="text-ink-muted transition-colors hover:text-cinnabar" aria-label="Email">
               <Mail size={18} />
+            </a>
+            <a href="/feed.xml" target="_blank" rel="noopener noreferrer" className="text-ink-muted transition-colors hover:text-bronze" aria-label="RSS 订阅">
+              <Rss size={18} />
             </a>
           </div>
         </div>

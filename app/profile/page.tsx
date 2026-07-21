@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Copy, Image, Info, Pen, Save, Send, Shield, Trash2, UserCog, X } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { useDocumentTitle } from "@/lib/use-document-title";
 import { formatDate } from "@/lib/utils";
 
 interface ProfileUser {
@@ -63,6 +64,7 @@ const roleDescriptions: Record<string, string> = {
 };
 
 export default function ProfilePage() {
+  useDocumentTitle("个人中心");
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<ProfileUser | null>(null);
   const [profileForm, setProfileForm] = useState({ displayName: "", email: "", avatar: "", bio: "" });

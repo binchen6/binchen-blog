@@ -15,6 +15,14 @@ export async function GET(request: NextRequest) {
     const mine = searchParams.get("mine") === "1";
     const admin = searchParams.get("admin") === "1";
     const featured = searchParams.get("featured") === "1";
+    const q = (searchParams.get("q") || "").trim().slice(0, 80);
+    const tag = (searchParams.get("tag") || "").trim().slice(0, 50);
+    const mode = searchParams.get("mode");
+    const withTotal = searchParams.get("total") === "1";
+
+    if (mode && !["article", "moment"].includes(mode)) {
+      return json({ error: "Invalid mode" }, { status: 400 });
+    }
 
     const ctx = getRequestContext();
     const db = (ctx.env as any).DB;
@@ -54,6 +62,34 @@ export async function GET(request: NextRequest) {
       query += ` WHERE ${where.join(" AND ")}`;
     }
 
+    // 搜索/筛选（仅在公开列表场景生效，避免暴露草稿）
+    const publicScope = !admin && !mine;
+    if (publicScope && (q || tag || mode)) {
+      const extra: string[] = [];
+      if (q) {
+        extra.push("(posts.title LIKE ? OR posts.excerpt LIKE ? OR posts.tags LIKE ?)");
+        const like = `%${q}%`;
+        params.push(like, like, like);
+      }
+      if (tag) {
+        extra.push("posts.tags LIKE ?");
+        params.push(`%${tag}%`);
+      }
+      if (mode) {
+        extra.push("posts.mode = ?");
+        params.push(mode);
+      }
+      query += (where.length > 0 ? " AND " : " WHERE ") + extra.join(" AND ");
+    }
+
+    let total: number | undefined;
+    if (withTotal && publicScope) {
+      const countQuery = "SELECT COUNT(*) AS c FROM posts" + (query.includes(" WHERE ") ? query.slice(query.indexOf(" WHERE ")) : "");
+      const countParams = params.slice(); // 此时 limit/offset 尚未 push
+      const countRow = await db.prepare(countQuery).bind(...countParams).first();
+      total = Number((countRow as any)?.c ?? 0);
+    }
+
     query += featured
       ? " ORDER BY posts.featured_rank ASC, COALESCE(posts.published_at, posts.created_at) DESC LIMIT ? OFFSET ?"
       : " ORDER BY COALESCE(posts.published_at, posts.created_at) DESC LIMIT ? OFFSET ?";
@@ -61,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     const results = await db.prepare(query).bind(...params).all();
 
-    return json({ posts: results.results }, { headers: admin || mine ? { "Cache-Control": "no-store" } : cacheHeaders(30, 120) });
+    return json({ posts: results.results, ...(total !== undefined ? { total } : {}) }, { headers: admin || mine ? { "Cache-Control": "no-store" } : cacheHeaders(30, 120) });
   } catch (error) {
     console.error("Get posts error:", error);
     return json({ error: "Failed to fetch posts" }, { status: 500 });

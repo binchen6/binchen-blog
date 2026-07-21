@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { BarChart3, BookOpen, HardDrive, Image, MessageCircle, Shield, Trash2, UserCog } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { useDocumentTitle } from "@/lib/use-document-title";
 import { formatDate } from "@/lib/utils";
 
 interface UserRow {
@@ -103,6 +104,7 @@ const roleLabels: Record<string, string> = {
 type StatCard = [string, number | undefined, LucideIcon];
 
 export default function AdminPage() {
+  useDocumentTitle("控制台");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [stats, setStats] = useState<Record<string, number>>({});
