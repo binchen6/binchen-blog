@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Calendar, Eye, ListTree, MessageCircle, Send, Tag, Trash2, User, X } from "lucide-react";
 import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { ReadingProgress } from "@/components/site-widgets";
+import { toast } from "@/components/toast";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate, getReadingTime } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ interface Post {
   cover_image: string | null;
   images: string | null;
   mode: "article" | "moment";
+  author_id: number;
   created_at: string;
   published_at: string;
   tags: string | null;
@@ -31,6 +33,8 @@ interface Comment {
   created_at: string;
   parent_id: number | null;
   user_id: number | null;
+  user_display_name?: string | null;
+  username?: string | null;
 }
 
 interface TocItem {
@@ -78,6 +82,7 @@ export default function BlogPostPage() {
   const [prevPost, setPrevPost] = useState<PostNavItem | null>(null);
   const [nextPost, setNextPost] = useState<PostNavItem | null>(null);
   const [commentForm, setCommentForm] = useState({ name: "", email: "", content: "" });
+  const [replyTo, setReplyTo] = useState<Comment | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<{ id: number; username: string; email?: string; display_name?: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -152,12 +157,22 @@ export default function BlogPostPage() {
     let cancelled = false;
     setToc(extractToc(post.content));
 
-    Promise.all([import("markdown-it"), import("dompurify")]).then(([{ default: MarkdownIt }, { default: DOMPurify }]) => {
+    Promise.all([
+      import("markdown-it"),
+      import("dompurify"),
+      import("markdown-it-footnote"),
+      import("markdown-it-task-lists"),
+      import("markdown-it-mark"),
+    ]).then(([{ default: MarkdownIt }, { default: DOMPurify }, { default: footnote }, { default: taskLists }, { default: mark }]) => {
       if (cancelled) return;
-      const md = new MarkdownIt({ html: false, linkify: true, typographer: true });
+      const md = new MarkdownIt({ html: false, linkify: true, typographer: true })
+        .use(footnote)
+        .use(taskLists, { enabled: true, label: true })
+        .use(mark);
       const rendered = md.render(post.content);
       setRenderedContent(DOMPurify.sanitize(rendered, {
         ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+        ADD_ATTR: ["for", "checked", "disabled", "type", "id"],
       }));
     });
 
@@ -227,10 +242,29 @@ export default function BlogPostPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [toc]);
 
+  // 灯箱 ESC 关闭 + 锁定背景滚动
+  useEffect(() => {
+    if (!lightboxSrc) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setLightboxSrc(null);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [lightboxSrc]);
+
   const scrollToHeading = useCallback((id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     setTocOpen(false);
   }, []);
+
+  const startReply = (comment: Comment) => {
+    setReplyTo(comment);
+    document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,12 +279,21 @@ export default function BlogPostPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(commentForm),
+        body: JSON.stringify({ ...commentForm, parentId: replyTo?.id }),
       });
       const data = (await res.json()) as { comment?: Comment };
       if (data.comment) {
-        setComments((current) => [data.comment!, ...current]);
+        // 回复插入到对应楼层下方，顶层评论排到最前
+        setComments((current) => {
+          if (!replyTo) return [data.comment!, ...current];
+          const index = current.findIndex((item) => item.id === replyTo.id);
+          if (index < 0) return [...current, data.comment!];
+          const next = [...current];
+          next.splice(index + 1, 0, data.comment!);
+          return next;
+        });
         setCommentForm({ name: "", email: "", content: "" });
+        setReplyTo(null);
       }
     } finally {
       setSubmitting(false);
@@ -258,15 +301,17 @@ export default function BlogPostPage() {
   };
 
   const deleteComment = async (id: number) => {
-    if (!confirm("确定删除这条评论吗？")) return;
+    if (!confirm("确定删除这条评论吗？其回复会一并删除。")) return;
     const token = localStorage.getItem("token");
     if (!token) return;
     const res = await fetch(`/api/posts/${slug}/comments?id=${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.ok) setComments((current) => current.filter((comment) => comment.id !== id));
-    else alert("删除失败");
+    if (res.ok) {
+      // 后端级联删除子回复，前端同步移除
+      setComments((current) => current.filter((comment) => comment.id !== id && comment.parent_id !== id));
+    } else toast("删除失败", "error");
   };
 
   if (loading) {
@@ -385,9 +430,11 @@ export default function BlogPostPage() {
         </Link>
 
         {post.cover_image && (
-          <div className="mb-8 aspect-[16/9] overflow-hidden border border-cyan-dark/10 bg-paper-warm">
-            <img src={post.cover_image} alt={post.title} decoding="async" className="h-full w-full object-cover" />
-          </div>
+          <button type="button" onClick={() => setLightboxSrc(post.cover_image!)} className="mb-8 block w-full cursor-zoom-in">
+            <div className="aspect-[16/9] overflow-hidden border border-cyan-dark/10 bg-paper-warm">
+              <img src={post.cover_image} alt={post.title} decoding="async" className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]" />
+            </div>
+          </button>
         )}
 
         <SurfacePanel as="section" className="p-7 md:p-10">
@@ -482,7 +529,15 @@ export default function BlogPostPage() {
             评论 ({comments.length})
           </h2>
 
-          <SurfacePanel as="form" onSubmit={handleSubmitComment} className="mb-10 space-y-4 p-6">
+          <SurfacePanel as="form" id="comment-form" onSubmit={handleSubmitComment} className="mb-10 space-y-4 p-6 scroll-mt-24">
+            {replyTo && (
+              <div className="flex items-center justify-between gap-3 border border-bronze/30 bg-bronze/10 px-3 py-2 text-xs text-ink-light">
+                <span>回复 <span className="font-semibold text-bronze-dark">@{replyTo.user_display_name || replyTo.name}</span>：{replyTo.content.slice(0, 40)}{replyTo.content.length > 40 ? "…" : ""}</span>
+                <button type="button" onClick={() => setReplyTo(null)} className="shrink-0 text-ink-muted transition-colors hover:text-cinnabar" aria-label="取消回复">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
             {!loggedInUser && (
               <div className="grid gap-4 md:grid-cols-2">
                 <input
@@ -507,7 +562,7 @@ export default function BlogPostPage() {
               <p className="text-sm text-ink-muted">将以 {loggedInUser.display_name || loggedInUser.username} 的身份发表评论。</p>
             )}
             <textarea
-              placeholder="写下你的想法..."
+              placeholder={replyTo ? "写下你的回复..." : "写下你的想法..."}
               value={commentForm.content}
               onChange={(e) => setCommentForm({ ...commentForm, content: e.target.value })}
               className="h-32 w-full resize-none bg-paper/60"
@@ -515,7 +570,7 @@ export default function BlogPostPage() {
             />
             <button type="submit" disabled={submitting} className="btn-tech inline-flex items-center gap-2 disabled:opacity-50">
               <Send size={16} />
-              <span>{submitting ? "提交中..." : "发表评论"}</span>
+              <span>{submitting ? "提交中..." : replyTo ? "发表回复" : "发表评论"}</span>
             </button>
           </SurfacePanel>
 
@@ -523,26 +578,51 @@ export default function BlogPostPage() {
             {comments.length === 0 ? (
               <EmptyState title="暂无评论" description="来做第一个评论者吧。" />
             ) : (
-              comments.map((comment) => (
-                <div key={comment.id} className="paper-card p-6">
-                  <div className="mb-3 flex items-center gap-3">
-                    <span className="grid h-9 w-9 place-items-center border border-cyan-dark/10 bg-cyan-dark/5 text-cyan-dark">
-                      <User size={16} />
-                    </span>
-                    <div className="flex-1">
-                      <div className="text-sm font-semibold">{comment.name}</div>
-                      <div className="font-mono-tech text-xs text-ink-muted">{formatDate(comment.created_at)}</div>
+              (() => {
+                const topLevel = comments.filter((comment) => !comment.parent_id);
+                const repliesOf = (id: number) => comments.filter((comment) => comment.parent_id === id);
+                const renderCard = (comment: Comment, isReply = false) => {
+                  const displayName = comment.user_display_name || comment.name;
+                  const isAuthor = comment.user_id !== null && comment.user_id === post.author_id;
+                  return (
+                    <div key={comment.id} className={cn("paper-card p-6", isReply && "ml-6 border-l-2 border-l-bronze/40 md:ml-10")}>
+                      <div className="mb-3 flex items-center gap-3">
+                        <span className="grid h-9 w-9 place-items-center border border-cyan-dark/10 bg-cyan-dark/5 text-cyan-dark">
+                          <User size={16} />
+                        </span>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 text-sm font-semibold">
+                            {displayName}
+                            {isAuthor && <span className="border border-cinnabar/40 px-1.5 py-px text-[10px] font-normal text-cinnabar">作者</span>}
+                          </div>
+                          <div className="font-mono-tech text-xs text-ink-muted">{formatDate(comment.created_at)}</div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {!isReply && (
+                            <button type="button" onClick={() => startReply(comment)} className="inline-flex items-center gap-1 text-xs text-ink-muted transition-colors hover:text-cyan-dark">
+                              <MessageCircle size={13} />
+                              回复
+                            </button>
+                          )}
+                          {loggedInUser && comment.user_id === loggedInUser.id && (
+                            <button type="button" onClick={() => deleteComment(comment.id)} className="inline-flex items-center gap-1 text-xs text-cinnabar">
+                              <Trash2 size={13} />
+                              删除
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-sm leading-loose text-ink-light">{comment.content}</p>
                     </div>
-                    {loggedInUser && comment.user_id === loggedInUser.id && (
-                      <button type="button" onClick={() => deleteComment(comment.id)} className="inline-flex items-center gap-1 text-xs text-cinnabar">
-                        <Trash2 size={13} />
-                        删除
-                      </button>
-                    )}
+                  );
+                };
+                return topLevel.map((comment) => (
+                  <div key={comment.id} className="space-y-3">
+                    {renderCard(comment)}
+                    {repliesOf(comment.id).map((reply) => renderCard(reply, true))}
                   </div>
-                  <p className="text-sm leading-loose text-ink-light">{comment.content}</p>
-                </div>
-              ))
+                ));
+              })()
             )}
           </div>
         </section>

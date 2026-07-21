@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpen, FileText, Image, Images, LayoutList, Pen, Save, Send, Tag as TagIcon, Trash2, Upload } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { toast } from "@/components/toast";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -161,7 +162,7 @@ export default function WritePage() {
   const requireToken = () => {
     const currentToken = localStorage.getItem("token");
     if (!currentToken) {
-      alert("请先登录");
+      toast("请先登录", "error");
       router.push("/login");
       return null;
     }
@@ -180,7 +181,7 @@ export default function WritePage() {
       for (const file of selectedFiles) {
         const uploadFile = await compressImageFile(file);
         if (uploadFile.size > MAX_CLIENT_UPLOAD_BYTES) {
-          alert(`图片过大：${file.name} 压缩后仍超过 ${MAX_CLIENT_UPLOAD_MB}MB，请先裁剪或降低分辨率。`);
+          toast(`图片过大：${file.name} 压缩后仍超过 ${MAX_CLIENT_UPLOAD_MB}MB，请先裁剪或降低分辨率。`, "error");
           continue;
         }
         const formData = new FormData();
@@ -193,7 +194,7 @@ export default function WritePage() {
         const data = (await res.json()) as { image?: ImageAsset; url?: string; error?: string };
         const uploadedUrl = data.image?.url || data.url || "";
         if (!res.ok || !uploadedUrl) {
-          alert(data.error || "图片上传失败");
+          toast(data.error || "图片上传失败", "error");
           continue;
         }
         uploaded.push({
@@ -212,7 +213,7 @@ export default function WritePage() {
         if (!coverImage) setCoverImage(uploaded[0].url);
       }
     } catch {
-      alert("图片上传失败");
+      toast("图片上传失败", "error");
     } finally {
       setUploading(false);
       e.target.value = "";
@@ -230,7 +231,7 @@ export default function WritePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) {
-      alert("请填写标题和内容");
+      toast("请填写标题和内容", "error");
       return;
     }
     const currentToken = requireToken();
@@ -249,7 +250,7 @@ export default function WritePage() {
       });
       const data = (await res.json()) as { post?: ManagePost; error?: string };
       if (data.post) {
-        alert(editingSlug ? "文章已更新" : status === "published" ? "发布成功" : "草稿已保存");
+        toast(editingSlug ? "文章已更新" : status === "published" ? "发布成功" : "草稿已保存");
         setPosts((current) => {
           const rest = current.filter((item) => item.slug !== data.post!.slug);
           return [data.post!, ...rest];
@@ -257,10 +258,10 @@ export default function WritePage() {
         if (status === "published") router.push(`/blog/${data.post.slug}`);
         else resetEditor();
       } else {
-        alert(data.error || "保存失败");
+        toast(data.error || "保存失败", "error");
       }
     } catch {
-      alert("保存失败");
+      toast("保存失败", "error");
     } finally {
       setPublishing(false);
     }
@@ -272,7 +273,7 @@ export default function WritePage() {
     const res = await fetch(`/api/posts/${slug}`, { headers: { Authorization: `Bearer ${currentToken}` } });
     const data = (await res.json()) as { post?: PostDetail; error?: string };
     if (!data.post) {
-      alert(data.error || "读取文章失败");
+      toast(data.error || "读取文章失败", "error");
       return;
     }
     const post = data.post;
@@ -303,7 +304,7 @@ export default function WritePage() {
       setPosts((current) => current.filter((post) => post.slug !== slug));
       if (editingSlug === slug) resetEditor();
     } else {
-      alert("删除失败");
+      toast("删除失败", "error");
     }
   };
 

@@ -595,6 +595,23 @@ button:focus-visible {
   cursor: zoom-in;
 }
 
+/* Toast 入场动画 */
+.toast-in {
+  animation: toastIn 0.25s ease-out both;
+  border-radius: 4px;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* 阅读进度条 */
 .reading-progress {
   position: fixed;
@@ -604,6 +621,50 @@ button:focus-visible {
   height: 2px;
   background: linear-gradient(90deg, var(--color-cyan-dark), var(--color-bronze));
   transition: width 0.1s linear;
+}
+
+/* 高亮 ==mark== */
+.markdown-content mark {
+  background: rgba(201, 168, 76, 0.28);
+  color: inherit;
+  padding: 0 0.2em;
+  border-radius: 2px;
+}
+
+/* 任务列表 */
+.markdown-content .task-list-item {
+  list-style: none;
+  margin-left: -1.4rem;
+}
+
+.markdown-content .task-list-item input[type="checkbox"] {
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-right: 0.45rem;
+  accent-color: var(--color-cyan-dark);
+  vertical-align: -0.1em;
+}
+
+/* 脚注 */
+.markdown-content .footnote-ref a,
+.markdown-content .footnote-backref {
+  text-decoration: none;
+}
+
+.markdown-content .footnotes {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-mist);
+  font-size: 0.85rem;
+  color: var(--color-ink-muted);
+}
+
+.markdown-content .footnotes ol {
+  padding-left: 1.2rem;
+}
+
+.markdown-content sup {
+  font-size: 0.75em;
 }
 
 .markdown-content a {

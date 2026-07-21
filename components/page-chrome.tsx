@@ -5,6 +5,7 @@ import { Compass, SearchX } from "lucide-react";
 import Navigation from "@/components/navigation";
 import Footer from "@/components/footer";
 import { BackToTop } from "@/components/site-widgets";
+import { ToastHost } from "@/components/toast";
 import { cn } from "@/lib/utils";
 
 type SiteShellProps = {
@@ -35,6 +36,7 @@ export function SiteShell({
       <div className={cn("relative z-10", contentClassName)}>{children}</div>
       {withFooter && <Footer />}
       <BackToTop />
+      <ToastHost />
     </main>
   );
 }
