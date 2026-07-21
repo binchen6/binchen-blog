@@ -10,7 +10,7 @@ function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
-/** jsDelivr CDN URL（公开仓库图片走全球 CDN，零 Worker 成本） */
+/** jsDelivr CDN URL（仅公开仓库可用；私有仓库走 Worker 代理） */
 function jsdelivrUrl(github: ReturnType<typeof getGithubImageConfig>, storageKey: string): string {
   return `https://cdn.jsdelivr.net/gh/${github.owner}/${github.repo}@${github.branch}/${encodePath(storageKey)}`;
 }
@@ -89,9 +89,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       );
     }
 
-    // 默认 302 到 jsDelivr CDN（公开仓库）；?proxy=1 强制 Worker 代理回退
+    // 默认 Worker 代理（兼容私有仓库）；配置 IMAGE_CDN=jsdelivr 且仓库公开时走 CDN 重定向
+    const useCdn = String(env.IMAGE_CDN || "").toLowerCase() === "jsdelivr";
     const forceProxy = new URL(request.url).searchParams.get("proxy") === "1";
-    if (!forceProxy) {
+    if (useCdn && !forceProxy) {
       return new Response(null, {
         status: 302,
         headers: {
