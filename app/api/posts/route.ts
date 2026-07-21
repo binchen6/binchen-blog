@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { canAccessAdmin, getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
-import { generateSlug, generateExcerpt } from "@/lib/utils";
+import { generateSlug, generateExcerpt, getReadingTime } from "@/lib/utils";
 import { cacheHeaders, isSafePublicUrl, json, parseBoundedInt, rateLimit, requireText } from "@/lib/security";
 
 export const runtime = "edge";
@@ -97,7 +97,13 @@ export async function GET(request: NextRequest) {
 
     const results = await db.prepare(query).bind(...params).all();
 
-    return json({ posts: results.results, ...(total !== undefined ? { total } : {}) }, { headers: admin || mine ? { "Cache-Control": "no-store" } : cacheHeaders(30, 120) });
+    // 列表响应添加阅读时长
+    const postsWithTime = (results.results as any[]).map((post) => ({
+      ...post,
+      reading_time_minutes: getReadingTime(post.content || ""),
+    }));
+
+    return json({ posts: postsWithTime, ...(total !== undefined ? { total } : {}) }, { headers: admin || mine ? { "Cache-Control": "no-store" } : cacheHeaders(30, 120) });
   } catch (error) {
     console.error("Get posts error:", error);
     return json({ error: "Failed to fetch posts" }, { status: 500 });

@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight, Calendar, Eye, FileText, PenLine, Search, Tag, X } from "lucide-react";
+import { ArrowRight, Calendar, Clock, Eye, FileText, PenLine, Search, Tag, X } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell } from "@/components/page-chrome";
 import { PostCardSkeleton } from "@/components/site-widgets";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -21,6 +21,7 @@ interface Post {
   published_at: string;
   tags: string | null;
   view_count: number;
+  reading_time_minutes?: number;
 }
 
 const PAGE_SIZE = 9;
@@ -266,6 +267,12 @@ function BlogContent() {
                           <Eye size={12} />
                           {post.view_count}
                         </span>
+                        {post.reading_time_minutes ? (
+                          <span className="inline-flex items-center gap-1 font-mono-tech">
+                            <Clock size={12} />
+                            {post.reading_time_minutes} 分钟
+                          </span>
+                        ) : null}
                       </div>
                       <h2 className="font-serif-zh text-xl font-bold tracking-[0.08em] transition-colors group-hover:text-cyan-dark">
                         {post.title}

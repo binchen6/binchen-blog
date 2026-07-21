@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUp, Compass, Github, Mail, Rss } from "lucide-react";
+import { Compass, Github, Mail, Rss } from "lucide-react";
 
 const footerLinks = [
   { href: "/", label: "首页" },
@@ -11,9 +11,6 @@ const footerLinks = [
 ];
 
 export default function Footer() {
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   return (
     <footer className="relative z-10 border-t border-cyan-dark/10 bg-paper-warm/85">
@@ -39,8 +36,9 @@ export default function Footer() {
             <a href="mailto:contact@cryoconite.cn" className="text-ink-muted transition-colors hover:text-cinnabar" aria-label="Email">
               <Mail size={18} />
             </a>
-            <a href="/feed.xml" target="_blank" rel="noopener noreferrer" className="text-ink-muted transition-colors hover:text-bronze" aria-label="RSS 订阅">
+            <a href="/feed.xml" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-ink-muted transition-colors hover:text-bronze" aria-label="RSS 订阅">
               <Rss size={18} />
+              <span className="font-mono-tech text-xs">RSS</span>
             </a>
           </div>
         </div>
@@ -61,14 +59,6 @@ export default function Footer() {
           <p className="text-sm leading-loose text-ink-muted">
             欢迎通过留言板交流想法，也可以用邮件聊聊旅行、创作或技术。
           </p>
-          <button
-            type="button"
-            onClick={scrollToTop}
-            className="mt-5 inline-flex items-center gap-2 text-sm text-bronze transition-colors hover:text-bronze-dark"
-          >
-            <ArrowUp size={15} />
-            <span>回到顶部</span>
-          </button>
         </div>
       </div>
 

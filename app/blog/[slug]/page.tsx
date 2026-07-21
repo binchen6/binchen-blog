@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Calendar, Eye, ListTree, MessageCircle, Send, Tag, Trash2, User, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, Copy, Eye, ListTree, MessageCircle, Send, Tag, Trash2, User, X } from "lucide-react";
 import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { ReadingProgress } from "@/components/site-widgets";
 import { toast } from "@/components/toast";
@@ -468,7 +468,22 @@ export default function BlogPostPage() {
             </div>
           )}
 
-          <div className="my-8 h-px w-20 bg-gradient-to-r from-transparent via-bronze to-transparent" />
+          <div className="my-8 flex items-center gap-3">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-bronze to-transparent" />
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                toast("链接已复制到剪贴板", "ok");
+              }}
+              className="inline-flex items-center gap-1.5 text-xs text-ink-muted transition-colors hover:text-bronze"
+              aria-label="复制文章链接"
+            >
+              <Copy size={13} />
+              分享
+            </button>
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-bronze to-transparent" />
+          </div>
 
           {post.mode === "moment" ? (
             <div className="space-y-7">
