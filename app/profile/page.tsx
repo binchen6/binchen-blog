@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BookOpen, Copy, Image, Info, Pen, Save, Send, Shield, Trash2, UserCog, X } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { toast } from "@/components/toast";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { formatDate } from "@/lib/utils";
 
@@ -137,12 +138,12 @@ export default function ProfilePage() {
       });
       const data = await res.json() as { user?: ProfileUser; error?: string };
       if (!res.ok || !data.user) {
-        alert(data.error || "保存资料失败");
+        toast(data.error || "保存资料失败", "error");
         return;
       }
       setProfile(data.user);
       localStorage.setItem("user", JSON.stringify(data.user));
-      alert("个人资料已保存");
+      toast("个人资料已保存");
     } finally {
       setSavingProfile(false);
     }
@@ -159,12 +160,12 @@ export default function ProfilePage() {
       });
       const data = await res.json() as { request?: UsernameRequest; error?: string };
       if (!res.ok || !data.request) {
-        alert(data.error || "提交用户名申请失败");
+        toast(data.error || "提交用户名申请失败", "error");
         return;
       }
       setPendingUsernameRequest(data.request);
       setRequestedUsername("");
-      alert("用户名修改申请已提交，等待管理员审核");
+      toast("用户名修改申请已提交，等待管理员审核");
     } finally {
       setRequestingUsername(false);
     }
@@ -174,19 +175,19 @@ export default function ProfilePage() {
     if (!confirm("确定删除这篇文章吗？相关评论也会被删除。")) return;
     const res = await fetch(`/api/posts/${slug}`, { method: "DELETE", headers: authHeaders });
     if (res.ok) setPosts((current) => current.filter((post) => post.slug !== slug));
-    else alert("删除文章失败");
+    else toast("删除文章失败", "error");
   };
 
   const deleteImage = async (id: number) => {
     if (!confirm("确定删除这张图片吗？")) return;
     const res = await fetch(`/api/images/${id}`, { method: "DELETE", headers: authHeaders });
     if (res.ok) setImages((current) => current.filter((image) => image.id !== id));
-    else alert("删除图片失败");
+    else toast("删除图片失败", "error");
   };
 
   const copyImageUrl = async (url: string) => {
     await navigator.clipboard.writeText(url);
-    alert("图片链接已复制");
+    toast("图片链接已复制");
   };
 
   return (

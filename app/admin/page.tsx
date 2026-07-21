@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { BarChart3, BookOpen, HardDrive, Image, MessageCircle, Shield, Trash2, UserCog } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { toast } from "@/components/toast";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { formatDate } from "@/lib/utils";
 
@@ -185,7 +186,7 @@ export default function AdminPage() {
     });
     const data = await res.json() as { user?: UserRow; error?: string };
     if (!res.ok || !data.user) {
-      alert(data.error || "更新用户失败");
+      toast(data.error || "更新用户失败", "error");
       return;
     }
     setUsers((current) => current.map((item) => item.id === user.id ? data.user! : item));
@@ -195,7 +196,7 @@ export default function AdminPage() {
     if (!confirm("确定删除这篇文章吗？")) return;
     const res = await fetch(`/api/posts/${slug}`, { method: "DELETE", headers: authHeaders });
     if (res.ok) setPosts((current) => current.filter((post) => post.slug !== slug));
-    else alert("删除文章失败");
+    else toast("删除文章失败", "error");
   };
 
   const updateFeaturedPost = async (post: PostRow, isFeatured: boolean, featuredRank = post.featured_rank || 0) => {
@@ -206,7 +207,7 @@ export default function AdminPage() {
     });
     const data = await res.json() as { post?: PostRow; error?: string };
     if (!res.ok || !data.post) {
-      alert(data.error || "更新精选状态失败");
+      toast(data.error || "更新精选状态失败", "error");
       return;
     }
     setPosts((current) => current.map((item) => item.slug === post.slug ? { ...item, ...data.post } : item));
@@ -215,19 +216,19 @@ export default function AdminPage() {
   const deleteGuestbook = async (id: number) => {
     const res = await fetch(`/api/guestbook?id=${id}`, { method: "DELETE", headers: authHeaders });
     if (res.ok) setGuestbook((current) => current.filter((entry) => entry.id !== id));
-    else alert("删除留言失败");
+    else toast("删除留言失败", "error");
   };
 
   const deleteComment = async (id: number) => {
     const res = await fetch(`/api/admin/comments?id=${id}`, { method: "DELETE", headers: authHeaders });
     if (res.ok) setComments((current) => current.filter((comment) => comment.id !== id));
-    else alert("删除评论失败");
+    else toast("删除评论失败", "error");
   };
 
   const deleteImage = async (id: number) => {
     const res = await fetch(`/api/images/${id}`, { method: "DELETE", headers: authHeaders });
     if (res.ok) setImages((current) => current.filter((image) => image.id !== id));
-    else alert("删除图片失败");
+    else toast("删除图片失败", "error");
   };
 
   const reviewUsernameRequest = async (id: number, action: "approve" | "reject") => {
@@ -238,7 +239,7 @@ export default function AdminPage() {
     });
     const data = await res.json() as { error?: string };
     if (!res.ok) {
-      alert(data.error || "处理用户名申请失败");
+      toast(data.error || "处理用户名申请失败", "error");
       return;
     }
     setUsernameRequests((current) => current.filter((item) => item.id !== id));
