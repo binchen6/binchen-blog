@@ -101,7 +101,12 @@ export default function WritePage() {
   const [uploading, setUploading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState("");
+  const [draftRestored, setDraftRestored] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const DRAFT_KEY = "write-draft";
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -142,6 +147,63 @@ export default function WritePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, token]);
 
+  // 草稿恢复（仅新建场景，编辑已有文章时不覆盖）
+  useEffect(() => {
+    if (searchParams.get("edit") || draftRestored) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const draft = JSON.parse(raw);
+        if (draft.title || draft.content) {
+          setTitle(draft.title || "");
+          setContent(draft.content || "");
+          setTags(draft.tags || "");
+          setMode(draft.mode === "moment" ? "moment" : "article");
+          toast("已恢复上次未发布的草稿", "ok");
+        }
+      }
+    } catch { /* 草稿损坏直接忽略 */ }
+    setDraftRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 草稿自动保存（防抖 1s，编辑已有文章时不同步）
+  useEffect(() => {
+    if (editingSlug || !draftRestored) return;
+    const timer = setTimeout(() => {
+      if (title || content) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, content, tags, mode }));
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [title, content, tags, mode, editingSlug, draftRestored]);
+
+  // Markdown 预览渲染
+  useEffect(() => {
+    if (!showPreview || mode !== "article") return;
+    let cancelled = false;
+    Promise.all([
+      import("markdown-it"),
+      import("dompurify"),
+      import("markdown-it-footnote"),
+      import("markdown-it-task-lists"),
+      import("markdown-it-mark"),
+    ]).then(([{ default: MarkdownIt }, { default: DOMPurify }, { default: footnote }, { default: taskLists }, { default: mark }]) => {
+      if (cancelled) return;
+      const md = new MarkdownIt({ html: false, linkify: true, typographer: true })
+        .use(footnote)
+        .use(taskLists, { enabled: true })
+        .use(mark);
+      setPreviewHtml(DOMPurify.sanitize(md.render(content || "*暂无内容*"), {
+        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
+        ADD_ATTR: ["for", "checked", "disabled", "type", "id"],
+      }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showPreview, content, mode]);
+
   const modeHelp = useMemo(() => {
     return mode === "moment"
       ? "朋友圈模式适合短文字和多张图片，发布后以动态卡片展示。"
@@ -157,6 +219,8 @@ export default function WritePage() {
     setStatus("published");
     setImages([]);
     setEditingSlug(null);
+    setShowPreview(false);
+    localStorage.removeItem(DRAFT_KEY);
   };
 
   const requireToken = () => {
@@ -251,6 +315,7 @@ export default function WritePage() {
       const data = (await res.json()) as { post?: ManagePost; error?: string };
       if (data.post) {
         toast(editingSlug ? "文章已更新" : status === "published" ? "发布成功" : "草稿已保存");
+        localStorage.removeItem(DRAFT_KEY);
         setPosts((current) => {
           const rest = current.filter((item) => item.slug !== data.post!.slug);
           return [data.post!, ...rest];
@@ -284,6 +349,7 @@ export default function WritePage() {
     setCoverImage(post.cover_image || "");
     setMode(post.mode || "article");
     setStatus(post.status);
+    setShowPreview(false);
     try {
       setImages(post.images ? JSON.parse(post.images) : []);
     } catch {
@@ -331,7 +397,7 @@ export default function WritePage() {
                     <button
                       key={item.value}
                       type="button"
-                      onClick={() => setMode(item.value as PostMode)}
+                      onClick={() => { setMode(item.value as PostMode); setShowPreview(false); }}
                       className={cn(
                         "inline-flex items-center gap-2 px-3 py-2 text-sm transition-colors",
                         mode === item.value ? "bg-cyan-dark text-bronze-light" : "text-ink-light hover:text-cyan-dark"
@@ -378,17 +444,41 @@ export default function WritePage() {
             </div>
 
             <div>
-              <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink-light">
-                <Pen size={16} className="text-bronze" />
-                内容
-              </label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={mode === "moment" ? "今天发生了什么？" : "支持 Markdown 格式..."}
-                className={cn("w-full resize-y bg-paper/60 text-sm leading-loose", mode === "article" ? "h-[28rem] font-mono-tech" : "h-56")}
-                required
-              />
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-ink-light">
+                  <Pen size={16} className="text-bronze" />
+                  内容
+                </label>
+                {mode === "article" && (
+                  <div className="inline-flex border border-mist bg-paper/60 p-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setShowPreview(false)}
+                      className={cn("px-3 py-1 transition-colors", !showPreview ? "bg-cyan-dark text-bronze-light" : "text-ink-light hover:text-cyan-dark")}
+                    >
+                      编辑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowPreview(true)}
+                      className={cn("px-3 py-1 transition-colors", showPreview ? "bg-cyan-dark text-bronze-light" : "text-ink-light hover:text-cyan-dark")}
+                    >
+                      预览
+                    </button>
+                  </div>
+                )}
+              </div>
+              {showPreview && mode === "article" ? (
+                <div className="markdown-content min-h-[28rem] w-full border border-mist bg-paper/60 p-4 text-sm leading-loose text-ink-light" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+              ) : (
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder={mode === "moment" ? "今天发生了什么？" : "支持 Markdown 格式..."}
+                  className={cn("w-full resize-y bg-paper/60 text-sm leading-loose", mode === "article" ? "h-[28rem] font-mono-tech" : "h-56")}
+                  required
+                />
+              )}
             </div>
 
             {mode === "moment" && images.length > 0 && (

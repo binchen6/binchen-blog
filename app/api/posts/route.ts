@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { canAccessAdmin, getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
-import { generateSlug, generateExcerpt, getReadingTime } from "@/lib/utils";
+import { generateSlug, generateExcerpt } from "@/lib/utils";
 import { cacheHeaders, isSafePublicUrl, json, parseBoundedInt, rateLimit, requireText } from "@/lib/security";
 
 export const runtime = "edge";
@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
     const db = (ctx.env as any).DB;
     const currentUser = await getCurrentUserFromRequest(request);
 
-    let query = "SELECT posts.*, users.display_name AS author_name, users.username AS author_username FROM posts LEFT JOIN users ON users.id = posts.author_id";
+    // 列表查询不取 content 全文，显著减少传输量（性能优化）
+    let query = "SELECT posts.id, posts.title, posts.slug, posts.excerpt, posts.cover_image, posts.images, posts.mode, posts.author_id, posts.status, posts.created_at, posts.updated_at, posts.published_at, posts.tags, posts.view_count, posts.is_featured, posts.featured_rank, LENGTH(posts.content) AS content_length, users.display_name AS author_name, users.username AS author_username FROM posts LEFT JOIN users ON users.id = posts.author_id";
     const params: any[] = [];
     const where: string[] = [];
 
@@ -97,11 +98,14 @@ export async function GET(request: NextRequest) {
 
     const results = await db.prepare(query).bind(...params).all();
 
-    // 列表响应添加阅读时长
-    const postsWithTime = (results.results as any[]).map((post) => ({
-      ...post,
-      reading_time_minutes: getReadingTime(post.content || ""),
-    }));
+    // 用 content_length 估算阅读时长，不再传输全文
+    const postsWithTime = (results.results as any[]).map((post) => {
+      const { content_length, ...rest } = post;
+      return {
+        ...rest,
+        reading_time_minutes: Math.max(1, Math.ceil(Number(content_length || 0) / 600)),
+      };
+    });
 
     return json({ posts: postsWithTime, ...(total !== undefined ? { total } : {}) }, { headers: admin || mine ? { "Cache-Control": "no-store" } : cacheHeaders(30, 120) });
   } catch (error) {

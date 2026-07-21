@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Compass, Lock, LogIn, User } from "lucide-react";
 import { SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { storeAuth } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 
 export default function LoginPage() {
@@ -29,10 +30,9 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
-      const data = (await res.json()) as { token?: string; user?: unknown; error?: string };
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+      const data = (await res.json()) as { token?: string; user?: any; error?: string };
+      if (data.token && data.user) {
+        storeAuth(data.user, data.token);
         router.push("/");
       } else {
         setError(data.error || "登录失败");

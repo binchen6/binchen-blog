@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Copy, Image, Info, Pen, Save, Send, Shield, Trash2, UserCog, X } from "lucide-react";
+import { BookOpen, Copy, Image, Info, Lock, Pen, Save, Send, Shield, Trash2, UserCog, X } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { toast } from "@/components/toast";
+import { storeAuth } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { formatDate } from "@/lib/utils";
 
@@ -77,6 +78,8 @@ export default function ProfilePage() {
   const [images, setImages] = useState<ImageAsset[]>([]);
   const [savingProfile, setSavingProfile] = useState(false);
   const [requestingUsername, setRequestingUsername] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -142,10 +145,35 @@ export default function ProfilePage() {
         return;
       }
       setProfile(data.user);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      storeAuth(data.user as any, token!);
       toast("个人资料已保存");
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast("两次输入的新密码不一致", "error");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const res = await fetch("/api/auth/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify({ currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword }),
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        toast(data.error || "修改密码失败", "error");
+        return;
+      }
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      toast("密码已更新，下次登录请使用新密码");
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -252,6 +280,42 @@ export default function ProfilePage() {
                         {requestingUsername ? "提交中..." : "提交申请"}
                       </button>
                     )}
+                  </form>
+
+                  <form onSubmit={handleChangePassword} className="border border-cyan-dark/10 bg-paper/55 p-4">
+                    <label className="mb-3 block text-sm font-semibold text-ink-light">修改密码</label>
+                    <div className="space-y-3">
+                      <input
+                        type="password"
+                        value={passwordForm.currentPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                        className="w-full bg-paper/60"
+                        placeholder="当前密码"
+                        required
+                      />
+                      <input
+                        type="password"
+                        value={passwordForm.newPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                        className="w-full bg-paper/60"
+                        placeholder="新密码（8-128 位）"
+                        minLength={8}
+                        required
+                      />
+                      <input
+                        type="password"
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                        className="w-full bg-paper/60"
+                        placeholder="确认新密码"
+                        minLength={8}
+                        required
+                      />
+                      <button type="submit" disabled={changingPassword} className="btn-outline inline-flex items-center gap-2 px-4 py-2 text-sm disabled:opacity-50">
+                        <Lock size={14} />
+                        {changingPassword ? "提交中..." : "更新密码"}
+                      </button>
+                    </div>
                   </form>
 
                   <div className="border border-cyan-dark/10 bg-paper/55 p-4">

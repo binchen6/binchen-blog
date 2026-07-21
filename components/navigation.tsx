@@ -4,13 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, Compass, LogIn, LogOut, Menu, MessageCircle, Pen, Shield, X } from "lucide-react";
+import { useAuth } from "@/lib/client-auth";
 import { cn } from "@/lib/utils";
-
-interface UserData {
-  username: string;
-  display_name?: string;
-  role?: string;
-}
 
 const navItems = [
   { href: "/", label: "首页", icon: Compass },
@@ -22,19 +17,10 @@ const navItems = [
 export default function Navigation() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<UserData | null>(null);
+  const { user, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      try {
-        setUser(JSON.parse(userStr));
-      } catch {
-        localStorage.removeItem("user");
-      }
-    }
-
     const handleScroll = () => setScrolled(window.scrollY > 16);
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -46,9 +32,7 @@ export default function Navigation() {
   }, [pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
+    logout();
     window.location.href = "/";
   };
 

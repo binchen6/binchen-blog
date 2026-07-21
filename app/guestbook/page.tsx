@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { MessageCircle, Send, Trash2, User, Wind, X } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { toast } from "@/components/toast";
+import { useAuth, authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -26,26 +27,11 @@ export default function GuestbookPage() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: "", email: "", content: "" });
   const [replyTo, setReplyTo] = useState<GuestbookEntry | null>(null);
-  const [currentUser, setCurrentUser] = useState<{ id: number; username: string; email?: string; display_name?: string } | null>(null);
+  const { user: currentUser } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      try {
-        const parsed = JSON.parse(userStr);
-        setCurrentUser(parsed);
-        // 登录用户预填姓名与邮箱
-        setForm((current) => ({
-          ...current,
-          name: parsed.display_name || parsed.username || "",
-          email: parsed.email || "",
-        }));
-      } catch {
-        localStorage.removeItem("user");
-      }
-    }
 
     fetch("/api/guestbook")
       .then((res) => res.json() as Promise<{ entries?: GuestbookEntry[] }>)
@@ -76,12 +62,9 @@ export default function GuestbookPage() {
     if (!form.content) return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/guestbook", {
+      const res = await authFetch("/api/guestbook", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(localStorage.getItem("token") ? { Authorization: `Bearer ${localStorage.getItem("token")}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, replyTo: replyTo?.id }),
       });
       const data = (await res.json()) as { entry?: GuestbookEntry };
@@ -105,12 +88,7 @@ export default function GuestbookPage() {
 
   const deleteEntry = async (id: number) => {
     if (!confirm("确定删除这条留言吗？其回复会一并删除。")) return;
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    const res = await fetch(`/api/guestbook?id=${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await authFetch(`/api/guestbook?id=${id}`, { method: "DELETE" });
     if (res.ok) {
       // 后端级联删除回复，前端同步移除
       setEntries((current) => current.filter((entry) => entry.id !== id && entry.reply_to !== id));

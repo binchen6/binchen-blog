@@ -10,6 +10,11 @@ function encodePath(path: string): string {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
+/** jsDelivr CDN URL（公开仓库图片走全球 CDN，零 Worker 成本） */
+function jsdelivrUrl(github: ReturnType<typeof getGithubImageConfig>, storageKey: string): string {
+  return `https://cdn.jsdelivr.net/gh/${github.owner}/${github.repo}@${github.branch}/${encodePath(storageKey)}`;
+}
+
 function base64ToBytes(base64: string): Uint8Array {
   const binary = atob(base64.replace(/\s/g, ""));
   const bytes = new Uint8Array(binary.length);
@@ -62,7 +67,7 @@ async function fetchGithubImageBytes(github: ReturnType<typeof getGithubImageCon
   return base64ToBytes(contentData.content);
 }
 
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const imageId = parsePositiveId(params.id);
     if (!imageId) {
@@ -82,6 +87,19 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
         { error: `GitHub image storage is not configured. Missing: ${github.missing.join(", ")}` },
         { status: 500 }
       );
+    }
+
+    // 默认 302 到 jsDelivr CDN（公开仓库）；?proxy=1 强制 Worker 代理回退
+    const forceProxy = new URL(request.url).searchParams.get("proxy") === "1";
+    if (!forceProxy) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: jsdelivrUrl(github, image.storage_key),
+          "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+          ...securityHeaders(),
+        },
+      });
     }
 
     const bytes = await fetchGithubImageBytes(github, image);

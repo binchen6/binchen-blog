@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Calendar, Copy, Eye, ListTree, MessageCircle, Se
 import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { ReadingProgress } from "@/components/site-widgets";
 import { toast } from "@/components/toast";
+import { useAuth, authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate, getReadingTime } from "@/lib/utils";
 
@@ -83,22 +84,13 @@ export default function BlogPostPage() {
   const [nextPost, setNextPost] = useState<PostNavItem | null>(null);
   const [commentForm, setCommentForm] = useState({ name: "", email: "", content: "" });
   const [replyTo, setReplyTo] = useState<Comment | null>(null);
-  const [loggedInUser, setLoggedInUser] = useState<{ id: number; username: string; email?: string; display_name?: string } | null>(null);
+  const { user: loggedInUser } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useDocumentTitle(post?.title, post?.excerpt || undefined);
 
   useEffect(() => {
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      try {
-        setLoggedInUser(JSON.parse(userStr));
-      } catch {
-        localStorage.removeItem("user");
-      }
-    }
-
     if (!slug) return;
     let cancelled = false;
 
@@ -272,13 +264,9 @@ export default function BlogPostPage() {
     if (!commentForm.content) return;
     setSubmitting(true);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`/api/posts/${slug}/comments`, {
+      const res = await authFetch(`/api/posts/${slug}/comments`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...commentForm, parentId: replyTo?.id }),
       });
       const data = (await res.json()) as { comment?: Comment };
@@ -302,12 +290,7 @@ export default function BlogPostPage() {
 
   const deleteComment = async (id: number) => {
     if (!confirm("确定删除这条评论吗？其回复会一并删除。")) return;
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    const res = await fetch(`/api/posts/${slug}/comments?id=${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await authFetch(`/api/posts/${slug}/comments?id=${id}`, { method: "DELETE" });
     if (res.ok) {
       // 后端级联删除子回复，前端同步移除
       setComments((current) => current.filter((comment) => comment.id !== id && comment.parent_id !== id));
