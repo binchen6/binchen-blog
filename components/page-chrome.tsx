@@ -6,6 +6,7 @@ import Navigation from "@/components/navigation";
 import Footer from "@/components/footer";
 import { BackToTop } from "@/components/site-widgets";
 import { ToastHost } from "@/components/toast";
+import { AnnouncementCenter } from "@/components/announcement-center";
 import { cn } from "@/lib/utils";
 
 type SiteShellProps = {
@@ -37,6 +38,7 @@ export function SiteShell({
       {withFooter && <Footer />}
       <BackToTop />
       <ToastHost />
+      <AnnouncementCenter />
     </main>
   );
 }

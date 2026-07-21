@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { ROLE_LABELS } from "@/lib/auth";
+import { getCurrentUserFromRequest, ROLE_LABELS } from "@/lib/auth";
 import { cacheHeaders, json } from "@/lib/security";
 import { UserRole } from "@/lib/types";
 
@@ -37,6 +37,22 @@ export async function GET(_request: NextRequest, { params }: { params: { usernam
        LIMIT 50`
     ).bind(user.id).all();
 
+    // 关注数据
+    const [followerRow, followingRow] = await Promise.all([
+      db.prepare("SELECT COUNT(*) AS c FROM follows WHERE author_id = ?").bind(user.id).first(),
+      db.prepare("SELECT COUNT(*) AS c FROM follows WHERE follower_id = ?").bind(user.id).first(),
+    ]);
+
+    // 当前登录用户是否已关注
+    let isFollowing = false;
+    const currentUser = await getCurrentUserFromRequest(_request);
+    if (currentUser && currentUser.id !== Number(user.id)) {
+      const followRow = await db.prepare(
+        "SELECT id FROM follows WHERE follower_id = ? AND author_id = ?"
+      ).bind(currentUser.id, user.id).first();
+      isFollowing = !!followRow;
+    }
+
     return json(
       {
         user: {
@@ -47,8 +63,11 @@ export async function GET(_request: NextRequest, { params }: { params: { usernam
           roleLabel: ROLE_LABELS[(user.role as UserRole) || "author"] || "成员",
           bio: user.bio || null,
           created_at: user.created_at,
+          follower_count: Number((followerRow as any)?.c ?? 0),
+          following_count: Number((followingRow as any)?.c ?? 0),
         },
         posts: posts.results,
+        isFollowing,
       },
       { headers: cacheHeaders(30, 120) }
     );

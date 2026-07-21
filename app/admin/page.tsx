@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, BookOpen, HardDrive, Image, LayoutDashboard, MessageCircle, MessagesSquare, Shield, Trash2, UserCog, Users } from "lucide-react";
+import { BarChart3, BookOpen, HardDrive, Image, LayoutDashboard, Megaphone, MessageCircle, MessagesSquare, Shield, Trash2, UserCog, Users } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { toast } from "@/components/toast";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -63,6 +63,15 @@ interface PerformanceTaskRow {
   max_duration_ms: number;
 }
 
+interface AnnouncementRow {
+  id: number;
+  title: string;
+  content: string;
+  created_at: string;
+  created_by_name?: string | null;
+  created_by_username?: string | null;
+}
+
 interface GithubStorageStatus {
   configured: boolean;
   missing: string[];
@@ -88,7 +97,7 @@ const roleLabels: Record<string, string> = {
 };
 
 type StatCard = [string, number | undefined, LucideIcon];
-type TabKey = "overview" | "posts" | "users" | "interactions" | "images" | "performance";
+type TabKey = "overview" | "posts" | "users" | "interactions" | "images" | "performance" | "announcements";
 
 const tabs: { key: TabKey; label: string; icon: LucideIcon }[] = [
   { key: "overview", label: "概览", icon: LayoutDashboard },
@@ -96,6 +105,7 @@ const tabs: { key: TabKey; label: string; icon: LucideIcon }[] = [
   { key: "users", label: "用户", icon: Users },
   { key: "interactions", label: "互动", icon: MessagesSquare },
   { key: "images", label: "图片", icon: Image },
+  { key: "announcements", label: "公告", icon: Megaphone },
   { key: "performance", label: "性能", icon: BarChart3 },
 ];
 
@@ -116,6 +126,9 @@ export default function AdminPage() {
   const [usernameRequests, setUsernameRequests] = useState<UsernameRequestRow[]>([]);
   const [performanceTasks, setPerformanceTasks] = useState<PerformanceTaskRow[]>([]);
   const [githubStorage, setGithubStorage] = useState<GithubStorageStatus | null>(null);
+  const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([]);
+  const [announcementForm, setAnnouncementForm] = useState({ title: "", content: "" });
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -176,6 +189,11 @@ export default function AdminPage() {
       add("/api/performance", async (res) => {
         const data = (await res.json()) as { slowTasks?: PerformanceTaskRow[] };
         setPerformanceTasks(data.slowTasks || []);
+      });
+    } else if (tab === "announcements") {
+      add("/api/announcements?all=1", async (res) => {
+        const data = (await res.json()) as { announcements?: AnnouncementRow[] };
+        setAnnouncements(data.announcements || []);
       });
     }
 
@@ -264,6 +282,32 @@ export default function AdminPage() {
     const res = await fetch(`/api/images/${id}`, { method: "DELETE", headers: authHeaders });
     if (res.ok) setImages((current) => current.filter((image) => image.id !== id));
     else toast("删除图片失败", "error");
+  };
+
+  const sendAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!announcementForm.title.trim() || !announcementForm.content.trim()) {
+      toast("请填写公告标题和内容", "error");
+      return;
+    }
+    setSendingAnnouncement(true);
+    try {
+      const res = await fetch("/api/announcements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+        body: JSON.stringify(announcementForm),
+      });
+      const data = (await res.json()) as { announcement?: AnnouncementRow; notified?: number; error?: string };
+      if (!res.ok || !data.announcement) {
+        toast(data.error || "公告发送失败", "error");
+        return;
+      }
+      setAnnouncements((current) => [data.announcement!, ...current]);
+      setAnnouncementForm({ title: "", content: "" });
+      toast(`公告已发送，通知了 ${data.notified ?? 0} 位用户`);
+    } finally {
+      setSendingAnnouncement(false);
+    }
   };
 
   const reviewUsernameRequest = async (id: number, action: "approve" | "reject") => {
@@ -589,6 +633,63 @@ export default function AdminPage() {
                   ))}
                 </div>
               </SurfacePanel>
+            )}
+
+            {/* 公告 */}
+            {activeTab === "announcements" && (
+              <div className="space-y-8">
+                <SurfacePanel as="form" onSubmit={sendAnnouncement} className="space-y-5 p-6">
+                  <h2 className="flex items-center gap-2 font-serif-zh text-xl font-semibold tracking-[0.08em]">
+                    <Megaphone size={20} className="text-bronze" />
+                    发布公告
+                  </h2>
+                  <p className="text-sm text-ink-muted">公告会广播给所有注册用户：登录用户首次接收直接弹窗，访客在首页看到横幅。</p>
+                  <input
+                    type="text"
+                    value={announcementForm.title}
+                    onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
+                    className="w-full bg-paper/60"
+                    placeholder="公告标题（80 字以内）"
+                    maxLength={80}
+                    required
+                  />
+                  <textarea
+                    value={announcementForm.content}
+                    onChange={(e) => setAnnouncementForm({ ...announcementForm, content: e.target.value })}
+                    className="h-32 w-full resize-none bg-paper/60"
+                    placeholder="公告内容..."
+                    maxLength={2000}
+                    required
+                  />
+                  <button type="submit" disabled={sendingAnnouncement} className="btn-tech inline-flex items-center gap-2 disabled:opacity-50">
+                    <Megaphone size={16} />
+                    {sendingAnnouncement ? "发送中..." : "发布公告"}
+                  </button>
+                </SurfacePanel>
+
+                <SurfacePanel className="p-6">
+                  <h2 className="mb-5 flex items-center gap-2 font-serif-zh text-xl font-semibold tracking-[0.08em]">
+                    <Megaphone size={20} className="text-bronze" />
+                    历史公告（{announcements.length}）
+                  </h2>
+                  {announcements.length === 0 ? (
+                    <p className="text-sm text-ink-muted">还没有发布过公告。</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {announcements.map((item) => (
+                        <div key={item.id} className="border border-cyan-dark/10 bg-paper/55 p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-semibold">{item.title}</span>
+                            <span className="font-mono-tech text-xs text-ink-muted">{formatDate(item.created_at)}</span>
+                          </div>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-loose text-ink-light">{item.content}</p>
+                          <div className="mt-2 text-xs text-ink-muted">发布人：{item.created_by_name || item.created_by_username || "未知"}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </SurfacePanel>
+              </div>
             )}
 
             {/* 性能 */}

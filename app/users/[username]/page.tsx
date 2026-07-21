@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Calendar, Eye, FileText, Shield, Tag } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, ArrowRight, Calendar, Eye, FileText, Shield, Tag, UserPlus, UserCheck } from "lucide-react";
 import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { PostCardSkeleton } from "@/components/site-widgets";
 import { UserAvatar } from "@/components/user-avatar";
+import { toast } from "@/components/toast";
+import { useAuth } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { formatDate } from "@/lib/utils";
 
@@ -18,6 +20,8 @@ interface PublicUser {
   roleLabel: string;
   bio: string | null;
   created_at: string;
+  follower_count?: number;
+  following_count?: number;
 }
 
 interface UserPost {
@@ -41,6 +45,11 @@ export default function PublicProfilePage() {
   const [posts, setPosts] = useState<UserPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followPending, setFollowPending] = useState(false);
+  const { user: currentUser } = useAuth();
+  const router = useRouter();
 
   useDocumentTitle(user ? `${user.display_name || user.username} 的主页` : "用户主页");
 
@@ -54,12 +63,14 @@ export default function PublicProfilePage() {
           if (!cancelled) setNotFound(true);
           return null;
         }
-        return (await res.json()) as { user?: PublicUser; posts?: UserPost[] };
+        return (await res.json()) as { user?: PublicUser; posts?: UserPost[]; isFollowing?: boolean };
       })
       .then((data) => {
         if (cancelled || !data) return;
         setUser(data.user || null);
         setPosts(data.posts || []);
+        setIsFollowing(!!data.isFollowing);
+        setFollowerCount(data.user?.follower_count || 0);
       })
       .catch(() => {
         if (!cancelled) setNotFound(true);
@@ -72,6 +83,29 @@ export default function PublicProfilePage() {
       cancelled = true;
     };
   }, [username]);
+
+  const toggleFollow = async () => {
+    if (!currentUser) {
+      toast("请先登录后再关注", "error");
+      router.push("/login");
+      return;
+    }
+    if (followPending || !user) return;
+    setFollowPending(true);
+    try {
+      const res = await fetch(`/api/users/${encodeURIComponent(user.username)}/follow`, { method: "POST" });
+      const data = (await res.json()) as { following?: boolean; followerCount?: number; error?: string };
+      if (!res.ok) {
+        toast(data.error || "操作失败", "error");
+        return;
+      }
+      setIsFollowing(!!data.following);
+      setFollowerCount(Number(data.followerCount ?? 0));
+      toast(data.following ? "已关注" : "已取消关注");
+    } finally {
+      setFollowPending(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -124,10 +158,26 @@ export default function PublicProfilePage() {
               </div>
               <p className="mt-2 font-mono-tech text-sm text-ink-muted">@{user.username}</p>
               {user.bio && <p className="mt-4 max-w-xl text-sm leading-loose text-ink-light">{user.bio}</p>}
-              <p className="mt-4 inline-flex items-center gap-1.5 font-mono-tech text-xs text-ink-muted">
-                <Calendar size={12} />
-                {formatDate(user.created_at)} 加入
-              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-4 sm:justify-start">
+                <span className="inline-flex items-center gap-1.5 font-mono-tech text-xs text-ink-muted">
+                  <Calendar size={12} />
+                  {formatDate(user.created_at)} 加入
+                </span>
+                <span className="font-mono-tech text-xs text-ink-muted">
+                  <span className="text-cyan-dark">{followerCount}</span> 粉丝 · <span className="text-cyan-dark">{user.following_count || 0}</span> 关注
+                </span>
+              </div>
+              {(!currentUser || currentUser.username !== user.username) && (
+                <button
+                  type="button"
+                  onClick={toggleFollow}
+                  disabled={followPending}
+                  className={isFollowing ? "btn-outline mt-5 inline-flex items-center gap-2 px-5 py-2 text-sm disabled:opacity-50" : "btn-tech mt-5 inline-flex items-center gap-2 px-5 py-2 text-sm disabled:opacity-50"}
+                >
+                  {isFollowing ? <UserCheck size={15} /> : <UserPlus size={15} />}
+                  {isFollowing ? "已关注" : "关注 TA"}
+                </button>
+              )}
             </div>
           </div>
         </SurfacePanel>

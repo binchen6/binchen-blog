@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
+import { createNotification, notifyMentions } from "@/lib/notifications";
 import { json, parsePositiveId, rateLimit, requireText } from "@/lib/security";
 import { validateEmail } from "@/lib/utils";
 
@@ -47,6 +48,39 @@ export async function POST(request: NextRequest) {
     const result = await db.prepare(
       "INSERT INTO guestbook (name, email, content, user_id, reply_to) VALUES (?, ?, ?, ?, ?) RETURNING *"
     ).bind(entryName, entryEmail, content, currentUser?.id || null, replyTo || null).first();
+
+    // 1. 通知站主（新留言）
+    const owner = await db.prepare("SELECT id FROM users WHERE role = 'owner' AND is_active = 1 LIMIT 1").first();
+    if (owner) {
+      await createNotification(db, {
+        userId: Number(owner.id),
+        type: "guestbook",
+        actorId: currentUser?.id,
+        actorName: entryName,
+        targetType: "guestbook",
+        targetId: Number(result.id),
+        link: "/guestbook",
+        content: `在留言板留下了新留言：${content.slice(0, 60)}`,
+      });
+    }
+    // 2. 回复时通知被回复者
+    if (replyTo) {
+      const parent = await db.prepare("SELECT user_id FROM guestbook WHERE id = ?").bind(replyTo).first();
+      if (parent?.user_id) {
+        await createNotification(db, {
+          userId: Number(parent.user_id),
+          type: "reply",
+          actorId: currentUser?.id,
+          actorName: entryName,
+          targetType: "guestbook",
+          targetId: replyTo,
+          link: "/guestbook",
+          content: `回复了你的留言：${content.slice(0, 60)}`,
+        });
+      }
+    }
+    // 3. @提及通知
+    await notifyMentions(db, content, { id: currentUser?.id, name: entryName }, "/guestbook");
 
     return json({ entry: result }, { status: 201 });
   } catch (error) {

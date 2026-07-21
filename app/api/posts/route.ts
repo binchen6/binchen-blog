@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const currentUser = await getCurrentUserFromRequest(request);
 
     // 列表查询不取 content 全文，显著减少传输量（性能优化）
-    let query = "SELECT posts.id, posts.title, posts.slug, posts.excerpt, posts.cover_image, posts.images, posts.mode, posts.author_id, posts.status, posts.created_at, posts.updated_at, posts.published_at, posts.tags, posts.view_count, posts.is_featured, posts.featured_rank, LENGTH(posts.content) AS content_length, users.display_name AS author_name, users.username AS author_username FROM posts LEFT JOIN users ON users.id = posts.author_id";
+    let query = "SELECT posts.id, posts.title, posts.slug, posts.excerpt, posts.cover_image, posts.images, posts.mode, posts.author_id, posts.status, posts.created_at, posts.updated_at, posts.published_at, posts.tags, posts.view_count, posts.is_featured, posts.featured_rank, LENGTH(posts.content) AS content_length, users.display_name AS author_name, users.username AS author_username, (SELECT COUNT(*) FROM likes WHERE target_type = 'post' AND target_id = posts.id) AS like_count FROM posts LEFT JOIN users ON users.id = posts.author_id";
     const params: any[] = [];
     const where: string[] = [];
 

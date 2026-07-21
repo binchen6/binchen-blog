@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Compass, LogIn, LogOut, Menu, MessageCircle, Pen, Shield, X } from "lucide-react";
+import { Bell, BookOpen, Compass, LogIn, LogOut, Menu, MessageCircle, Pen, Shield, X } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
+import { NotificationBell } from "@/components/notification-bell";
 import { useAuth } from "@/lib/client-auth";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +97,8 @@ export default function Navigation() {
 
           <div className="mx-2 h-5 w-px bg-cyan-dark/10" />
 
+          <NotificationBell />
+
           {user ? (
             <div className="flex items-center gap-3">
               <Link href="/profile" className="flex max-w-[10rem] items-center gap-2 truncate text-sm text-ink-light transition-colors hover:text-cyan-dark">
@@ -161,6 +164,12 @@ export default function Navigation() {
               </Link>
             )}
             <div className="mt-3 border-t border-mist/60 pt-3">
+              {user && (
+                <Link href="/notifications" className="flex items-center gap-3 px-2 py-3 text-sm text-ink-light">
+                  <Bell size={16} />
+                  <span>信箱</span>
+                </Link>
+              )}
               {user ? (
                 <>
                   <Link href="/profile" className="flex items-center gap-3 px-2 py-3 text-sm text-cyan-dark">

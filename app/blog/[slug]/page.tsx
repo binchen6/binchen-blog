@@ -8,6 +8,7 @@ import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { ReadingProgress } from "@/components/site-widgets";
 import { toast } from "@/components/toast";
 import { UserAvatar } from "@/components/user-avatar";
+import { LikeButton } from "@/components/like-button";
 import { useAuth, authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate, getReadingTime } from "@/lib/utils";
@@ -26,6 +27,7 @@ interface Post {
   published_at: string;
   tags: string | null;
   view_count: number;
+  like_count?: number;
   author_name?: string | null;
   author_username?: string | null;
   author_avatar?: string | null;
@@ -39,6 +41,7 @@ interface Comment {
   created_at: string;
   parent_id: number | null;
   user_id: number | null;
+  like_count?: number;
   user_display_name?: string | null;
   username?: string | null;
   user_avatar?: string | null;
@@ -79,7 +82,9 @@ export default function BlogPostPage() {
   const slug = params.slug as string;
 
   const [post, setPost] = useState<Post | null>(null);
+  const [likedByMe, setLikedByMe] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [likedCommentIds, setLikedCommentIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [renderedContent, setRenderedContent] = useState("");
   const [toc, setToc] = useState<TocItem[]>([]);
@@ -103,21 +108,23 @@ export default function BlogPostPage() {
     async function loadPost() {
       try {
         const postRes = await fetch(`/api/posts/${slug}`);
-        const postData = (await postRes.json()) as { post?: Post };
+        const postData = (await postRes.json()) as { post?: Post; likedByMe?: boolean };
         if (cancelled) return;
 
         if (postData.post) {
           setPost(postData.post);
+          setLikedByMe(!!postData.likedByMe);
 
           const [commentsRes, listRes] = await Promise.all([
             fetch(`/api/posts/${slug}/comments`),
             fetch("/api/posts?limit=100"),
           ]);
-          const commentsData = (await commentsRes.json()) as { comments?: Comment[] };
+          const commentsData = (await commentsRes.json()) as { comments?: Comment[]; likedIds?: number[] };
           const listData = (await listRes.json()) as { posts?: { slug: string; title: string }[] };
           if (cancelled) return;
 
           setComments(commentsData.comments || []);
+          setLikedCommentIds(commentsData.likedIds || []);
 
           // 上一篇/下一篇（按发布时间排序的列表中找相邻）
           const list = listData.posts || [];
@@ -471,6 +478,8 @@ export default function BlogPostPage() {
               <Copy size={13} />
               分享
             </button>
+            <span className="text-mist">·</span>
+            <LikeButton targetType="post" targetId={post.id} initialCount={post.like_count || 0} initialLiked={likedByMe} />
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-bronze to-transparent" />
           </div>
 
@@ -624,6 +633,13 @@ export default function BlogPostPage() {
                           <div className="font-mono-tech text-xs text-ink-muted">{formatDate(comment.created_at)}</div>
                         </div>
                         <div className="flex items-center gap-3">
+                          <LikeButton
+                            targetType="comment"
+                            targetId={comment.id}
+                            initialCount={comment.like_count || 0}
+                            initialLiked={likedCommentIds.includes(comment.id)}
+                            size={13}
+                          />
                           {!isReply && (
                             <button type="button" onClick={() => startReply(comment)} className="inline-flex items-center gap-1 text-xs text-ink-muted transition-colors hover:text-cyan-dark">
                               <MessageCircle size={13} />

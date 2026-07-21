@@ -112,6 +112,49 @@ export async function createTables() {
         parent_id INTEGER
       )
     `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS likes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        target_type TEXT NOT NULL CHECK (target_type IN ('post', 'comment')),
+        target_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, target_type, target_id)
+      )
+    `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS follows (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        follower_id INTEGER NOT NULL,
+        author_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(follower_id, author_id)
+      )
+    `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('mention', 'reply', 'comment', 'guestbook', 'like', 'follow', 'announcement')),
+        actor_id INTEGER,
+        actor_name TEXT,
+        target_type TEXT,
+        target_id INTEGER,
+        link TEXT,
+        content TEXT,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS announcements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_by INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at)`),
@@ -121,6 +164,10 @@ export async function createTables() {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_username_requests_status ON username_change_requests(status)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_username_requests_user ON username_change_requests(user_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_performance_events_created ON performance_events(created_at)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_likes_target ON likes(target_type, target_id)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_follows_author ON follows(author_id)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read)`),
   ]);
 
   await migrateSchema(db);

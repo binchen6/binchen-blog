@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
     const slug = params.slug;
     const currentUser = await getCurrentUserFromRequest(request);
     const post = await db.prepare(
-      "SELECT posts.*, users.display_name AS author_name, users.username AS author_username, users.avatar AS author_avatar, users.bio AS author_bio FROM posts LEFT JOIN users ON users.id = posts.author_id WHERE posts.slug = ?"
+      "SELECT posts.*, users.display_name AS author_name, users.username AS author_username, users.avatar AS author_avatar, users.bio AS author_bio, (SELECT COUNT(*) FROM likes WHERE target_type = 'post' AND target_id = posts.id) AS like_count FROM posts LEFT JOIN users ON users.id = posts.author_id WHERE posts.slug = ?"
     ).bind(slug).first();
     if (!post) {
       return json({ error: "Post not found" }, { status: 404 });
@@ -25,7 +25,15 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
     if (!limited && post.status === "published") {
       await db.prepare("UPDATE posts SET view_count = view_count + 1 WHERE slug = ?").bind(slug).run();
     }
-    return json({ post }, { headers: post.status === "published" ? cacheHeaders(15, 60) : { "Cache-Control": "no-store" } });
+    // 当前用户是否已赞
+    let likedByMe = false;
+    if (currentUser) {
+      const liked = await db.prepare(
+        "SELECT id FROM likes WHERE user_id = ? AND target_type = 'post' AND target_id = ?"
+      ).bind(currentUser.id, post.id).first();
+      likedByMe = !!liked;
+    }
+    return json({ post, likedByMe }, { headers: post.status === "published" ? cacheHeaders(15, 60) : { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Get post error:", error);
     return json({ error: "Failed to fetch post" }, { status: 500 });
