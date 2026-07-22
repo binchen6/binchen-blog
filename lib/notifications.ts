@@ -16,6 +16,18 @@ export interface NotificationInput {
   content?: string;
 }
 
+const MAX_PER_USER = 30;
+
+/** 每个用户只保留最新 30 条消息，超出自动销毁 */
+async function trimUserNotifications(db: any, userId: number): Promise<void> {
+  await db.prepare(
+    `DELETE FROM notifications
+     WHERE user_id = ? AND id NOT IN (
+       SELECT id FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?
+     )`
+  ).bind(userId, userId, MAX_PER_USER).run();
+}
+
 /** 创建通知；接收者=触发者时静默跳过 */
 export async function createNotification(db: any, input: NotificationInput): Promise<void> {
   if (input.actorId && Number(input.userId) === Number(input.actorId)) return;
@@ -32,6 +44,7 @@ export async function createNotification(db: any, input: NotificationInput): Pro
     (input.link || "").slice(0, 500),
     (input.content || "").slice(0, 300)
   ).run();
+  await trimUserNotifications(db, input.userId);
 }
 
 const MENTION_RE = /@([a-zA-Z0-9_-]{3,24})/g;
@@ -67,7 +80,7 @@ export async function notifyMentions(
   }
 }
 
-/** 公告广播：给所有活跃用户发 announcement 通知 */
+/** 公告广播：给所有活跃用户发 announcement 通知（公告本体全服唯一存储于 announcements 表，仅管理员可管理） */
 export async function broadcastAnnouncement(db: any, announcement: { id: number; title: string; content: string }): Promise<number> {
   const users = await db.prepare("SELECT id FROM users WHERE is_active = 1").all();
   let count = 0;
@@ -76,6 +89,7 @@ export async function broadcastAnnouncement(db: any, announcement: { id: number;
       `INSERT INTO notifications (user_id, type, actor_name, target_type, target_id, link, content)
        VALUES (?, 'announcement', '公告', 'announcement', ?, '', ?)`
     ).bind(Number(user.id), announcement.id, `${announcement.title}\n${announcement.content}`.slice(0, 300)).run();
+    await trimUserNotifications(db, Number(user.id));
     count += 1;
   }
   return count;

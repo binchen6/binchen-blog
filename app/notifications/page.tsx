@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AtSign, Bell, CheckCheck, Heart, Megaphone, MessageCircle, MessagesSquare, UserPlus } from "lucide-react";
-import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { AtSign, Bell, CheckCheck, ChevronDown, Heart, Megaphone, MessageCircle, MessagesSquare, Trash2, UserPlus, X } from "lucide-react";
+import { EmptyState, PageHeader, SiteShell } from "@/components/page-chrome";
 import { toast } from "@/components/toast";
 import { useAuth, authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -40,6 +40,11 @@ export default function NotificationsPage() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  const refreshUnreadEvent = () => window.dispatchEvent(new Event("app-notifications-read"));
 
   useEffect(() => {
     if (!ready) return;
@@ -48,7 +53,7 @@ export default function NotificationsPage() {
       return;
     }
     let cancelled = false;
-    authFetch("/api/notifications?limit=50")
+    authFetch("/api/notifications?limit=30")
       .then((res) => res.json() as Promise<{ notifications?: NotificationItem[]; unreadCount?: number }>)
       .then((data) => {
         if (cancelled) return;
@@ -64,6 +69,17 @@ export default function NotificationsPage() {
     };
   }, [ready, user, router]);
 
+  const markRead = (id: number) => {
+    authFetch("/api/notifications/read", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setItems((current) => current.map((entry) => entry.id === id ? { ...entry, is_read: 1 } : entry));
+    setUnreadCount((current) => Math.max(0, current - 1));
+    refreshUnreadEvent();
+  };
+
   const markAllRead = async () => {
     const res = await authFetch("/api/notifications/read", {
       method: "POST",
@@ -73,23 +89,68 @@ export default function NotificationsPage() {
     if (res.ok) {
       setItems((current) => current.map((item) => ({ ...item, is_read: 1 })));
       setUnreadCount(0);
-      window.dispatchEvent(new Event("app-notifications-read"));
+      refreshUnreadEvent();
       toast("已全部标记为已读");
+    } else {
+      toast("操作失败", "error");
     }
   };
 
-  const openNotification = async (item: NotificationItem) => {
-    if (!item.is_read) {
-      authFetch("/api/notifications/read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: item.id }),
-      });
-      setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, is_read: 1 } : entry));
-      setUnreadCount((current) => Math.max(0, current - 1));
-      window.dispatchEvent(new Event("app-notifications-read"));
+  // 点击消息：公告类展开详情；带链接的标记已读后跳转
+  const openItem = (item: NotificationItem) => {
+    if (selectMode) {
+      toggleSelect(item.id);
+      return;
     }
-    if (item.link) router.push(item.link);
+    if (!item.is_read) markRead(item.id);
+    if (item.link) {
+      router.push(item.link);
+    } else {
+      setExpandedId((current) => (current === item.id ? null : item.id));
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelected((current) => (current.size === items.length ? new Set() : new Set(items.map((item) => item.id))));
+  };
+
+  const deleteOne = async (id: number) => {
+    const res = await authFetch(`/api/notifications?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      const target = items.find((item) => item.id === id);
+      setItems((current) => current.filter((item) => item.id !== id));
+      if (target && !target.is_read) setUnreadCount((current) => Math.max(0, current - 1));
+      refreshUnreadEvent();
+      toast("已删除");
+    } else {
+      toast("删除失败", "error");
+    }
+  };
+
+  const deleteSelected = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`确定删除选中的 ${selected.size} 条消息吗？`)) return;
+    const res = await authFetch(`/api/notifications?ids=${Array.from(selected).join(",")}`, { method: "DELETE" });
+    if (res.ok) {
+      const deletedUnread = items.filter((item) => selected.has(item.id) && !item.is_read).length;
+      setItems((current) => current.filter((item) => !selected.has(item.id)));
+      setUnreadCount((current) => Math.max(0, current - deletedUnread));
+      setSelected(new Set());
+      setSelectMode(false);
+      refreshUnreadEvent();
+      toast("已删除所选消息");
+    } else {
+      toast("删除失败", "error");
+    }
   };
 
   if (!ready || !user) {
@@ -109,20 +170,59 @@ export default function NotificationsPage() {
           eyebrow="Inbox"
           title="信箱"
           icon={<Bell size={22} />}
-          description="提及、回复、点赞、关注与公告都会安静地躺在这里。"
+          description="提及、回复、点赞、关注与公告都会安静地躺在这里。只保留最近 30 条。"
         />
 
-        <div className="mt-8 flex items-center justify-between">
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
           <span className="font-mono-tech text-xs text-ink-muted">
             {unreadCount > 0 ? `${unreadCount} 条未读` : "没有未读消息"}
           </span>
-          {unreadCount > 0 && (
-            <button type="button" onClick={markAllRead} className="inline-flex items-center gap-1.5 text-xs text-cyan-dark transition-colors hover:text-bronze">
-              <CheckCheck size={14} />
-              全部已读
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {unreadCount > 0 && (
+              <button type="button" onClick={markAllRead} className="inline-flex items-center gap-1.5 text-xs text-cyan-dark transition-colors hover:text-bronze">
+                <CheckCheck size={14} />
+                全部已读
+              </button>
+            )}
+            {items.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectMode((value) => !value);
+                  setSelected(new Set());
+                }}
+                className={cn("inline-flex items-center gap-1.5 text-xs transition-colors", selectMode ? "text-cinnabar" : "text-ink-muted hover:text-cyan-dark")}
+              >
+                {selectMode ? <X size={14} /> : <Trash2 size={14} />}
+                {selectMode ? "取消" : "管理"}
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* 选择模式工具栏 */}
+        {selectMode && (
+          <div className="mt-4 flex items-center justify-between border border-bronze/30 bg-bronze/10 px-4 py-2.5">
+            <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-ink-light">
+              <input
+                type="checkbox"
+                checked={selected.size === items.length && items.length > 0}
+                onChange={toggleSelectAll}
+                className="h-3.5 w-3.5 accent-cyan-dark"
+              />
+              全选（{selected.size}/{items.length}）
+            </label>
+            <button
+              type="button"
+              onClick={deleteSelected}
+              disabled={selected.size === 0}
+              className="inline-flex items-center gap-1.5 text-xs text-cinnabar transition-colors disabled:opacity-40"
+            >
+              <Trash2 size={14} />
+              删除所选
+            </button>
+          </div>
+        )}
 
         <div className="mt-6 space-y-3">
           {loading ? (
@@ -133,43 +233,64 @@ export default function NotificationsPage() {
             items.map((item) => {
               const meta = TYPE_META[item.type] || TYPE_META.comment;
               const Icon = meta.icon;
-              const inner = (
-                <>
-                  <span className={cn("grid h-9 w-9 shrink-0 place-items-center border border-cyan-dark/10 bg-paper/70", meta.className)}>
-                    <Icon size={16} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2 text-sm">
-                      <span className="font-semibold">{item.actor_name}</span>
-                      <span className="border border-mist px-1.5 py-px text-[10px] text-ink-muted">{meta.label}</span>
-                      {!item.is_read && <span className="h-1.5 w-1.5 rounded-full bg-cinnabar" />}
-                    </span>
-                    <span className="mt-1 block truncate text-sm text-ink-light">{item.content}</span>
-                    <span className="mt-1 block font-mono-tech text-xs text-ink-muted">{formatDate(item.created_at)}</span>
-                  </span>
-                </>
-              );
-              return item.link ? (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => openNotification(item)}
-                  className={cn(
-                    "paper-card flex w-full items-start gap-3 p-4 text-left transition-colors",
-                    !item.is_read && "border-l-2 border-l-cinnabar/60"
-                  )}
-                >
-                  {inner}
-                </button>
-              ) : (
+              const isExpanded = expandedId === item.id;
+              return (
                 <div
                   key={item.id}
                   className={cn(
-                    "paper-card flex items-start gap-3 p-4",
-                    !item.is_read && "border-l-2 border-l-cinnabar/60"
+                    "paper-card transition-colors",
+                    !item.is_read && "border-l-2 border-l-cinnabar/60",
+                    selectMode && selected.has(item.id) && "ring-1 ring-cyan-dark/40"
                   )}
                 >
-                  {inner}
+                  <div className="flex items-start gap-3 p-4">
+                    {selectMode && (
+                      <input
+                        type="checkbox"
+                        checked={selected.has(item.id)}
+                        onChange={() => toggleSelect(item.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-2.5 h-4 w-4 shrink-0 accent-cyan-dark"
+                        aria-label="选择这条消息"
+                      />
+                    )}
+                    <button type="button" onClick={() => openItem(item)} className="flex min-w-0 flex-1 items-start gap-3 text-left">
+                      <span className={cn("grid h-9 w-9 shrink-0 place-items-center border border-cyan-dark/10 bg-paper/70", meta.className)}>
+                        <Icon size={16} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2 text-sm">
+                          <span className="font-semibold">{item.actor_name}</span>
+                          <span className="border border-mist px-1.5 py-px text-[10px] text-ink-muted">{meta.label}</span>
+                          {!item.is_read && <span className="h-1.5 w-1.5 rounded-full bg-cinnabar" />}
+                        </span>
+                        <span className={cn("mt-1 block text-sm text-ink-light", !isExpanded && "truncate")}>
+                          {isExpanded ? item.content : item.content.split("\n")[0]}
+                        </span>
+                        <span className="mt-1 flex items-center gap-2 font-mono-tech text-xs text-ink-muted">
+                          {formatDate(item.created_at)}
+                          {!item.link && (
+                            <ChevronDown size={12} className={cn("transition-transform", isExpanded && "rotate-180")} />
+                          )}
+                        </span>
+                      </span>
+                    </button>
+                    {!selectMode && (
+                      <button
+                        type="button"
+                        onClick={() => deleteOne(item.id)}
+                        className="shrink-0 text-ink-muted transition-colors hover:text-cinnabar"
+                        aria-label="删除这条消息"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                  {isExpanded && item.content.includes("\n") && (
+                    <div className="border-t border-mist/60 px-4 py-3 text-sm leading-loose text-ink-light">
+                      {item.content.split("\n").slice(1).join("\n")}
+                    </div>
+                  )}
                 </div>
               );
             })

@@ -6,7 +6,7 @@ import { json, parseBoundedInt, parsePositiveId } from "@/lib/security";
 export const runtime = "edge";
 
 /**
- * GET /api/notifications — 我的消息列表 + 未读数
+ * GET /api/notifications — 我的消息列表（最多返回 30 条）+ 未读数
  * ?unread_announcement=1 时只返回未读公告（弹窗用）
  */
 export async function GET(request: NextRequest) {
@@ -17,8 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = parseBoundedInt(searchParams.get("limit"), 30, 1, 100);
-    const offset = parseBoundedInt(searchParams.get("offset"), 0, 0, 10000);
+    const limit = parseBoundedInt(searchParams.get("limit"), 30, 1, 30);
     const unreadAnnouncement = searchParams.get("unread_announcement") === "1";
 
     const ctx = getRequestContext();
@@ -37,8 +36,8 @@ export async function GET(request: NextRequest) {
       db.prepare(
         `SELECT id, type, actor_id, actor_name, target_type, target_id, link, content, is_read, created_at
          FROM notifications WHERE user_id = ?
-         ORDER BY created_at DESC LIMIT ? OFFSET ?`
-      ).bind(currentUser.id, limit, offset).all(),
+         ORDER BY created_at DESC LIMIT ?`
+      ).bind(currentUser.id, limit).all(),
       db.prepare("SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND is_read = 0").bind(currentUser.id).first(),
     ]);
 
@@ -53,35 +52,46 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST /api/notifications/read { id? , all?, type? }
- * 标记已读：单条 / 全部 / 某类型全部
+ * DELETE /api/notifications?id= / ?ids=1,2,3 / ?all=1
+ * 删除消息：单条 / 多条 / 全部（仅本人的）
  */
-export async function POST(request: NextRequest) {
+export async function DELETE(request: NextRequest) {
   try {
     const currentUser = await getCurrentUserFromRequest(request);
     if (!currentUser) {
       return json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = (await request.json()) as any;
+    const { searchParams } = new URL(request.url);
     const ctx = getRequestContext();
     const db = (ctx.env as any).DB;
 
-    if (body.all === true) {
-      await db.prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?").bind(currentUser.id).run();
-    } else if (body.type === "announcement") {
-      await db.prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'announcement'").bind(currentUser.id).run();
-    } else {
-      const id = parsePositiveId(body.id);
-      if (!id) {
-        return json({ error: "Invalid id" }, { status: 400 });
-      }
-      await db.prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?").bind(id, currentUser.id).run();
+    if (searchParams.get("all") === "1") {
+      await db.prepare("DELETE FROM notifications WHERE user_id = ?").bind(currentUser.id).run();
+      return json({ success: true });
     }
 
+    const idsParam = searchParams.get("ids");
+    if (idsParam) {
+      const ids = idsParam.split(",").map(parsePositiveId).filter((id): id is number => id !== null).slice(0, 30);
+      if (ids.length === 0) {
+        return json({ error: "Invalid ids" }, { status: 400 });
+      }
+      const placeholders = ids.map(() => "?").join(",");
+      await db.prepare(
+        `DELETE FROM notifications WHERE user_id = ? AND id IN (${placeholders})`
+      ).bind(currentUser.id, ...ids).run();
+      return json({ success: true, deleted: ids.length });
+    }
+
+    const id = parsePositiveId(searchParams.get("id"));
+    if (!id) {
+      return json({ error: "Invalid id" }, { status: 400 });
+    }
+    await db.prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?").bind(id, currentUser.id).run();
     return json({ success: true });
   } catch (error) {
-    console.error("Mark notification read error:", error);
-    return json({ error: "Failed to mark read" }, { status: 500 });
+    console.error("Delete notification error:", error);
+    return json({ error: "Failed to delete notification" }, { status: 500 });
   }
 }
