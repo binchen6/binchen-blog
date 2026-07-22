@@ -163,9 +163,19 @@ export default function PublicProfilePage() {
                   <Calendar size={12} />
                   {formatDate(user.created_at)} 加入
                 </span>
-                <span className="font-mono-tech text-xs text-ink-muted">
-                  <span className="text-cyan-dark">{followerCount}</span> 粉丝 · <span className="text-cyan-dark">{user.following_count || 0}</span> 关注
-                </span>
+                <Link
+                  href={`/users/${encodeURIComponent(user.username)}/follows`}
+                  className="font-mono-tech text-xs text-ink-muted transition-colors hover:text-cyan-dark"
+                >
+                  <span className="text-cyan-dark">{followerCount}</span> 粉丝
+                </Link>
+                <span className="font-mono-tech text-xs text-ink-muted">·</span>
+                <Link
+                  href={`/users/${encodeURIComponent(user.username)}/follows?tab=following`}
+                  className="font-mono-tech text-xs text-ink-muted transition-colors hover:text-cyan-dark"
+                >
+                  <span className="text-cyan-dark">{user.following_count || 0}</span> 关注
+                </Link>
               </div>
               {(!currentUser || currentUser.username !== user.username) && (
                 <button

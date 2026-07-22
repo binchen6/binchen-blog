@@ -35,9 +35,9 @@ module.exports = {
       },
       fontFamily: {
         // 系统字体栈：零网络下载，首屏秒开（CSP 也不允许外链字体）
-        'serif-zh': ['"Songti SC"', '"STSong"', '"Noto Serif SC"', '"Source Han Serif SC"', '"SimSun"', 'serif'],
+        'serif-zh': ['"LXGW WenKai GB"', '"Songti SC"', '"STSong"', '"Noto Serif SC"', '"Source Han Serif SC"', '"SimSun"', 'serif'],
         'sans-zh': ['-apple-system', '"PingFang SC"', '"Hiragino Sans GB"', '"Noto Sans SC"', '"Microsoft YaHei"', 'sans-serif'],
-        'mono-tech': ['"SF Mono"', '"JetBrains Mono"', '"Cascadia Code"', 'Consolas', '"Noto Sans SC"', 'monospace'],
+        'mono-tech': ['"Maple Mono NF"', '"SF Mono"', '"JetBrains Mono"', '"Cascadia Code"', 'Consolas', '"Noto Sans SC"', 'monospace'],
       },
       spacing: {
         '18': '4.5rem',
