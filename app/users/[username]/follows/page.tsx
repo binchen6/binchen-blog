@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, UserCheck, UserMinus, UserPlus, Users } from "lucide-react";
 import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { UserAvatar } from "@/components/user-avatar";
@@ -24,16 +24,20 @@ interface FollowUser {
 
 const PAGE_SIZE = 20;
 
-function FollowsPageInner() {
+export default function FollowsPage() {
   const params = useParams();
   const username = params.username as string;
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { user: currentUser } = useAuth();
 
-  const [tab, setTab] = useState<"followers" | "following">(
-    searchParams.get("tab") === "following" ? "following" : "followers"
-  );
+  const [tab, setTab] = useState<"followers" | "following">("followers");
+
+  // 从 URL 读取初始 tab（避免 useSearchParams 触发 CSR bailout）
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "following") {
+      setTab("following");
+    }
+  }, []);
   const [users, setUsers] = useState<FollowUser[]>([]);
   const [total, setTotal] = useState(0);
   const [isOwner, setIsOwner] = useState(false);
@@ -284,18 +288,3 @@ function FollowsPageInner() {
   );
 }
 
-export default function FollowsPage() {
-  return (
-    <Suspense
-      fallback={
-        <SiteShell>
-          <section className="px-6 pb-20 pt-28">
-            <div className="skeleton mx-auto h-40 max-w-xl" />
-          </section>
-        </SiteShell>
-      }
-    >
-      <FollowsPageInner />
-    </Suspense>
-  );
-}
