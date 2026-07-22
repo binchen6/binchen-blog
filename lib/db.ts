@@ -302,7 +302,7 @@ export async function createUser(username: string, email: string, passwordHash: 
   const db = getDB();
   const result = await db.prepare(
     "INSERT INTO users (username, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?) RETURNING *"
-  ).bind(username, email, passwordHash, displayName || null, "author").first();
+  ).bind(username, email, passwordHash, displayName || null, "member").first();
   return result as any;
 }
 

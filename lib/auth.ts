@@ -13,7 +13,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   owner: ["*"],
   admin: ["admin:access", "posts:manage_all", "comments:manage_all", "guestbook:manage_all", "users:manage", "images:manage_all"],
-  editor: ["posts:create", "posts:manage_own", "images:upload", "images:manage_own", "comments:create", "guestbook:create"],
+  editor: ["posts:create", "posts:manage_all", "images:upload", "images:manage_own", "comments:create", "guestbook:create"],
   author: ["posts:create", "posts:manage_own", "images:upload", "images:manage_own", "comments:create", "guestbook:create"],
   member: ["comments:create", "guestbook:create"],
 };

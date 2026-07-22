@@ -29,9 +29,11 @@ export async function POST(request: NextRequest) {
       return json({ error: "Username or email already exists" }, { status: 409 });
     }
     const passwordHash = await hashPassword(password);
+    // 新注册用户默认 member（社交成员）：可评论/留言/点赞/关注，
+    // 发表文章需站主在控制台提升为 author/editor。
     const result = await db.prepare(
       "INSERT INTO users (username, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?) RETURNING id, username, email, display_name, avatar, role, bio, is_active, created_at"
-    ).bind(username, email, passwordHash, displayName || null, "author").first();
+    ).bind(username, email, passwordHash, displayName || null, "member").first();
     const user = serializeUser(result);
     const token = await createToken(user as any);
     return json({ user, token }, { status: 201 });
