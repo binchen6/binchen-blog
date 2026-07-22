@@ -27,8 +27,8 @@ export function SiteShell({ children, className, contentClassName, withFooter = 
       {/* 墨晕只落在角落，留白给内容 */}
       {!compactDecor && (
         <>
-          <img src="/assets/ink/ink-blot-2.jpg" alt="" aria-hidden="true" className="ink-blot -right-24 top-24 w-72 opacity-35" />
-          <img src="/assets/ink/ink-blot-1.jpg" alt="" aria-hidden="true" className="ink-blot -left-28 bottom-16 w-80 opacity-30" />
+          <img src="/assets/ink/ink-blot-2.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" className="ink-blot -right-24 top-24 w-72 opacity-35" />
+          <img src="/assets/ink/ink-blot-1.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" className="ink-blot -left-28 bottom-16 w-80 opacity-30" />
         </>
       )}
       <div className={cn("relative z-10", contentClassName)}>{children}</div>
@@ -74,6 +74,7 @@ export function PageHeader({ eyebrow, title, description, icon, align = "center"
         src="/assets/ink/brush-divider-2.jpg"
         alt=""
         aria-hidden="true"
+        decoding="async"
         className={cn("brush-divider mt-6", !isCenter && "brush-divider--left")}
       />
     </header>
@@ -106,7 +107,7 @@ export function EmptyState({
 }) {
   return (
     <div className="mx-auto max-w-md px-8 py-10 text-center">
-      <img src="/assets/ink/empty-boat.jpg" alt="" aria-hidden="true" className="mx-auto mb-5 w-52 mix-blend-multiply opacity-80" />
+      <img src="/assets/ink/empty-boat.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" className="mx-auto mb-5 w-52 mix-blend-multiply opacity-80" />
       <h2 className="font-serif-zh text-xl font-semibold tracking-[0.08em] text-ink-2">{title}</h2>
       {description && <p className="mt-3 text-sm leading-loose text-ink-3">{description}</p>}
       {action && <div className="mt-6">{action}</div>}

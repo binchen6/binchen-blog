@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
 import { json, rateLimit } from "@/lib/security";
+import { getDb } from "../../../_shared";
 
 export const runtime = "edge";
 
@@ -19,8 +19,7 @@ export async function POST(request: NextRequest, { params }: { params: { usernam
     if (limited) return limited;
 
     const username = String(params.username || "").slice(0, 24);
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
 
     const author = await db.prepare("SELECT id, username FROM users WHERE username = ? AND is_active = 1").bind(username).first();
     if (!author) {

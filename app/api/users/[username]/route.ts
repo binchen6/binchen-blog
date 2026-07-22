@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getCurrentUserFromRequest, ROLE_LABELS } from "@/lib/auth";
 import { cacheHeaders, json } from "@/lib/security";
 import { UserRole } from "@/lib/types";
+import { getDb } from "../../_shared";
 
 export const runtime = "edge";
 
@@ -17,8 +17,7 @@ export async function GET(_request: NextRequest, { params }: { params: { usernam
       return json({ error: "Invalid username" }, { status: 400 });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
 
     const user = await db.prepare(
       `SELECT id, username, display_name, avatar, role, bio, created_at
@@ -33,7 +32,7 @@ export async function GET(_request: NextRequest, { params }: { params: { usernam
       `SELECT id, title, slug, excerpt, cover_image, mode, published_at, created_at, tags, view_count
        FROM posts
        WHERE author_id = ? AND status = 'published'
-       ORDER BY COALESCE(published_at, created_at) DESC
+       ORDER BY published_at DESC
        LIMIT 50`
     ).bind(user.id).all();
 

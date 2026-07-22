@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { toast } from "@/components/toast";
@@ -16,6 +16,9 @@ type LikeButtonProps = {
   className?: string;
 };
 
+/** 心形爆发动画时长（ms） */
+const BURST_MS = 400;
+
 /** 点赞按钮：心形 + 计数，登录才能点 */
 export function LikeButton({ targetType, targetId, initialCount, initialLiked = false, size = 15, className }: LikeButtonProps) {
   const { user } = useAuth();
@@ -24,6 +27,15 @@ export function LikeButton({ targetType, targetId, initialCount, initialLiked = 
   const [count, setCount] = useState(initialCount);
   const [pending, setPending] = useState(false);
   const [burst, setBurst] = useState(false);
+  const burstTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 卸载时清掉爆发动画定时器，避免卸载后 setState
+  useEffect(
+    () => () => {
+      if (burstTimer.current) clearTimeout(burstTimer.current);
+    },
+    []
+  );
 
   const toggle = async () => {
     if (!user) {
@@ -38,7 +50,8 @@ export function LikeButton({ targetType, targetId, initialCount, initialLiked = 
     setCount((current) => current + (liked ? -1 : 1));
     if (!liked) {
       setBurst(true);
-      setTimeout(() => setBurst(false), 400);
+      if (burstTimer.current) clearTimeout(burstTimer.current);
+      burstTimer.current = setTimeout(() => setBurst(false), BURST_MS);
     }
     try {
       const res = await authFetch("/api/likes", {

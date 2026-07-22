@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getCurrentUserFromRequest } from "@/lib/auth";
-import { cacheHeaders, json, rateLimit } from "@/lib/security";
+import { cacheHeaders, json, parseBoundedInt, rateLimit } from "@/lib/security";
+import { getDb, requireLogin } from "../../../_shared";
 
 export const runtime = "edge";
 
@@ -19,12 +19,11 @@ export async function GET(request: NextRequest, { params }: { params: { username
     }
     const url = new URL(request.url);
     const type = url.searchParams.get("type") === "following" ? "following" : "followers";
-    const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
-    const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
+    const page = parseBoundedInt(url.searchParams.get("page"), 1, 1, 1000);
+    const limit = parseBoundedInt(url.searchParams.get("limit"), 20, 1, 50);
     const offset = (page - 1) * limit;
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
 
     const user = await db.prepare("SELECT id FROM users WHERE username = ? AND is_active = 1").bind(username).first();
     if (!user) {
@@ -120,8 +119,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { usern
       return json({ error: "Invalid target" }, { status: 400 });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
 
     const owner = await db.prepare("SELECT id FROM users WHERE username = ? AND is_active = 1").bind(username).first();
     if (!owner) {

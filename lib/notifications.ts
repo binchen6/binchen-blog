@@ -19,7 +19,7 @@ export interface NotificationInput {
 const MAX_PER_USER = 30;
 
 /** 每个用户只保留最新 30 条消息，超出自动销毁 */
-async function trimUserNotifications(db: any, userId: number): Promise<void> {
+async function trimUserNotifications(db: D1Database, userId: number): Promise<void> {
   await db.prepare(
     `DELETE FROM notifications
      WHERE user_id = ? AND id NOT IN (
@@ -29,7 +29,7 @@ async function trimUserNotifications(db: any, userId: number): Promise<void> {
 }
 
 /** 创建通知；接收者=触发者时静默跳过 */
-export async function createNotification(db: any, input: NotificationInput): Promise<void> {
+export async function createNotification(db: D1Database, input: NotificationInput): Promise<void> {
   if (input.actorId && Number(input.userId) === Number(input.actorId)) return;
   await db.prepare(
     `INSERT INTO notifications (user_id, type, actor_id, actor_name, target_type, target_id, link, content)
@@ -53,7 +53,7 @@ const MENTION_RE = /@([a-zA-Z0-9_-]{3,24})/g;
  * 解析内容中的 @用户名，给存在的用户发 mention 通知（去重、排除触发者本人）。
  */
 export async function notifyMentions(
-  db: any,
+  db: D1Database,
   content: string,
   from: { id?: number | null; name: string },
   link: string
@@ -66,7 +66,7 @@ export async function notifyMentions(
   const placeholders = usernames.map(() => "?").join(",");
   const rows = await db.prepare(
     `SELECT id, username FROM users WHERE username IN (${placeholders}) AND is_active = 1`
-  ).bind(...usernames).all();
+  ).bind(...usernames).all<{ id: number; username: string }>();
 
   for (const user of rows.results || []) {
     await createNotification(db, {
@@ -80,17 +80,29 @@ export async function notifyMentions(
   }
 }
 
-/** 公告广播：给所有活跃用户发 announcement 通知（公告本体全服唯一存储于 announcements 表，仅管理员可管理） */
-export async function broadcastAnnouncement(db: any, announcement: { id: number; title: string; content: string }): Promise<number> {
-  const users = await db.prepare("SELECT id FROM users WHERE is_active = 1").all();
-  let count = 0;
-  for (const user of users.results || []) {
-    await db.prepare(
-      `INSERT INTO notifications (user_id, type, actor_name, target_type, target_id, link, content)
-       VALUES (?, 'announcement', '公告', 'announcement', ?, '', ?)`
-    ).bind(Number(user.id), announcement.id, `${announcement.title}\n${announcement.content}`.slice(0, 300)).run();
-    await trimUserNotifications(db, Number(user.id));
-    count += 1;
+/** 公告广播：给所有活跃用户发 announcement 通知（单批 batch 提交，减少 D1 往返次数） */
+export async function broadcastAnnouncement(db: D1Database, announcement: { id: number; title: string; content: string }): Promise<number> {
+  const users = await db.prepare("SELECT id FROM users WHERE is_active = 1").all<{ id: number }>();
+  const stmts: D1PreparedStatement[] = [];
+  const trimmedContent = `${announcement.title}\n${announcement.content}`.slice(0, 300);
+
+  for (const user of users.results) {
+    stmts.push(
+      db.prepare(
+        `INSERT INTO notifications (user_id, type, actor_name, target_type, target_id, link, content)
+         VALUES (?, 'announcement', '公告', 'announcement', ?, '', ?)`
+      ).bind(user.id, announcement.id, trimmedContent)
+    );
+    stmts.push(
+      db.prepare(
+        `DELETE FROM notifications
+         WHERE user_id = ? AND id NOT IN (
+           SELECT id FROM notifications WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?
+         )`
+      ).bind(user.id, user.id, MAX_PER_USER)
+    );
   }
-  return count;
+
+  if (stmts.length > 0) await db.batch(stmts);
+  return users.results.length;
 }

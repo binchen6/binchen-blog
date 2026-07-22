@@ -1,24 +1,20 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
 import { json, noStoreHeaders } from "@/lib/security";
+import { getDb, requireAdmin } from "../../_shared";
 
 export const runtime = "edge";
 
 export async function GET(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser || !hasPermission(currentUser, "users:manage")) {
-      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
-    }
+    const auth = await requireAdmin(request, "users:manage");
+    if (auth.error) return auth.error;
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || "pending";
     if (!["pending", "approved", "rejected"].includes(status)) {
       return json({ error: "Invalid status" }, { status: 400, headers: noStoreHeaders() });
     }
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const results = await db.prepare(
       `SELECT username_change_requests.*, users.email, users.display_name
        FROM username_change_requests

@@ -1,18 +1,18 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { canAccessAdmin, getCurrentUserFromRequest } from "@/lib/auth";
 import { json, noStoreHeaders, parseBoundedInt } from "@/lib/security";
+import { getDb, parseJsonBody, requireAdmin } from "../../_shared";
 
 export const runtime = "edge";
 
 export async function PATCH(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser || !canAccessAdmin(currentUser)) {
-      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
-    }
+    const auth = await requireAdmin(request, "admin:access");
+    if (auth.error) return auth.error;
 
-    const body = await request.json() as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400, headers: noStoreHeaders() });
+    }
     const slug = String(body.slug || "").trim();
     const isFeatured = Boolean(body.isFeatured);
     const featuredRank = parseBoundedInt(body.featuredRank, 0, 0, 999);
@@ -21,8 +21,7 @@ export async function PATCH(request: NextRequest) {
       return json({ error: "Missing post slug" }, { status: 400, headers: noStoreHeaders() });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const post = await db.prepare("SELECT id, status FROM posts WHERE slug = ?").bind(slug).first();
 
     if (!post) {

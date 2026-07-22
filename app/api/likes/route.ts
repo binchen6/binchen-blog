@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getCurrentUserFromRequest } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
 import { json, parsePositiveId, rateLimit } from "@/lib/security";
+import { getDb, parseJsonBody } from "../_shared";
 
 export const runtime = "edge";
 
@@ -19,15 +19,17 @@ export async function POST(request: NextRequest) {
     const limited = rateLimit(request, { key: `like:${currentUser.id}`, limit: 120, windowMs: 60 * 60 * 1000 });
     if (limited) return limited;
 
-    const body = (await request.json()) as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const targetType = String(body.targetType || "");
     const targetId = parsePositiveId(body.targetId);
     if (!["post", "comment"].includes(targetType) || !targetId) {
       return json({ error: "Invalid target" }, { status: 400 });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
 
     // 确认目标存在并拿到归属（用于通知）
     let ownerId: number | null = null;

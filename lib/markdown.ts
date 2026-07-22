@@ -55,6 +55,9 @@ const CALLOUT_LABELS: Record<CalloutType, string> = {
   caution: "注意",
 };
 
+/** Callout 块匹配正则：编译一次复用（CALLOUT_TYPES 为模块 const，无需每次 renderMarkdown 重新构建） */
+const CALLOUT_MARKER = new RegExp(`^\\[!(${CALLOUT_TYPES.join("|")})\\]\\s*`, "i");
+
 export async function renderMarkdown(source: string): Promise<RenderMarkdownResult> {
   const [
     { default: MarkdownIt },
@@ -112,7 +115,6 @@ export async function renderMarkdown(source: string): Promise<RenderMarkdownResu
   };
 
   // ---- Callout 提示块：> [!note] / [!tip] / [!important] / [!warning] / [!caution] ----
-  const calloutMarker = new RegExp(`^\\[!(${CALLOUT_TYPES.join("|")})\\]\\s*`, "i");
 
   md.core.ruler.push("callout", (state) => {
     const tokens = state.tokens;
@@ -143,7 +145,7 @@ export async function renderMarkdown(source: string): Promise<RenderMarkdownResu
       const children = inline.children ?? [];
       const first = children[0];
       if (!first || first.type !== "text") continue;
-      const match = calloutMarker.exec(first.content);
+      const match = CALLOUT_MARKER.exec(first.content);
       if (!match) continue;
 
       const type = match[1].toLowerCase() as CalloutType;

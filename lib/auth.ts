@@ -83,8 +83,7 @@ export async function verifyToken(token: string): Promise<{ userId: number; user
 }
 
 export function getJwtSecret(): string {
-  const ctx = getRequestContext();
-  const secret = (ctx.env as any).JWT_SECRET;
+  const secret = getRequestContext().env.JWT_SECRET;
   if (!secret || secret.length < 32 || secret === "default-secret") {
     throw new Error("JWT_SECRET must be configured with at least 32 characters");
   }
@@ -95,18 +94,22 @@ export function getEffectiveRole(user: Pick<User, "username"> & Partial<Pick<Use
   return (user.role || "author") as UserRole;
 }
 
-export function serializeUser(user: any): AuthUser {
-  const role = getEffectiveRole(user);
+/**
+ * D1 行转 AuthUser。安全收窄：Edge 环境下 D1 first() 的默认类型为 Record<string, unknown>，
+ * 逐字段 String/Number/null 处理避免类型断言。
+ */
+export function serializeUser(user: Record<string, unknown>): AuthUser {
+  const role = ((user.role as UserRole | undefined) || "author") as UserRole;
   return {
     id: Number(user.id),
-    username: user.username,
-    email: user.email,
-    display_name: user.display_name ?? null,
-    avatar: user.avatar ?? null,
+    username: String(user.username ?? ""),
+    email: String(user.email ?? ""),
+    display_name: user.display_name == null ? null : String(user.display_name),
+    avatar: user.avatar == null ? null : String(user.avatar),
     role,
-    bio: user.bio ?? null,
+    bio: user.bio == null ? null : String(user.bio),
     is_active: Number(user.is_active ?? 1),
-    created_at: user.created_at,
+    created_at: String(user.created_at ?? ""),
   };
 }
 
@@ -135,10 +138,10 @@ export async function getCurrentUserFromRequest(request: Request): Promise<AuthU
   if (!payload) return null;
 
   const ctx = getRequestContext();
-  const db = (ctx.env as any).DB;
+  const db = ctx.env.DB;
   const user = await db.prepare(
     "SELECT id, username, email, display_name, avatar, role, bio, is_active, created_at FROM users WHERE id = ?"
-  ).bind(payload.userId).first();
+  ).bind(payload.userId).first<AuthUser>();
 
   if (!user || Number(user.is_active ?? 1) !== 1) return null;
   return serializeUser(user);

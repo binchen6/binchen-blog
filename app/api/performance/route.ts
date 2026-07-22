@@ -1,20 +1,17 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { canAccessAdmin, getCurrentUserFromRequest } from "@/lib/auth";
 import { getPerformanceSummary } from "@/lib/performance";
 import { json, noStoreHeaders } from "@/lib/security";
+import { getDb, requireAdmin } from "../_shared";
 
 export const runtime = "edge";
 
 export async function GET(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser || !canAccessAdmin(currentUser)) {
-      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
-    }
+    const auth = await requireAdmin(request, "admin:access");
+    if (auth.error) return auth.error;
 
-    const ctx = getRequestContext();
-    const summary = await getPerformanceSummary((ctx.env as any).DB);
+    const db = getDb();
+    const summary = await getPerformanceSummary(db);
     return json(summary, { headers: noStoreHeaders() });
   } catch (error) {
     console.error("Performance summary error:", error);

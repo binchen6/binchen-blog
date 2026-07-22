@@ -100,6 +100,8 @@ export default function FollowsPage() {
       const now = !!data.following;
       setUsers((prev) => prev.map((u) => (u.username === target.username ? { ...u, iFollow: now } : u)));
       toast(now ? "已关注" : "已取消关注");
+    } catch {
+      toast("网络异常，操作失败", "error");
     } finally {
       setPending(null);
     }
@@ -121,6 +123,8 @@ export default function FollowsPage() {
       setUsers((prev) => prev.filter((u) => u.username !== target.username));
       setTotal((n) => Math.max(0, n - 1));
       toast(`已移除粉丝 ${target.display_name || target.username}`);
+    } catch {
+      toast("网络异常，移除失败", "error");
     } finally {
       setPending(null);
     }

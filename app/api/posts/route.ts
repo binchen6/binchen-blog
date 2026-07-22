@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { canAccessAdmin, getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
+import { NextRequest } from "next/server";
+import { canAccessAdmin, getCurrentUserFromRequest } from "@/lib/auth";
 import { generateSlug, generateExcerpt } from "@/lib/utils";
-import { cacheHeaders, isSafePublicUrl, json, parseBoundedInt, rateLimit, requireText } from "@/lib/security";
+import { cacheHeaders, isSafePublicUrl, json, noStoreHeaders, parseBoundedInt, rateLimit, requireText } from "@/lib/security";
+import { getDb, parseJsonBody, requirePermission } from "../_shared";
 
 export const runtime = "edge";
 
@@ -24,8 +24,7 @@ export async function GET(request: NextRequest) {
       return json({ error: "Invalid mode" }, { status: 400 });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const currentUser = await getCurrentUserFromRequest(request);
 
     // 列表查询不取 content 全文，显著减少传输量（性能优化）
@@ -87,9 +86,14 @@ export async function GET(request: NextRequest) {
       total = Number((countRow as any)?.c ?? 0);
     }
 
-    const query = selectClause + whereSql + (featured
-      ? " ORDER BY posts.featured_rank ASC, COALESCE(posts.published_at, posts.created_at) DESC LIMIT ? OFFSET ?"
-      : " ORDER BY COALESCE(posts.published_at, posts.created_at) DESC LIMIT ? OFFSET ?");
+    // 公开/精选场景走 posts(status, published_at) 复合索引（published 行必有 published_at）；
+    // admin/mine 可能含草稿（published_at 为 NULL），保留 COALESCE 兜底
+    const orderSql = featured
+      ? " ORDER BY posts.featured_rank ASC, posts.published_at DESC LIMIT ? OFFSET ?"
+      : publicScope
+        ? " ORDER BY posts.published_at DESC LIMIT ? OFFSET ?"
+        : " ORDER BY COALESCE(posts.published_at, posts.created_at) DESC LIMIT ? OFFSET ?";
+    const query = selectClause + whereSql + orderSql;
     params.push(limit, offset);
 
     const results = await db.prepare(query).bind(...params).all();
@@ -103,7 +107,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return json({ posts: postsWithTime, ...(total !== undefined ? { total } : {}) }, { headers: admin || mine ? { "Cache-Control": "no-store" } : cacheHeaders(30, 120) });
+    return json({ posts: postsWithTime, ...(total !== undefined ? { total } : {}) }, { headers: admin || mine ? noStoreHeaders() : cacheHeaders(30, 120) });
   } catch (error) {
     console.error("Get posts error:", error);
     return json({ error: "Failed to fetch posts" }, { status: 500 });
@@ -112,17 +116,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (!hasPermission(currentUser, "posts:create")) {
-      return json({ error: "Forbidden" }, { status: 403 });
-    }
+    const auth = await requirePermission(request, "posts:create");
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
     const limited = rateLimit(request, { key: `post:${currentUser.id}`, limit: 20, windowMs: 60 * 60 * 1000 });
     if (limited) return limited;
 
-    const body = await request.json() as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const title = requireText(body.title, 120);
     const content = requireText(body.content, 50000);
     const tags = requireText(body.tags, 300) || "";
@@ -142,8 +145,7 @@ export async function POST(request: NextRequest) {
     const slug = generateSlug(title) + "-" + Date.now().toString(36);
     const excerpt = generateExcerpt(content);
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
 
     const publishedAt = status === "published" ? new Date().toISOString() : null;
     const result = await db.prepare(

@@ -69,13 +69,17 @@ export function AnnouncementCenter() {
 
   const closePopup = async () => {
     setPopup(null);
-    // 关闭即标记所有公告为已读
-    await authFetch("/api/notifications/read", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "announcement" }),
-    });
-    window.dispatchEvent(new Event("app-notifications-read"));
+    // 关闭即标记所有公告为已读（失败静默，不影响关闭行为）
+    try {
+      await authFetch("/api/notifications/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "announcement" }),
+      });
+      window.dispatchEvent(new Event("app-notifications-read"));
+    } catch {
+      /* 静默失败 */
+    }
   };
 
   const closeBanner = () => {

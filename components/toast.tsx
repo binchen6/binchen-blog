@@ -8,6 +8,8 @@ type ToastKind = "ok" | "error";
 type ToastItem = { id: number; message: string; kind: ToastKind };
 
 const TOAST_EVENT = "app-toast";
+/** 单条 toast 展示时长（ms） */
+const TOAST_DURATION_MS = 2600;
 
 /** 全局轻提示：toast("发布成功") / toast("失败", "error") */
 export function toast(message: string, kind: ToastKind = "ok") {
@@ -19,16 +21,23 @@ export function ToastHost() {
   const [items, setItems] = useState<ToastItem[]>([]);
 
   useEffect(() => {
+    const timers = new Set<ReturnType<typeof setTimeout>>();
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<{ message: string; kind: ToastKind }>).detail;
       const id = Date.now() + Math.random();
       setItems((current) => [...current.slice(-2), { id, message: detail.message, kind: detail.kind }]);
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        timers.delete(timer);
         setItems((current) => current.filter((item) => item.id !== id));
-      }, 2600);
+      }, TOAST_DURATION_MS);
+      timers.add(timer);
     };
     window.addEventListener(TOAST_EVENT, handler);
-    return () => window.removeEventListener(TOAST_EVENT, handler);
+    return () => {
+      window.removeEventListener(TOAST_EVENT, handler);
+      // 卸载时清掉未触发的定时器，避免卸载后 setState
+      timers.forEach(clearTimeout);
+    };
   }, []);
 
   return (

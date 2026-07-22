@@ -102,6 +102,8 @@ export default function PublicProfilePage() {
       setIsFollowing(!!data.following);
       setFollowerCount(Number(data.followerCount ?? 0));
       toast(data.following ? "已关注" : "已取消关注");
+    } catch {
+      toast("网络异常，操作失败", "error");
     } finally {
       setFollowPending(false);
     }

@@ -2,9 +2,12 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { User, Post, GuestbookEntry, Comment, PostMode } from "./types";
 import { ROLE_PERMISSIONS } from "./auth";
 
-export function getDB() {
-  const ctx = getRequestContext();
-  return (ctx.env as any).DB as any;
+/**
+ * D1 绑定。env 类型来自全局 CloudflareEnv（env.d.ts 声明，含 DB: D1Database），
+ * 无需 as any 强转；返回 D1Database 供泛型查询（first<T>()/all<T>()）。
+ */
+export function getDB(): D1Database {
+  return getRequestContext().env.DB;
 }
 
 export async function createTables() {
@@ -169,6 +172,11 @@ export async function createTables() {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_follows_author ON follows(author_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read)`),
+    // 复合索引：匹配高频查询的 WHERE + ORDER BY（只加不改旧索引，IF NOT EXISTS 幂等）
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_status_published ON posts(status, published_at DESC)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_post_created ON comments(post_id, created_at)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_guestbook_created ON guestbook(created_at)`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_notifications_user_read_created ON notifications(user_id, is_read, created_at)`),
   ]);
 
   await migrateSchema(db);
@@ -177,15 +185,15 @@ export async function createTables() {
   await db.prepare("UPDATE users SET role = 'author' WHERE role IS NULL").run();
 }
 
-async function addColumnIfMissing(db: any, table: string, column: string, definition: string) {
-  const columns = await db.prepare(`PRAGMA table_info(${table})`).all();
-  const exists = (columns.results || []).some((item: any) => item.name === column);
+async function addColumnIfMissing(db: D1Database, table: string, column: string, definition: string) {
+  const columns = await db.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+  const exists = (columns.results || []).some((item) => item.name === column);
   if (!exists) {
     await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
   }
 }
 
-async function migrateSchema(db: any) {
+async function migrateSchema(db: D1Database) {
   await addColumnIfMissing(db, "users", "role", "TEXT DEFAULT 'author'");
   await addColumnIfMissing(db, "users", "bio", "TEXT");
   await addColumnIfMissing(db, "users", "is_active", "INTEGER DEFAULT 1");
@@ -222,8 +230,8 @@ function githubCdnPathFromUrl(url: string): string | null {
   }
 }
 
-async function migrateImageUrls(db: any) {
-  const imageRows = await db.prepare("SELECT id, url, storage_key FROM images").all();
+async function migrateImageUrls(db: D1Database) {
+  const imageRows = await db.prepare("SELECT id, url, storage_key FROM images").all<{ id: number; url: string; storage_key: string }>();
   const urlMap = new Map<string, string>();
 
   for (const image of imageRows.results || []) {
@@ -240,7 +248,7 @@ async function migrateImageUrls(db: any) {
 
   if (urlMap.size === 0) return;
 
-  const posts = await db.prepare("SELECT id, cover_image, images FROM posts").all();
+  const posts = await db.prepare("SELECT id, cover_image, images FROM posts").all<{ id: number; cover_image: string | null; images: string | null }>();
   for (const post of posts.results || []) {
     let changed = false;
     let coverImage = post.cover_image;
@@ -272,7 +280,7 @@ async function migrateImageUrls(db: any) {
   }
 }
 
-async function seedUserGroups(db: any) {
+async function seedUserGroups(db: D1Database) {
   const rows = [
     ["owner", "站主", JSON.stringify(ROLE_PERMISSIONS.owner)],
     ["admin", "管理员", JSON.stringify(ROLE_PERMISSIONS.admin)],
@@ -290,46 +298,44 @@ async function seedUserGroups(db: any) {
 
 export async function getUserByUsername(username: string): Promise<User | null> {
   const db = getDB();
-  const result = await db.prepare("SELECT * FROM users WHERE username = ?").bind(username).first();
-  return result as any;
+  return db.prepare("SELECT * FROM users WHERE username = ?").bind(username).first<User>();
 }
 
 export async function getUserByEmail(email: string): Promise<User | null> {
   const db = getDB();
-  const result = await db.prepare("SELECT * FROM users WHERE email = ?").bind(email).first();
-  return result as any;
+  return db.prepare("SELECT * FROM users WHERE email = ?").bind(email).first<User>();
 }
 
 export async function createUser(username: string, email: string, passwordHash: string, displayName?: string): Promise<User> {
   const db = getDB();
   const result = await db.prepare(
     "INSERT INTO users (username, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?) RETURNING *"
-  ).bind(username, email, passwordHash, displayName || null, "member").first();
-  return result as any;
+  ).bind(username, email, passwordHash, displayName || null, "member").first<User>();
+  // INSERT ... RETURNING 恒返回一行；D1 类型为 T | null，此处断言非空
+  return result as User;
 }
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {
   const db = getDB();
-  const result = await db.prepare(
+  return db.prepare(
     "SELECT * FROM posts WHERE slug = ? AND status = 'published'"
-  ).bind(slug).first();
-  return result as any;
+  ).bind(slug).first<Post>();
 }
 
 export async function getPosts(limit: number = 10, offset: number = 0): Promise<Post[]> {
   const db = getDB();
   const results = await db.prepare(
     "SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC LIMIT ? OFFSET ?"
-  ).bind(limit, offset).all();
-  return results.results as any;
+  ).bind(limit, offset).all<Post>();
+  return results.results;
 }
 
 export async function getAllPosts(limit: number = 50, offset: number = 0): Promise<Post[]> {
   const db = getDB();
   const results = await db.prepare(
     "SELECT * FROM posts ORDER BY created_at DESC LIMIT ? OFFSET ?"
-  ).bind(limit, offset).all();
-  return results.results as any;
+  ).bind(limit, offset).all<Post>();
+  return results.results;
 }
 
 export async function createPost(
@@ -349,8 +355,9 @@ export async function createPost(
   const result = await db.prepare(
     `INSERT INTO posts (title, slug, content, excerpt, cover_image, images, mode, author_id, status, published_at, tags)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
-  ).bind(title, slug, content, excerpt, coverImage || null, images || null, mode, authorId, status, publishedAt, tags || null).first();
-  return result as any;
+  ).bind(title, slug, content, excerpt, coverImage || null, images || null, mode, authorId, status, publishedAt, tags || null).first<Post>();
+  // INSERT ... RETURNING 恒返回一行；D1 类型为 T | null，此处断言非空
+  return result as Post;
 }
 
 export async function incrementViewCount(slug: string): Promise<void> {
@@ -362,24 +369,25 @@ export async function getGuestbookEntries(limit: number = 50): Promise<Guestbook
   const db = getDB();
   const results = await db.prepare(
     "SELECT id, name, content, created_at, user_id, reply_to FROM guestbook ORDER BY created_at DESC LIMIT ?"
-  ).bind(limit).all();
-  return results.results as any;
+  ).bind(limit).all<GuestbookEntry>();
+  return results.results;
 }
 
 export async function createGuestbookEntry(name: string, email: string, content: string, userId?: number, replyTo?: number): Promise<GuestbookEntry> {
   const db = getDB();
   const result = await db.prepare(
     "INSERT INTO guestbook (name, email, content, user_id, reply_to) VALUES (?, ?, ?, ?, ?) RETURNING *"
-  ).bind(name, email, content, userId || null, replyTo || null).first();
-  return result as any;
+  ).bind(name, email, content, userId || null, replyTo || null).first<GuestbookEntry>();
+  // INSERT ... RETURNING 恒返回一行；D1 类型为 T | null，此处断言非空
+  return result as GuestbookEntry;
 }
 
 export async function getCommentsByPostId(postId: number): Promise<Comment[]> {
   const db = getDB();
   const results = await db.prepare(
     "SELECT id, post_id, name, content, created_at, user_id, parent_id FROM comments WHERE post_id = ? ORDER BY created_at DESC"
-  ).bind(postId).all();
-  return results.results as any;
+  ).bind(postId).all<Comment>();
+  return results.results;
 }
 
 export async function createComment(
@@ -393,6 +401,7 @@ export async function createComment(
   const db = getDB();
   const result = await db.prepare(
     "INSERT INTO comments (post_id, name, email, content, user_id, parent_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
-  ).bind(postId, name, email, content, userId || null, parentId || null).first();
-  return result as any;
+  ).bind(postId, name, email, content, userId || null, parentId || null).first<Comment>();
+  // INSERT ... RETURNING 恒返回一行；D1 类型为 T | null，此处断言非空
+  return result as Comment;
 }

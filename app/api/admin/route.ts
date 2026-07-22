@@ -1,19 +1,15 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { canAccessAdmin, getCurrentUserFromRequest } from "@/lib/auth";
 import { json, noStoreHeaders } from "@/lib/security";
+import { getDb, requireAdmin } from "../_shared";
 
 export const runtime = "edge";
 
 export async function GET(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser || !canAccessAdmin(currentUser)) {
-      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
-    }
+    const auth = await requireAdmin(request, "admin:access");
+    if (auth.error) return auth.error;
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const [users, posts, comments, guestbook, images, usernameRequests] = await Promise.all([
       db.prepare("SELECT COUNT(*) AS count FROM users").first(),
       db.prepare("SELECT COUNT(*) AS count FROM posts").first(),

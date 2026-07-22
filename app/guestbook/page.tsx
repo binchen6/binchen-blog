@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MessageCircle, Send, Trash2, Wind, X } from "lucide-react";
 import Link from "next/link";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
@@ -32,6 +32,22 @@ export default function GuestbookPage() {
   const [replyTo, setReplyTo] = useState<GuestbookEntry | null>(null);
   const { user: currentUser } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+
+  // 留言按楼层分组：一次遍历建 Map，替代渲染期每条全表 filter 的 O(n²)
+  const groupedEntries = useMemo(() => {
+    const topLevel: GuestbookEntry[] = [];
+    const repliesMap = new Map<number, GuestbookEntry[]>();
+    entries.forEach((entry) => {
+      if (!entry.reply_to) {
+        topLevel.push(entry);
+        return;
+      }
+      const bucket = repliesMap.get(entry.reply_to);
+      if (bucket) bucket.push(entry);
+      else repliesMap.set(entry.reply_to, [entry]);
+    });
+    return { topLevel, repliesMap };
+  }, [entries]);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +87,10 @@ export default function GuestbookPage() {
         body: JSON.stringify({ ...form, replyTo: replyTo?.id }),
       });
       const data = (await res.json()) as { entry?: GuestbookEntry };
+      if (!res.ok || !data.entry) {
+        toast("留言提交失败，请稍后重试", "error");
+        return;
+      }
       if (data.entry) {
         setEntries((current) => {
           if (!replyTo) return [data.entry!, ...current];
@@ -84,6 +104,8 @@ export default function GuestbookPage() {
         setForm((current) => currentUser ? { ...current, content: "" } : { name: "", email: "", content: "" });
         setReplyTo(null);
       }
+    } catch {
+      toast("网络异常，留言提交失败", "error");
     } finally {
       setSubmitting(false);
     }
@@ -91,11 +113,15 @@ export default function GuestbookPage() {
 
   const deleteEntry = async (id: number) => {
     if (!confirm("确定删除这条留言吗？其回复会一并删除。")) return;
-    const res = await authFetch(`/api/guestbook?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      // 后端级联删除回复，前端同步移除
-      setEntries((current) => current.filter((entry) => entry.id !== id && entry.reply_to !== id));
-    } else toast("删除失败", "error");
+    try {
+      const res = await authFetch(`/api/guestbook?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        // 后端级联删除回复，前端同步移除
+        setEntries((current) => current.filter((entry) => entry.id !== id && entry.reply_to !== id));
+      } else toast("删除失败", "error");
+    } catch {
+      toast("网络异常，删除失败", "error");
+    }
   };
 
   return (
@@ -166,8 +192,7 @@ export default function GuestbookPage() {
             <EmptyState title="暂无留言" description="来做第一个留言者吧。" />
           ) : (
             (() => {
-              const topLevel = entries.filter((entry) => !entry.reply_to);
-              const repliesOf = (id: number) => entries.filter((entry) => entry.reply_to === id);
+              const { topLevel, repliesMap } = groupedEntries;
               const renderCard = (entry: GuestbookEntry, isReply = false) => {
                 const displayName = entry.user_display_name || entry.name;
                 return (
@@ -208,7 +233,7 @@ export default function GuestbookPage() {
               return topLevel.map((entry) => (
                 <div key={entry.id} className="space-y-3">
                   {renderCard(entry)}
-                  {repliesOf(entry.id).map((reply) => renderCard(reply, true))}
+                  {(repliesMap.get(entry.id) || []).map((reply) => renderCard(reply, true))}
                 </div>
               ));
             })()

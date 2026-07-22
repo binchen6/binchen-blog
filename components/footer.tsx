@@ -13,9 +13,9 @@ const footerLinks = [
 export default function Footer() {
   return (
     <footer className="relative z-10 mt-10">
-      <img src="/assets/ink/brush-divider-2.jpg" alt="" aria-hidden="true" className="brush-divider mb-0" />
+      <img src="/assets/ink/brush-divider-2.jpg" alt="" aria-hidden="true" loading="lazy" decoding="async" className="brush-divider mb-0" />
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 px-5 py-10 text-center">
-        <img src="/assets/ink/seal-logo.png" alt="尘墨" className="h-12 w-12 mix-blend-multiply opacity-85" />
+        <img src="/assets/ink/seal-logo.png" alt="尘墨" loading="lazy" decoding="async" className="h-12 w-12 mix-blend-multiply opacity-85" />
 
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2" aria-label="页脚导航">
           {footerLinks.map((link) => (

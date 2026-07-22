@@ -1,20 +1,22 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest, hashPassword, verifyPassword } from "@/lib/auth";
+import { hashPassword, verifyPassword } from "@/lib/auth";
 import { json, rateLimit } from "@/lib/security";
+import { getDb, parseJsonBody, requireLogin } from "../../_shared";
 
 export const runtime = "edge";
 
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
     const limited = rateLimit(request, { key: `password:${currentUser.id}`, limit: 5, windowMs: 60 * 60 * 1000 });
     if (limited) return limited;
 
-    const body = (await request.json()) as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid request body" }, { status: 400 });
+    }
     const currentPassword = String(body.currentPassword || "");
     const newPassword = String(body.newPassword || "");
 
@@ -28,8 +30,7 @@ export async function POST(request: NextRequest) {
       return json({ error: "New password must be different" }, { status: 400 });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const user = await db.prepare("SELECT password_hash FROM users WHERE id = ?").bind(currentUser.id).first();
     if (!user) {
       return json({ error: "User not found" }, { status: 404 });

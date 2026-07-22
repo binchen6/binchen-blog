@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
 import { UserRole } from "@/lib/types";
 import { json, noStoreHeaders, parsePositiveId } from "@/lib/security";
+import { getDb, parseJsonBody, requireAdmin } from "../../../_shared";
 
 export const runtime = "edge";
 
@@ -10,18 +9,19 @@ const ROLES: UserRole[] = ["owner", "admin", "editor", "author", "member"];
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser || !hasPermission(currentUser, "users:manage")) {
-      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
-    }
+    const auth = await requireAdmin(request, "users:manage");
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
     const targetId = parsePositiveId(params.id);
     if (!targetId) {
       return json({ error: "Invalid user id" }, { status: 400, headers: noStoreHeaders() });
     }
 
-    const body = await request.json() as any;
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400, headers: noStoreHeaders() });
+    }
+    const db = getDb();
     const target = await db.prepare("SELECT id, username, role, is_active FROM users WHERE id = ?").bind(targetId).first();
     if (!target) {
       return json({ error: "User not found" }, { status: 404, headers: noStoreHeaders() });

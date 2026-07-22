@@ -92,6 +92,8 @@ export default function WritePage() {
           setAssets(imageData.images || []);
           setPosts(postData.posts || []);
         }
+      } catch {
+        if (!cancelled) toast("图片库或文章列表加载失败，刷新页面重试", "error");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -308,42 +310,50 @@ export default function WritePage() {
   const editPost = async (slug: string) => {
     const currentToken = requireToken();
     if (!currentToken) return;
-    const res = await fetch(`/api/posts/${slug}`, { headers: { Authorization: `Bearer ${currentToken}` } });
-    const data = (await res.json()) as { post?: PostDetail; error?: string };
-    if (!data.post) {
-      toast(data.error || "读取文章失败", "error");
-      return;
-    }
-    const post = data.post;
-    setEditingSlug(post.slug);
-    setTitle(post.title);
-    setContent(post.content);
-    setTags(post.tags || "");
-    setCoverImage(post.cover_image || "");
-    setMode(post.mode || "article");
-    setStatus(post.status);
-    setShowPreview(false);
     try {
-      setImages(post.images ? JSON.parse(post.images) : []);
+      const res = await fetch(`/api/posts/${slug}`, { headers: { Authorization: `Bearer ${currentToken}` } });
+      const data = (await res.json()) as { post?: PostDetail; error?: string };
+      if (!data.post) {
+        toast(data.error || "读取文章失败", "error");
+        return;
+      }
+      const post = data.post;
+      setEditingSlug(post.slug);
+      setTitle(post.title);
+      setContent(post.content);
+      setTags(post.tags || "");
+      setCoverImage(post.cover_image || "");
+      setMode(post.mode || "article");
+      setStatus(post.status);
+      setShowPreview(false);
+      try {
+        setImages(post.images ? JSON.parse(post.images) : []);
+      } catch {
+        setImages([]);
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
-      setImages([]);
+      toast("网络异常，读取文章失败", "error");
     }
-    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const deletePost = async (slug: string) => {
     if (!confirm("确定删除这篇文章吗？相关评论也会被删除。")) return;
     const currentToken = requireToken();
     if (!currentToken) return;
-    const res = await fetch(`/api/posts/${slug}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${currentToken}` },
-    });
-    if (res.ok) {
-      setPosts((current) => current.filter((post) => post.slug !== slug));
-      if (editingSlug === slug) resetEditor();
-    } else {
-      toast("删除失败", "error");
+    try {
+      const res = await fetch(`/api/posts/${slug}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${currentToken}` },
+      });
+      if (res.ok) {
+        setPosts((current) => current.filter((post) => post.slug !== slug));
+        if (editingSlug === slug) resetEditor();
+      } else {
+        toast("删除失败", "error");
+      }
+    } catch {
+      toast("网络异常，删除失败", "error");
     }
   };
 

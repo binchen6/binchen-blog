@@ -1,30 +1,26 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { canAccessAdmin, getCurrentUserFromRequest } from "@/lib/auth";
 import { broadcastAnnouncement } from "@/lib/notifications";
-import { cacheHeaders, json, parsePositiveId, requireText } from "@/lib/security";
+import { cacheHeaders, json, noStoreHeaders, parsePositiveId, requireText } from "@/lib/security";
+import { getDb, parseJsonBody, requireAdmin } from "../_shared";
 
 export const runtime = "edge";
 
 /** GET /api/announcements — 最新公告（公开，访客横幅用）；?all=1 管理员看历史 */
 export async function GET(request: NextRequest) {
   try {
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
 
     const { searchParams } = new URL(request.url);
     if (searchParams.get("all") === "1") {
-      const currentUser = await getCurrentUserFromRequest(request);
-      if (!currentUser || !canAccessAdmin(currentUser)) {
-        return json({ error: "Forbidden" }, { status: 403 });
-      }
+      const auth = await requireAdmin(request, "admin:access");
+      if (auth.error) return auth.error;
       const rows = await db.prepare(
         `SELECT announcements.id, announcements.title, announcements.content, announcements.created_at,
                 users.display_name AS created_by_name, users.username AS created_by_username
          FROM announcements LEFT JOIN users ON users.id = announcements.created_by
          ORDER BY announcements.created_at DESC LIMIT 50`
       ).all();
-      return json({ announcements: rows.results }, { headers: { "Cache-Control": "no-store" } });
+      return json({ announcements: rows.results }, { headers: noStoreHeaders() });
     }
 
     const row = await db.prepare(
@@ -40,20 +36,21 @@ export async function GET(request: NextRequest) {
 /** POST /api/announcements — 管理员发布公告（广播通知所有用户） */
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser || !canAccessAdmin(currentUser)) {
-      return json({ error: "Forbidden" }, { status: 403 });
-    }
+    const auth = await requireAdmin(request, "admin:access");
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
 
-    const body = (await request.json()) as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const title = requireText(body.title, 80);
     const content = requireText(body.content, 2000);
     if (!title || !content) {
       return json({ error: "Title and content are required" }, { status: 400 });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const announcement = await db.prepare(
       "INSERT INTO announcements (title, content, created_by) VALUES (?, ?, ?) RETURNING *"
     ).bind(title, content, currentUser.id).first();
@@ -70,16 +67,14 @@ export async function POST(request: NextRequest) {
 /** DELETE /api/announcements?id= — 管理员删除公告（历史公告与对应通知一并移除） */
 export async function DELETE(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser || !canAccessAdmin(currentUser)) {
-      return json({ error: "Forbidden" }, { status: 403 });
-    }
+    const auth = await requireAdmin(request, "admin:access");
+    if (auth.error) return auth.error;
+
     const id = parsePositiveId(new URL(request.url).searchParams.get("id"));
     if (!id) {
       return json({ error: "Invalid id" }, { status: 400 });
     }
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     await db.batch([
       db.prepare("DELETE FROM announcements WHERE id = ?").bind(id),
       db.prepare("DELETE FROM notifications WHERE type = 'announcement' AND target_id = ?").bind(id),

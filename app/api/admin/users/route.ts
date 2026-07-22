@@ -1,22 +1,19 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest, hasPermission, ROLE_LABELS, ROLE_PERMISSIONS } from "@/lib/auth";
+import { ROLE_LABELS, ROLE_PERMISSIONS } from "@/lib/auth";
 import { json, noStoreHeaders, parseBoundedInt } from "@/lib/security";
+import { getDb, requireAdmin } from "../../_shared";
 
 export const runtime = "edge";
 
 export async function GET(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser || !hasPermission(currentUser, "users:manage")) {
-      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
-    }
+    const auth = await requireAdmin(request, "users:manage");
+    if (auth.error) return auth.error;
 
     const { searchParams } = new URL(request.url);
     const limit = parseBoundedInt(searchParams.get("limit"), 100, 1, 200);
     const offset = parseBoundedInt(searchParams.get("offset"), 0, 0, 10000);
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const results = await db.prepare(
       `SELECT id, username, email, display_name, avatar, role, bio, is_active, created_at
        FROM users

@@ -1,16 +1,15 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
 import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
 import { createNotification, notifyMentions } from "@/lib/notifications";
-import { json, parsePositiveId, rateLimit, requireText } from "@/lib/security";
+import { cacheHeaders, json, parsePositiveId, rateLimit, requireText } from "@/lib/security";
 import { validateEmail } from "@/lib/utils";
+import { getDb, parseJsonBody, requireLogin } from "../_shared";
 
 export const runtime = "edge";
 
 export async function GET() {
   try {
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const results = await db.prepare(
       `SELECT guestbook.id, guestbook.name, guestbook.content, guestbook.created_at, guestbook.user_id, guestbook.reply_to,
               users.display_name AS user_display_name, users.username AS username, users.avatar AS user_avatar
@@ -19,7 +18,7 @@ export async function GET() {
        ORDER BY guestbook.created_at DESC
        LIMIT 50`
     ).all();
-    return json({ entries: results.results });
+    return json({ entries: results.results }, { headers: cacheHeaders(30, 120) });
   } catch (error) {
     console.error("Get guestbook error:", error);
     return json({ error: "Failed to fetch entries" }, { status: 500 });
@@ -28,7 +27,10 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const replyTo = parsePositiveId(body.replyTo);
     const currentUser = await getCurrentUserFromRequest(request);
 
@@ -43,8 +45,7 @@ export async function POST(request: NextRequest) {
       return json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const result = await db.prepare(
       "INSERT INTO guestbook (name, email, content, user_id, reply_to) VALUES (?, ?, ?, ?, ?) RETURNING *"
     ).bind(entryName, entryEmail, content, currentUser?.id || null, replyTo || null).first();
@@ -91,17 +92,15 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
     const { searchParams } = new URL(request.url);
     const id = parsePositiveId(searchParams.get("id"));
     if (!id) {
       return json({ error: "Invalid id" }, { status: 400 });
     }
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const entry = await db.prepare("SELECT id, user_id FROM guestbook WHERE id = ?").bind(id).first();
     if (!entry) {
       return json({ error: "Entry not found" }, { status: 404 });
@@ -109,7 +108,9 @@ export async function DELETE(request: NextRequest) {
     if (!hasPermission(currentUser, "guestbook:manage_all") && Number(entry.user_id) !== currentUser.id) {
       return json({ error: "Forbidden" }, { status: 403 });
     }
-    await db.prepare("DELETE FROM guestbook WHERE id = ? OR reply_to = ?").bind(id, id).run();
+    await db.batch([
+      db.prepare("DELETE FROM guestbook WHERE id = ? OR reply_to = ?").bind(id, id),
+    ]);
     return json({ success: true });
   } catch (error) {
     console.error("Delete guestbook entry error:", error);

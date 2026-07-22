@@ -16,8 +16,9 @@ export type GithubImageConfig = {
 
 export type GithubConfigSource = "runtime" | "build" | "default" | "missing";
 
-function readRuntimeEnvString(env: any, key: string): string {
-  return String(env?.[key] || "").trim();
+function readRuntimeEnvString(env: unknown, key: string): string {
+  if (!env || typeof env !== "object") return "";
+  return String((env as Record<string, unknown>)[key] ?? "").trim();
 }
 
 function readBuildEnvString(key: string): string {
@@ -35,7 +36,7 @@ function readBuildEnvString(key: string): string {
   return String(value || "").trim();
 }
 
-function readConfigValue(env: any, key: string, fallback = ""): { value: string; source: GithubConfigSource } {
+function readConfigValue(env: unknown, key: string, fallback = ""): { value: string; source: GithubConfigSource } {
   const runtimeValue = readRuntimeEnvString(env, key);
   if (runtimeValue) return { value: runtimeValue, source: "runtime" };
 
@@ -57,7 +58,7 @@ export function getGithubBuildEnvPresence(): Record<string, boolean> {
   };
 }
 
-export function getGithubRuntimeEnvPresence(env: any): Record<string, boolean> {
+export function getGithubRuntimeEnvPresence(env: unknown): Record<string, boolean> {
   return {
     GITHUB_TOKEN: Boolean(readRuntimeEnvString(env, "GITHUB_TOKEN")),
     GITHUB_OWNER: Boolean(readRuntimeEnvString(env, "GITHUB_OWNER")),
@@ -67,13 +68,14 @@ export function getGithubRuntimeEnvPresence(env: any): Record<string, boolean> {
   };
 }
 
-export function getRelatedRuntimeEnvKeys(env: any): string[] {
-  return Object.keys(env || {})
+export function getRelatedRuntimeEnvKeys(env: unknown): string[] {
+  if (!env || typeof env !== "object") return [];
+  return Object.keys(env)
     .filter((key) => key.startsWith("GITHUB_") || key === "DB")
     .sort();
 }
 
-export function getGithubImageConfig(env: any): GithubImageConfig {
+export function getGithubImageConfig(env: unknown): GithubImageConfig {
   const tokenConfig = readConfigValue(env, "GITHUB_TOKEN");
   const ownerConfig = readConfigValue(env, "GITHUB_OWNER");
   const repoConfig = readConfigValue(env, "GITHUB_REPO");

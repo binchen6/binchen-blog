@@ -1,11 +1,10 @@
-import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { runPerformanceSchedule } from "@/lib/performance";
 import { json, noStoreHeaders } from "@/lib/security";
 
 export const runtime = "edge";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const ctx = getRequestContext();
     const env = ctx.env as any;

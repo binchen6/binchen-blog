@@ -1,17 +1,15 @@
 import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { canAccessAdmin, getCurrentUserFromRequest } from "@/lib/auth";
 import { getGithubBuildEnvPresence, getGithubImageConfig, getGithubRuntimeEnvPresence, getRelatedRuntimeEnvKeys } from "@/lib/github-config";
 import { json, noStoreHeaders } from "@/lib/security";
+import { requireAdmin } from "../../_shared";
 
 export const runtime = "edge";
 
 export async function GET(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser || !canAccessAdmin(currentUser)) {
-      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
-    }
+    const auth = await requireAdmin(request, "admin:access");
+    if (auth.error) return auth.error;
 
     const ctx = getRequestContext();
     const env = ctx.env as any;

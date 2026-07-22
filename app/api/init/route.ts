@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { createTables } from "@/lib/db";
 import { json, noStoreHeaders } from "@/lib/security";
+import { getDb } from "../_shared";
 
 export const runtime = "edge";
 
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     }
 
     await createTables();
-    const db = env.DB;
+    const db = getDb();
     const owner = await db.prepare("SELECT id FROM users WHERE role = 'owner' LIMIT 1").first();
     if (!owner) {
       await db.prepare("UPDATE users SET role = 'owner' WHERE username = 'binchen'").run();

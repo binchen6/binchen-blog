@@ -1,20 +1,23 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
+import { canManagePost, getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
 import { createNotification, notifyMentions } from "@/lib/notifications";
 import { json, parsePositiveId, rateLimit, requireText } from "@/lib/security";
 import { validateEmail } from "@/lib/utils";
+import { getDb, parseJsonBody, requireLogin } from "../../../_shared";
 
 export const runtime = "edge";
 
 export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
   try {
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const slug = params.slug;
     const currentUser = await getCurrentUserFromRequest(request);
-    const post = await db.prepare("SELECT id FROM posts WHERE slug = ?").bind(slug).first();
+    const post = await db.prepare("SELECT id, status, author_id FROM posts WHERE slug = ?").bind(slug).first();
     if (!post) {
+      return json({ error: "Post not found" }, { status: 404 });
+    }
+    // 草稿文章的评论不对外暴露（与文章详情页可见性一致）
+    if (post.status !== "published" && (!currentUser || !canManagePost(currentUser, Number(post.author_id)))) {
       return json({ error: "Post not found" }, { status: 404 });
     }
     const results = await db.prepare(
@@ -27,12 +30,12 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
        ORDER BY comments.created_at DESC`
     ).bind(post.id).all();
 
-    // 当前用户已赞过的评论 id 列表
+    // 当前用户已赞过的评论 id 列表（限定本帖，避免随历史点赞全量膨胀）
     let likedIds: number[] = [];
     if (currentUser) {
       const liked = await db.prepare(
-        "SELECT target_id FROM likes WHERE user_id = ? AND target_type = 'comment'"
-      ).bind(currentUser.id).all();
+        "SELECT target_id FROM likes WHERE user_id = ? AND target_type = 'comment' AND target_id IN (SELECT id FROM comments WHERE post_id = ?)"
+      ).bind(currentUser.id, post.id).all();
       likedIds = (liked.results || []).map((row: any) => Number(row.target_id));
     }
 
@@ -45,7 +48,10 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
 
 export async function POST(request: NextRequest, { params }: { params: { slug: string } }) {
   try {
-    const body = await request.json() as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const parentId = parsePositiveId(body.parentId);
     const currentUser = await getCurrentUserFromRequest(request);
     const limited = rateLimit(request, { key: currentUser ? `comment:${currentUser.id}` : "comment", limit: 12, windowMs: 10 * 60 * 1000 });
@@ -57,12 +63,18 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
     if (!commentName || !commentEmail || !content || !validateEmail(commentEmail)) {
       return json({ error: "Missing required fields" }, { status: 400 });
     }
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const slug = params.slug;
-    const post = await db.prepare("SELECT id, title, author_id FROM posts WHERE slug = ?").bind(slug).first();
-    if (!post) {
+    const post = await db.prepare("SELECT id, title, author_id, status FROM posts WHERE slug = ?").bind(slug).first();
+    if (!post || post.status !== "published") {
       return json({ error: "Post not found" }, { status: 404 });
+    }
+    // 父评论必须属于本帖，防止跨帖伪造回复关系
+    if (parentId) {
+      const parentCheck = await db.prepare("SELECT id FROM comments WHERE id = ? AND post_id = ?").bind(parentId, post.id).first();
+      if (!parentCheck) {
+        return json({ error: "Invalid parent comment" }, { status: 400 });
+      }
     }
     const result = await db.prepare(
       "INSERT INTO comments (post_id, name, email, content, user_id, parent_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
@@ -108,17 +120,15 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
 
 export async function DELETE(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
     const { searchParams } = new URL(request.url);
     const id = parsePositiveId(searchParams.get("id"));
     if (!id) {
       return json({ error: "Invalid id" }, { status: 400 });
     }
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const comment = await db.prepare("SELECT id, user_id FROM comments WHERE id = ?").bind(id).first();
     if (!comment) {
       return json({ error: "Comment not found" }, { status: 404 });
@@ -126,7 +136,11 @@ export async function DELETE(request: NextRequest) {
     if (!hasPermission(currentUser, "comments:manage_all") && Number(comment.user_id) !== currentUser.id) {
       return json({ error: "Forbidden" }, { status: 403 });
     }
-    await db.prepare("DELETE FROM comments WHERE id = ? OR parent_id = ?").bind(id, id).run();
+    // 级联清理被删评论（含子回复）的点赞，避免孤儿数据
+    await db.batch([
+      db.prepare("DELETE FROM likes WHERE target_type = 'comment' AND (target_id = ? OR target_id IN (SELECT id FROM comments WHERE parent_id = ?))").bind(id, id),
+      db.prepare("DELETE FROM comments WHERE id = ? OR parent_id = ?").bind(id, id),
+    ]);
     return json({ success: true });
   } catch (error) {
     console.error("Delete comment error:", error);

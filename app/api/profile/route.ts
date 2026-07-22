@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest, ROLE_LABELS, ROLE_PERMISSIONS, serializeUser } from "@/lib/auth";
+import { NextRequest } from "next/server";
+import { ROLE_LABELS, ROLE_PERMISSIONS, serializeUser } from "@/lib/auth";
 import { validateEmail } from "@/lib/utils";
 import { UserRole } from "@/lib/types";
-import { clampText, json, rateLimit } from "@/lib/security";
+import { clampText, json, noStoreHeaders, rateLimit } from "@/lib/security";
+import { getDb, parseJsonBody, requireLogin } from "../_shared";
 
 export const runtime = "edge";
 
@@ -19,13 +19,11 @@ function roleGroups() {
 
 export async function GET(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const [pendingRequest, historyRow] = await Promise.all([
       db.prepare(
         `SELECT * FROM username_change_requests
@@ -49,7 +47,7 @@ export async function GET(request: NextRequest) {
       groups: roleGroups(),
       pendingUsernameRequest: pendingRequest || null,
       avatarHistory,
-    });
+    }, { headers: noStoreHeaders() });
   } catch (error) {
     console.error("Get profile error:", error);
     return json({ error: "Failed to fetch profile" }, { status: 500 });
@@ -58,12 +56,14 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
 
-    const body = await request.json() as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const displayName = clampText(body.displayName, 40) || null;
     const email = clampText(body.email, 254).toLowerCase();
     const bio = clampText(body.bio, 240) || null;
@@ -72,8 +72,7 @@ export async function PATCH(request: NextRequest) {
       return json({ error: "Invalid email" }, { status: 400 });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const duplicateEmail = await db.prepare("SELECT id FROM users WHERE email = ? AND id != ?").bind(email, currentUser.id).first();
     if (duplicateEmail) {
       return json({ error: "Email already exists" }, { status: 409 });
@@ -96,14 +95,16 @@ export async function PATCH(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
     const limited = rateLimit(request, { key: `username-request:${currentUser.id}`, limit: 3, windowMs: 24 * 60 * 60 * 1000 });
     if (limited) return limited;
 
-    const body = await request.json() as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const requestedUsername = clampText(body.requestedUsername, 24);
     if (!USERNAME_RE.test(requestedUsername)) {
       return json({ error: "Username must be 3-24 letters, numbers, underscores or hyphens" }, { status: 400 });
@@ -112,8 +113,7 @@ export async function POST(request: NextRequest) {
       return json({ error: "New username must be different" }, { status: 400 });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const [existingUser, pending] = await Promise.all([
       db.prepare("SELECT id FROM users WHERE username = ?").bind(requestedUsername).first(),
       db.prepare("SELECT id FROM username_change_requests WHERE user_id = ? AND status = 'pending'").bind(currentUser.id).first(),

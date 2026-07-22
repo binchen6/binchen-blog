@@ -14,8 +14,12 @@ interface MyImagesProps {
 /** 我的图片墙：点击预览原图，支持复制链接与删除 */
 export function MyImages({ images, authHeaders, onDeleted }: MyImagesProps) {
   const copyImageUrl = async (url: string) => {
-    await navigator.clipboard.writeText(url);
-    toast("图片链接已复制");
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("图片链接已复制");
+    } catch {
+      toast("复制失败，请手动复制", "error");
+    }
   };
 
   const deleteImage = async (id: number) => {

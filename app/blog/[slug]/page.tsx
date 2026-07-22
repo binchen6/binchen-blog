@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, Calendar, Copy, Eye, ListTree, MessageCircle, Send, Tag, Trash2, User, X } from "lucide-react";
@@ -91,31 +91,21 @@ export default function BlogPostPage() {
     async function loadPost() {
       try {
         const postRes = await fetch(`/api/posts/${slug}`);
-        const postData = (await postRes.json()) as { post?: Post; likedByMe?: boolean };
+        const postData = (await postRes.json()) as { post?: Post; likedByMe?: boolean; prevPost?: PostNavItem | null; nextPost?: PostNavItem | null };
         if (cancelled) return;
 
         if (postData.post) {
           setPost(postData.post);
           setLikedByMe(!!postData.likedByMe);
+          setPrevPost(postData.prevPost || null);
+          setNextPost(postData.nextPost || null);
 
-          const [commentsRes, listRes] = await Promise.all([
-            fetch(`/api/posts/${slug}/comments`),
-            fetch("/api/posts?limit=100"),
-          ]);
+          const commentsRes = await fetch(`/api/posts/${slug}/comments`);
           const commentsData = (await commentsRes.json()) as { comments?: Comment[]; likedIds?: number[] };
-          const listData = (await listRes.json()) as { posts?: { slug: string; title: string }[] };
           if (cancelled) return;
 
           setComments(commentsData.comments || []);
           setLikedCommentIds(commentsData.likedIds || []);
-
-          // 上一篇/下一篇（按发布时间排序的列表中找相邻）
-          const list = listData.posts || [];
-          const index = list.findIndex((item) => item.slug === slug);
-          if (index >= 0) {
-            setPrevPost(index > 0 ? list[index - 1] : null);
-            setNextPost(index < list.length - 1 ? list[index + 1] : null);
-          }
         }
       } catch {
         if (!cancelled) {
@@ -255,6 +245,37 @@ export default function BlogPostPage() {
     setTocOpen(false);
   }, []);
 
+  // 派生数据 memo 化：避免每次 render 重算大文本阅读时长 / 重复 JSON.parse
+  const readingTime = useMemo(() => (post ? getReadingTime(post.content) : 0), [post]);
+  const tags = useMemo(
+    () => post?.tags?.split(",").map((tag) => tag.trim()).filter(Boolean) || [],
+    [post]
+  );
+  const postImages = useMemo(() => {
+    if (!post?.images) return [] as string[];
+    try {
+      return JSON.parse(post.images) as string[];
+    } catch {
+      return [] as string[];
+    }
+  }, [post]);
+
+  // 评论按楼层分组：一次遍历建 Map，替代渲染期 topLevel + 每条全表 filter 的 O(n²)
+  const groupedComments = useMemo(() => {
+    const topLevel: Comment[] = [];
+    const repliesMap = new Map<number, Comment[]>();
+    comments.forEach((comment) => {
+      if (!comment.parent_id) {
+        topLevel.push(comment);
+        return;
+      }
+      const bucket = repliesMap.get(comment.parent_id);
+      if (bucket) bucket.push(comment);
+      else repliesMap.set(comment.parent_id, [comment]);
+    });
+    return { topLevel, repliesMap };
+  }, [comments]);
+
   const startReply = (comment: Comment) => {
     setReplyTo(comment);
     document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -272,6 +293,10 @@ export default function BlogPostPage() {
         body: JSON.stringify({ ...commentForm, parentId: replyTo?.id }),
       });
       const data = (await res.json()) as { comment?: Comment };
+      if (!res.ok || !data.comment) {
+        toast("评论发表失败，请稍后重试", "error");
+        return;
+      }
       if (data.comment) {
         // 回复插入到对应楼层下方，顶层评论排到最前
         setComments((current) => {
@@ -285,6 +310,8 @@ export default function BlogPostPage() {
         setCommentForm({ name: "", email: "", content: "" });
         setReplyTo(null);
       }
+    } catch {
+      toast("网络异常，评论发表失败", "error");
     } finally {
       setSubmitting(false);
     }
@@ -292,11 +319,15 @@ export default function BlogPostPage() {
 
   const deleteComment = async (id: number) => {
     if (!confirm("确定删除这条评论吗？其回复会一并删除。")) return;
-    const res = await authFetch(`/api/posts/${slug}/comments?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      // 后端级联删除子回复，前端同步移除
-      setComments((current) => current.filter((comment) => comment.id !== id && comment.parent_id !== id));
-    } else toast("删除失败", "error");
+    try {
+      const res = await authFetch(`/api/posts/${slug}/comments?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        // 后端级联删除子回复，前端同步移除
+        setComments((current) => current.filter((comment) => comment.id !== id && comment.parent_id !== id));
+      } else toast("删除失败", "error");
+    } catch {
+      toast("网络异常，删除失败", "error");
+    }
   };
 
   if (loading) {
@@ -333,15 +364,6 @@ export default function BlogPostPage() {
         </section>
       </SiteShell>
     );
-  }
-
-  const readingTime = getReadingTime(post.content);
-  const tags = post.tags?.split(",").map((tag) => tag.trim()).filter(Boolean) || [];
-  let postImages: string[] = [];
-  try {
-    postImages = post.images ? JSON.parse(post.images) : [];
-  } catch {
-    postImages = [];
   }
 
   const tocPanel = toc.length > 0 && (
@@ -622,8 +644,7 @@ export default function BlogPostPage() {
               <EmptyState title="暂无评论" description="来做第一个评论者吧。" />
             ) : (
               (() => {
-                const topLevel = comments.filter((comment) => !comment.parent_id);
-                const repliesOf = (id: number) => comments.filter((comment) => comment.parent_id === id);
+                const { topLevel, repliesMap } = groupedComments;
                 const renderCard = (comment: Comment, isReply = false) => {
                   const displayName = comment.user_display_name || comment.name;
                   const isAuthor = comment.user_id !== null && comment.user_id === post.author_id;
@@ -673,7 +694,7 @@ export default function BlogPostPage() {
                 return topLevel.map((comment) => (
                   <div key={comment.id} className="space-y-3">
                     {renderCard(comment)}
-                    {repliesOf(comment.id).map((reply) => renderCard(reply, true))}
+                    {(repliesMap.get(comment.id) || []).map((reply) => renderCard(reply, true))}
                   </div>
                 ));
               })()

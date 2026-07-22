@@ -56,14 +56,18 @@ function rfc822(date: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? new Date().toUTCString() : d.toUTCString();
 }
 
-/** markdown → 纯文本（moment 摘要 / article 兜底 excerpt 用） */
-function toPlainText(markdown: string): string {
-  return md
-    .render(markdown)
+/** HTML → 纯文本（剥离标签、实体、压缩空白；供 toPlainText 和 buildItem 共用） */
+function htmlToPlainText(html: string): string {
+  return html
     .replace(/<[^>]+>/g, " ")
     .replace(/&[a-zA-Z#0-9]+;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** markdown → 纯文本 */
+function toPlainText(markdown: string): string {
+  return htmlToPlainText(md.render(markdown));
 }
 
 function truncate(text: string, max: number): string {
@@ -91,9 +95,11 @@ function buildItem(post: FeedPostRow, origin: string): string {
     title = truncate(plain, 30) || "无题动态";
     description = escapeXml(truncate(plain, 500));
   } else {
+    // 只渲染一次，同时用于 description 兜底和 content:encoded
+    const html = md.render(post.content);
     title = post.title || "无题";
-    description = escapeXml(post.excerpt?.trim() || truncate(toPlainText(post.content), 200));
-    contentEncoded = `\n      <content:encoded>${cdata(md.render(post.content))}</content:encoded>`;
+    description = escapeXml(post.excerpt?.trim() || truncate(htmlToPlainText(html), 200));
+    contentEncoded = `\n      <content:encoded>${cdata(html)}</content:encoded>`;
   }
 
   return `    <item>
@@ -107,7 +113,7 @@ ${categories ? `${categories}\n` : ""}      <description>${description}</descrip
 }
 
 /** 查询已发布文章+动态（联表取作者显示名），D1 故障时返回空数组由上层输出合法空 feed */
-export async function fetchFeedPosts(db: any, limit = 50): Promise<FeedPostRow[]> {
+export async function fetchFeedPosts(db: D1Database, limit = 50): Promise<FeedPostRow[]> {
   try {
     const { results } = await db
       .prepare(
@@ -121,8 +127,8 @@ export async function fetchFeedPosts(db: any, limit = 50): Promise<FeedPostRow[]
           LIMIT ?`
       )
       .bind(limit)
-      .all();
-    return (results || []) as FeedPostRow[];
+      .all<FeedPostRow>();
+    return results;
   } catch (error) {
     console.error("RSS feed query failed:", error);
     return [];

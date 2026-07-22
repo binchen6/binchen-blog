@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest } from "@/lib/auth";
-import { json, parsePositiveId } from "@/lib/security";
+import { json, noStoreHeaders, parsePositiveId } from "@/lib/security";
+import { getDb, parseJsonBody, requireLogin } from "../../_shared";
 
 export const runtime = "edge";
 
@@ -11,14 +10,15 @@ export const runtime = "edge";
  */
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
 
-    const body = (await request.json()) as any;
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400 });
+    }
+    const db = getDb();
 
     if (body.all === true) {
       await db.prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?").bind(currentUser.id).run();

@@ -6,7 +6,16 @@ type RateLimitOptions = {
   windowMs: number;
 };
 
+/**
+ * ⚠️ 局限：内存限流只作用于当前 isolate。Cloudflare Workers 多 isolate 并发时
+ * 各实例计数互不可见，实际限流阈值 ≈ limit × 活跃 isolate 数；仅作低成本兜底，
+ * 需要强限流时应改用 Durable Objects / KV / Workers Rate Limiting 绑定。
+ */
 const buckets = new Map<string, { count: number; resetAt: number }>();
+
+/** 惰性清理节流间隔：rateLimit 调用路径上至多每分钟全表扫描一次过期桶 */
+const SWEEP_INTERVAL_MS = 60_000;
+let lastSweepAt = 0;
 
 export function cleanupRateLimitBuckets(now: number = Date.now()): number {
   let removed = 0;
@@ -19,6 +28,13 @@ export function cleanupRateLimitBuckets(now: number = Date.now()): number {
   return removed;
 }
 
+/** 惰性清理：限流调用时顺手清过期桶，避免只依赖 cron 导致过期桶常驻 isolate 内存 */
+function lazySweepExpiredBuckets(now: number): void {
+  if (now - lastSweepAt < SWEEP_INTERVAL_MS) return;
+  lastSweepAt = now;
+  cleanupRateLimitBuckets(now);
+}
+
 export function getClientIp(request: NextRequest): string {
   return (
     request.headers.get("cf-connecting-ip") ||
@@ -29,6 +45,7 @@ export function getClientIp(request: NextRequest): string {
 
 export function rateLimit(request: NextRequest, options: RateLimitOptions): NextResponse | null {
   const now = Date.now();
+  lazySweepExpiredBuckets(now);
   const bucketKey = `${options.key}:${getClientIp(request)}`;
   const existing = buckets.get(bucketKey);
 

@@ -74,25 +74,29 @@ export default function NotificationsPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
-    });
+    }).catch(() => {}); // 已读标记失败不打扰用户，下次进入会重新同步
     setItems((current) => current.map((entry) => entry.id === id ? { ...entry, is_read: 1 } : entry));
     setUnreadCount((current) => Math.max(0, current - 1));
     refreshUnreadEvent();
   };
 
   const markAllRead = async () => {
-    const res = await authFetch("/api/notifications/read", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ all: true }),
-    });
-    if (res.ok) {
-      setItems((current) => current.map((item) => ({ ...item, is_read: 1 })));
-      setUnreadCount(0);
-      refreshUnreadEvent();
-      toast("已全部标记为已读");
-    } else {
-      toast("操作失败", "error");
+    try {
+      const res = await authFetch("/api/notifications/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      if (res.ok) {
+        setItems((current) => current.map((item) => ({ ...item, is_read: 1 })));
+        setUnreadCount(0);
+        refreshUnreadEvent();
+        toast("已全部标记为已读");
+      } else {
+        toast("操作失败", "error");
+      }
+    } catch {
+      toast("网络异常，操作失败", "error");
     }
   };
 
@@ -124,32 +128,40 @@ export default function NotificationsPage() {
   };
 
   const deleteOne = async (id: number) => {
-    const res = await authFetch(`/api/notifications?id=${id}`, { method: "DELETE" });
-    if (res.ok) {
-      const target = items.find((item) => item.id === id);
-      setItems((current) => current.filter((item) => item.id !== id));
-      if (target && !target.is_read) setUnreadCount((current) => Math.max(0, current - 1));
-      refreshUnreadEvent();
-      toast("已删除");
-    } else {
-      toast("删除失败", "error");
+    try {
+      const res = await authFetch(`/api/notifications?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        const target = items.find((item) => item.id === id);
+        setItems((current) => current.filter((item) => item.id !== id));
+        if (target && !target.is_read) setUnreadCount((current) => Math.max(0, current - 1));
+        refreshUnreadEvent();
+        toast("已删除");
+      } else {
+        toast("删除失败", "error");
+      }
+    } catch {
+      toast("网络异常，删除失败", "error");
     }
   };
 
   const deleteSelected = async () => {
     if (selected.size === 0) return;
     if (!confirm(`确定删除选中的 ${selected.size} 条消息吗？`)) return;
-    const res = await authFetch(`/api/notifications?ids=${Array.from(selected).join(",")}`, { method: "DELETE" });
-    if (res.ok) {
-      const deletedUnread = items.filter((item) => selected.has(item.id) && !item.is_read).length;
-      setItems((current) => current.filter((item) => !selected.has(item.id)));
-      setUnreadCount((current) => Math.max(0, current - deletedUnread));
-      setSelected(new Set());
-      setSelectMode(false);
-      refreshUnreadEvent();
-      toast("已删除所选消息");
-    } else {
-      toast("删除失败", "error");
+    try {
+      const res = await authFetch(`/api/notifications?ids=${Array.from(selected).join(",")}`, { method: "DELETE" });
+      if (res.ok) {
+        const deletedUnread = items.filter((item) => selected.has(item.id) && !item.is_read).length;
+        setItems((current) => current.filter((item) => !selected.has(item.id)));
+        setUnreadCount((current) => Math.max(0, current - deletedUnread));
+        setSelected(new Set());
+        setSelectMode(false);
+        refreshUnreadEvent();
+        toast("已删除所选消息");
+      } else {
+        toast("删除失败", "error");
+      }
+    } catch {
+      toast("网络异常，删除失败", "error");
     }
   };
 

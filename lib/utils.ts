@@ -1,3 +1,5 @@
+const CJK_RE = /[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/g;
+
 export function generateSlug(title: string): string {
   return title
     .toLowerCase()
@@ -37,8 +39,8 @@ export function validateEmail(email: string): boolean {
 
 export function getReadingTime(content: string): number {
   // 中文按字符计（约 300 字/分钟），英文按词计（约 200 词/分钟）
-  const cjkChars = (content.match(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/g) || []).length;
-  const latinWords = content.replace(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/g, " ").trim().split(/\s+/).filter(Boolean).length;
+  const cjkChars = (content.match(CJK_RE) || []).length;
+  const latinWords = content.replace(CJK_RE, " ").trim().split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(cjkChars / 300 + latinWords / 200));
 }
 

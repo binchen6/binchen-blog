@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest, serializeUser } from "@/lib/auth";
+import { serializeUser } from "@/lib/auth";
 import { clampText, isSafePublicUrl, json, rateLimit } from "@/lib/security";
+import { getDb, parseJsonBody, requireLogin } from "../../_shared";
 
 export const runtime = "edge";
 
@@ -14,14 +14,16 @@ const MAX_HISTORY = 3;
  */
 export async function PUT(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
     const limited = rateLimit(request, { key: `avatar:${currentUser.id}`, limit: 20, windowMs: 60 * 60 * 1000 });
     if (limited) return limited;
 
-    const body = (await request.json()) as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     const newAvatar = clampText(body.url, 2048);
     if (!newAvatar || !isSafePublicUrl(newAvatar)) {
       return json({ error: "Invalid avatar URL" }, { status: 400 });
@@ -30,8 +32,7 @@ export async function PUT(request: NextRequest) {
       return json({ error: "Avatar unchanged" }, { status: 400 });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
 
     // 读取现有历史
     const row = await db.prepare("SELECT avatar, avatar_history FROM users WHERE id = ?").bind(currentUser.id).first();

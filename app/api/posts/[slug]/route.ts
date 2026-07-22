@@ -1,15 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { NextRequest } from "next/server";
 import { canManagePost, getCurrentUserFromRequest } from "@/lib/auth";
 import { generateExcerpt } from "@/lib/utils";
-import { cacheHeaders, isSafePublicUrl, json, rateLimit, requireText } from "@/lib/security";
+import { cacheHeaders, isSafePublicUrl, json, noStoreHeaders, rateLimit, requireText } from "@/lib/security";
+import { getDb, parseJsonBody, requireLogin } from "../../_shared";
 
 export const runtime = "edge";
 
 export async function GET(request: NextRequest, { params }: { params: { slug: string } }) {
   try {
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const slug = params.slug;
     const currentUser = await getCurrentUserFromRequest(request);
     const post = await db.prepare(
@@ -33,7 +32,14 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
       ).bind(currentUser.id, post.id).first();
       likedByMe = !!liked;
     }
-    return json({ post, likedByMe }, { headers: post.status === "published" ? cacheHeaders(15, 60) : { "Cache-Control": "no-store" } });
+
+    // 上一篇（新）/ 下一篇（旧）
+    const [prevPost, nextPost] = await Promise.all([
+      db.prepare("SELECT slug, title FROM posts WHERE status = 'published' AND published_at > ? ORDER BY published_at ASC LIMIT 1").bind(post.published_at || post.created_at).first(),
+      db.prepare("SELECT slug, title FROM posts WHERE status = 'published' AND published_at < ? ORDER BY published_at DESC LIMIT 1").bind(post.published_at || post.created_at).first(),
+    ]);
+
+    return json({ post, likedByMe, prevPost: prevPost || null, nextPost: nextPost || null }, { headers: post.status === "published" ? cacheHeaders(15, 60) : noStoreHeaders() });
   } catch (error) {
     console.error("Get post error:", error);
     return json({ error: "Failed to fetch post" }, { status: 500 });
@@ -42,13 +48,11 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
 
 export async function PUT(request: NextRequest, { params }: { params: { slug: string } }) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const existing = await db.prepare("SELECT * FROM posts WHERE slug = ?").bind(params.slug).first();
     if (!existing) {
       return json({ error: "Post not found" }, { status: 404 });
@@ -57,7 +61,10 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
       return json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json() as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400 });
+    }
     let existingImages: string[] = [];
     try {
       existingImages = existing.images ? JSON.parse(existing.images) : [];
@@ -116,13 +123,11 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
 
 export async function DELETE(request: NextRequest, { params }: { params: { slug: string } }) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const existing = await db.prepare("SELECT id, author_id FROM posts WHERE slug = ?").bind(params.slug).first();
     if (!existing) {
       return json({ error: "Post not found" }, { status: 404 });
@@ -131,7 +136,11 @@ export async function DELETE(request: NextRequest, { params }: { params: { slug:
       return json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // 级联清理：点赞（文章+其下评论）→ 评论 → 文章，单批原子执行
     await db.batch([
+      db.prepare(
+        "DELETE FROM likes WHERE (target_type = 'post' AND target_id = ?) OR (target_type = 'comment' AND target_id IN (SELECT id FROM comments WHERE post_id = ?))"
+      ).bind(existing.id, existing.id),
       db.prepare("DELETE FROM comments WHERE post_id = ?").bind(existing.id),
       db.prepare("DELETE FROM posts WHERE id = ?").bind(existing.id),
     ]);

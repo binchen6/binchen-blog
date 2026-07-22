@@ -59,7 +59,7 @@ const TASKS: PerformanceTask[] = [
     name: "database-optimize",
     description: "PRAGMA optimize 索引优化",
     timeoutMs: 15_000,
-    handler: async (db) => {
+    handler: async (db: D1Database) => {
       await db.prepare("PRAGMA optimize").run();
       return { optimized: true };
     },
@@ -68,7 +68,7 @@ const TASKS: PerformanceTask[] = [
     name: "retention-cleanup",
     description: "清理 90 天前的改名申请 / 30 天前的性能事件",
     timeoutMs: 20_000,
-    handler: async (db) => {
+    handler: async (db: D1Database) => {
       const staleDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
       const oldPerfDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const rejected = await db.prepare(
@@ -87,7 +87,7 @@ export const TASK_DESCRIPTIONS: Record<string, string> = Object.fromEntries(
   TASKS.map((t) => [t.name, t.description])
 );
 
-async function recordEvent(db: any, runId: string, result: PerformanceTaskResult) {
+async function recordEvent(db: D1Database, runId: string, result: PerformanceTaskResult) {
   await db.prepare(
     "INSERT INTO performance_events (run_id, task, status, duration_ms, details) VALUES (?, ?, ?, ?, ?)"
   ).bind(runId, result.task, result.status, result.durationMs, JSON.stringify(result.details)).run();
@@ -100,7 +100,7 @@ function withTimeout<T>(p: Promise<T> | T, ms: number): Promise<T> {
   ]);
 }
 
-async function runTask(db: any, runId: string, task: PerformanceTask): Promise<PerformanceTaskResult> {
+async function runTask(db: D1Database, runId: string, task: PerformanceTask): Promise<PerformanceTaskResult> {
   const started = Date.now();
   let result: PerformanceTaskResult;
   try {
@@ -118,7 +118,7 @@ async function runTask(db: any, runId: string, task: PerformanceTask): Promise<P
   return result;
 }
 
-export async function runPerformanceSchedule(db: any): Promise<PerformanceRun> {
+export async function runPerformanceSchedule(db: D1Database): Promise<PerformanceRun> {
   const runId = crypto.randomUUID();
   const started = Date.now();
   const results: PerformanceTaskResult[] = [];
@@ -144,7 +144,7 @@ export async function runPerformanceSchedule(db: any): Promise<PerformanceRun> {
   };
 }
 
-export async function getPerformanceSummary(db: any) {
+export async function getPerformanceSummary(db: D1Database) {
   const [taskStats, recentRuns, recentErrors] = await Promise.all([
     // 每个任务近 7 日统计（含失败数与最近失败时间）
     db.prepare(
@@ -158,7 +158,14 @@ export async function getPerformanceSummary(db: any) {
        WHERE task != '${RUN_SUMMARY_TASK}' AND created_at > datetime('now', '-7 days')
        GROUP BY task
        ORDER BY max_duration_ms DESC`
-    ).all(),
+    ).all<{
+      task: string;
+      runs: number;
+      failures: number;
+      avg_duration_ms: number;
+      max_duration_ms: number;
+      last_failed_at: string | null;
+    }>(),
     // 最近 20 次调度运行（每次运行一条 __run__ 汇总事件）
     db.prepare(
       `SELECT run_id, status, duration_ms, details, created_at
@@ -181,9 +188,9 @@ export async function getPerformanceSummary(db: any) {
   return {
     latestRun: runs[0] || null,
     recentRuns: runs,
-    taskStats: ((taskStats.results || []) as any[]).map((r) => ({
+    taskStats: taskStats.results.map((r) => ({
       ...r,
-      description: TASK_DESCRIPTIONS[String(r.task)] || "",
+      description: TASK_DESCRIPTIONS[r.task] || "",
     })),
     recentErrors: recentErrors.results || [],
   };

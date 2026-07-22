@@ -4,6 +4,48 @@
 > 模式：plan 模式 + 多子代理协调，每完成一步更新本文件打勾
 > 铁律：改完必测（npm run build 通过）；不引入第二彩色；Edge Runtime 兼容（禁 Node.js 原生 API）
 
+---
+
+## 第二轮：全项目性能/健壮性/安全性/可维护性优化（22:59 启动）
+
+### 文件归属（独占，防冲突）
+
+| 子代理 | 范围 | 重点 |
+|--------|------|------|
+| W1 | `app/api/**` | N+1查询、D1 batch、索引命中、输入校验一致性、限流覆盖、缓存头 |
+| W2 | `lib/**` + `package.json` | 算法/类型安全(as any减量)/死代码/依赖卫生(jsdom未使用)/限流器泄漏 |
+| W3 | `app/**/*.tsx`(页面) | React重渲染、fetch瀑布、动态导入、bundle、loading态 |
+| W4 | `components/**` | memo/回调稳定、图片属性、事件清理、props设计 |
+
+约束：公共 API 向后兼容（lib/组件的导出签名不变）；行为不变，只优化；各自跑 `npx tsc --noEmit`；主代理收尾 `npm run build` + 修复跨界问题。
+
+### 已知线索
+
+- `lib/security.ts` 限流 buckets Map 无自动清理（仅 cron 调 cleanup）→ isolate 内泄漏
+- `lib/db.ts` `getPosts` ORDER BY published_at 但索引在 created_at → 建议复合索引 (status, published_at)
+- `jsdom` 在生产依赖但零引用 → 移 devDependencies
+- `app/admin/page.tsx` 757行、`blog/[slug]` 636行、`write` 548行 → 可维护性
+- 博客详情页 fetch `/api/posts?limit=100` 找上下篇 → 应由专用接口或单次查询解决
+
+### 过程记录（第二轮）
+
+- 23:11 W4完成：like-button/toast 定时器泄漏修复；markdown-toolbar 全链路 useCallback+useMemo+React.memo（撰写页按键几乎零toolbar重渲染）+ rAF 取消链 + aria 完善；page-chrome/footer/navigation 装饰图懒加载解码属性；user-avatar memo；announcement-center rejection 兜底；my-images clipboard 异常反馈。未改项均取证说明（notification-bell 等已健全）。遗留：移动端用户菜单焦点陷阱、ReadingProgress 每帧 setState（可接受）。
+- 23:13 W3完成：pages 层 14 处 fetch 异常兜底 catch+toast；`blog/[slug]/page.tsx` useMemo 包裹 `getReadingTime`/`JSON.parse(images)`/`comments.repliesOf()` Map 化（O(n²)→O(1)）；`app/admin/page.tsx` 757→230 行拆 7 面板（`_components/` 内）；framer-motion 全项目零引入（PROJECT_STATUS 过时）。遗留：上下篇拉全量列表问题(L1)、`app/api/_shared` 的 tsc 报错（等 W1）。
+- 23:16 W1完成：29 个 route.ts 改动 + 新建 `app/api/_shared.ts`（getDb/requireLogin/requirePermission/requireAdmin/parseJsonBody 集中出去）；2 个 N+1 消除（likedIds 过滤、评论文跨帖校验）；16 条 parseJsonBody 加固；3 处 rateLimit 补全（images DELETE、profile PATCH）；登录时序侧信道修复（虚拟 PBKDF2 防用户名枚举）；权限遗漏 4 处；排序字段 3 条匹配复合索引。遗留：upload POST 非 JSON 仅 try/catch 守护、cron CRON_SECRET 时序对比（可接受）。
+- 23:16 W2完成：lib-层复合索引补全（posts status+published_at、comments post_id+created_at 等 5 条）；限流器惰性清理替代 cron-only；D1Query 接口替代 any；as any 减量约 40 处；jsdom 移 devDependencies。
+
+### 进度（第二轮）
+
+- [x] W1 API 层优化 ✅（29 route.ts 改 + _shared.ts 新建；2个N+1消除、索引匹配、登录时序侧信道修复、16处parseJsonBody加固）
+- [x] W2 lib 层优化 ✅（复合索引补全、限流器惰性清理、D1Query 类型化、as any减40处、jsdom移dev）
+- [x] W3 页面层优化 ✅（admin 757→230行拆7面板、useMemo评论分组/阅读时间/JSON.parse、fetch异常兜底×14处）
+- [x] W4 组件层优化 ✅（10组件改动：定时器/rAF清理、toolbar memo化、图片懒加载属性、a11y补齐）
+- [x] 收尾：build 验证 + L1修复（详情页不再拉全量列表，改API inline prev/next）+ commit ✓
+
+---
+
+## 第一轮：七项功能（已全部完成并部署，commit 43dc2f2）
+
 ## 任务拆解与文件归属（避免子代理改同一文件冲突）
 
 | # | 任务 | 主要文件 | 负责 | 依赖 |
@@ -60,7 +102,7 @@
 | `lib/feed.ts` + `app/feed.xml/route.ts` | RSS 全文+元数据+moment |
 | `package.json/tsconfig.json` | 新依赖5个 + target ES2017 |
 
-**待师父决定**：是否 git commit + push 部署到 cryoconite.cn。
+**已部署**：commit `43dc2f2` 已 push 到 binchen6/binchen-blog main，Cloudflare Pages Git 集成自动构建（2026-07-22 23:05）。
 
 ## 各任务验收标准（全部达成）
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, useRef, useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { Shield } from "lucide-react";
 import { toast } from "@/components/toast";
 import { UserAvatar } from "@/components/user-avatar";

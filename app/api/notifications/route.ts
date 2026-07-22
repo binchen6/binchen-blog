@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest } from "@/lib/auth";
-import { json, parseBoundedInt, parsePositiveId } from "@/lib/security";
+import { json, noStoreHeaders, parseBoundedInt, parsePositiveId } from "@/lib/security";
+import { getDb, requireLogin } from "../_shared";
 
 export const runtime = "edge";
 
@@ -11,17 +10,15 @@ export const runtime = "edge";
  */
 export async function GET(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
 
     const { searchParams } = new URL(request.url);
     const limit = parseBoundedInt(searchParams.get("limit"), 30, 1, 30);
     const unreadAnnouncement = searchParams.get("unread_announcement") === "1";
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
 
     if (unreadAnnouncement) {
       const rows = await db.prepare(
@@ -29,7 +26,7 @@ export async function GET(request: NextRequest) {
          WHERE user_id = ? AND type = 'announcement' AND is_read = 0
          ORDER BY created_at DESC LIMIT 3`
       ).bind(currentUser.id).all();
-      return json({ announcements: rows.results }, { headers: { "Cache-Control": "no-store" } });
+      return json({ announcements: rows.results }, { headers: noStoreHeaders() });
     }
 
     const [rows, unreadRow] = await Promise.all([
@@ -43,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     return json(
       { notifications: rows.results, unreadCount: Number((unreadRow as any)?.c ?? 0) },
-      { headers: { "Cache-Control": "no-store" } }
+      { headers: noStoreHeaders() }
     );
   } catch (error) {
     console.error("Get notifications error:", error);
@@ -57,14 +54,12 @@ export async function GET(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
 
     const { searchParams } = new URL(request.url);
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
 
     if (searchParams.get("all") === "1") {
       await db.prepare("DELETE FROM notifications WHERE user_id = ?").bind(currentUser.id).run();

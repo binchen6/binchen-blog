@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { NextRequest } from "next/server";
 import { hashPassword, createToken, serializeUser } from "@/lib/auth";
 import { clampText, json, rateLimit } from "@/lib/security";
 import { validateEmail } from "@/lib/utils";
+import { getDb, parseJsonBody } from "../../_shared";
 
 export const runtime = "edge";
 
@@ -11,7 +11,10 @@ export async function POST(request: NextRequest) {
     const limited = rateLimit(request, { key: "register", limit: 5, windowMs: 10 * 60 * 1000 });
     if (limited) return limited;
 
-    const body = await request.json() as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid request body" }, { status: 400 });
+    }
     const username = clampText(body.username, 24);
     const email = clampText(body.email, 254).toLowerCase();
     const password = String(body.password || "");
@@ -22,8 +25,7 @@ export async function POST(request: NextRequest) {
     if (!/^[a-zA-Z0-9_-]{3,24}$/.test(username) || !validateEmail(email) || password.length < 8 || password.length > 128) {
       return json({ error: "Invalid registration data" }, { status: 400 });
     }
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const existingUser = await db.prepare("SELECT id FROM users WHERE username = ? OR email = ?").bind(username, email).first();
     if (existingUser) {
       return json({ error: "Username or email already exists" }, { status: 409 });

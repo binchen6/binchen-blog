@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
+import { hasPermission } from "@/lib/auth";
 import { getGithubImageConfig } from "@/lib/github-config";
 import { json, parseBoundedInt, rateLimit } from "@/lib/security";
+import { getDb, parseJsonBody, requireLogin, requirePermission } from "../_shared";
 
 export const runtime = "edge";
 
@@ -84,13 +85,9 @@ async function getGithubErrorMessage(res: Response): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (!hasPermission(currentUser, "images:upload")) {
-      return json({ error: "Forbidden" }, { status: 403 });
-    }
+    const auth = await requirePermission(request, "images:upload");
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
     const limited = rateLimit(request, { key: `upload:${currentUser.id}`, limit: 30, windowMs: 60 * 60 * 1000 });
     if (limited) return limited;
 
@@ -110,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     const ctx = getRequestContext();
     const env = ctx.env as any;
-    const db = env.DB;
+    const db = getDb();
     const github = getGithubImageConfig(env);
 
     if (github.missing.length > 0) {
@@ -189,10 +186,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
 
     const { searchParams } = new URL(request.url);
     const limit = parseBoundedInt(searchParams.get("limit"), 50, 1, 100);
@@ -200,8 +196,7 @@ export async function GET(request: NextRequest) {
     const all = searchParams.get("all") === "1";
     const includeAvatars = searchParams.get("includeAvatars") === "1";
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const canSeeAll = all && hasPermission(currentUser, "images:manage_all");
     // 默认不返回头像图片（头像不占用图库）
     const results = canSeeAll

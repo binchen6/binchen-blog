@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,8 @@ type UserAvatarProps = {
  * 统一头像组件：有头像显示图片，无头像显示占位图标。
  * linkToProfile=true 且用户名存在时，点击跳转公开主页。
  */
-export function UserAvatar({ username, avatar, size = 36, linkToProfile = true, className }: UserAvatarProps) {
+// memo：纯展示组件，常在评论/文章列表中被父组件高频重渲染波及
+export const UserAvatar = memo(function UserAvatar({ username, avatar, size = 36, linkToProfile = true, className }: UserAvatarProps) {
   const inner = avatar ? (
     <img
       src={avatar}
@@ -56,4 +58,4 @@ export function UserAvatar({ username, avatar, size = 36, linkToProfile = true, 
       {inner}
     </span>
   );
-}
+});

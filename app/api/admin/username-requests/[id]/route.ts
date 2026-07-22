@@ -1,29 +1,29 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
-import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
 import { json, noStoreHeaders, parsePositiveId } from "@/lib/security";
+import { getDb, parseJsonBody, requireAdmin } from "../../../_shared";
 
 export const runtime = "edge";
 
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser || !hasPermission(currentUser, "users:manage")) {
-      return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
-    }
+    const auth = await requireAdmin(request, "users:manage");
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
     const requestId = parsePositiveId(params.id);
     if (!requestId) {
       return json({ error: "Invalid request id" }, { status: 400, headers: noStoreHeaders() });
     }
 
-    const body = await request.json() as any;
+    const body = await parseJsonBody(request);
+    if (!body) {
+      return json({ error: "Invalid JSON body" }, { status: 400, headers: noStoreHeaders() });
+    }
     const action = String(body.action || "");
     if (!["approve", "reject"].includes(action)) {
       return json({ error: "Invalid action" }, { status: 400, headers: noStoreHeaders() });
     }
 
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDb();
     const requestRow = await db.prepare("SELECT * FROM username_change_requests WHERE id = ?").bind(requestId).first();
     if (!requestRow) {
       return json({ error: "Request not found" }, { status: 404, headers: noStoreHeaders() });

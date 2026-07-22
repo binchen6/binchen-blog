@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
-import { canManageImage, getCurrentUserFromRequest } from "@/lib/auth";
+import { canManageImage } from "@/lib/auth";
 import { getGithubImageConfig } from "@/lib/github-config";
-import { json, parsePositiveId, securityHeaders } from "@/lib/security";
+import { json, noStoreHeaders, parsePositiveId, rateLimit, securityHeaders } from "@/lib/security";
+import { getDb, requireLogin } from "../../_shared";
 
 export const runtime = "edge";
 
@@ -126,18 +127,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const currentUser = await getCurrentUserFromRequest(request);
-    if (!currentUser) {
-      return json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireLogin(request);
+    if (auth.error) return auth.error;
+    const currentUser = auth.user;
     const imageId = parsePositiveId(params.id);
     if (!imageId) {
       return json({ error: "Invalid image id" }, { status: 400 });
     }
 
+    // 删除操作为资源密集型（含 GitHub API 调用），限速
+    const limited = rateLimit(request, { key: `image-del:${currentUser.id}`, limit: 30, windowMs: 60 * 60 * 1000 });
+    if (limited) return limited;
+
     const ctx = getRequestContext();
     const env = ctx.env as any;
-    const db = env.DB;
+    const db = getDb();
     const image = await db.prepare("SELECT * FROM images WHERE id = ?").bind(imageId).first();
     if (!image) {
       return json({ error: "Image not found" }, { status: 404 });
