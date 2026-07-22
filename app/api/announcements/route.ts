@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { canAccessAdmin, getCurrentUserFromRequest } from "@/lib/auth";
 import { broadcastAnnouncement } from "@/lib/notifications";
-import { cacheHeaders, json, requireText } from "@/lib/security";
+import { cacheHeaders, json, parsePositiveId, requireText } from "@/lib/security";
 
 export const runtime = "edge";
 
@@ -64,5 +64,29 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Create announcement error:", error);
     return json({ error: "Failed to create announcement" }, { status: 500 });
+  }
+}
+
+/** DELETE /api/announcements?id= — 管理员删除公告（历史公告与对应通知一并移除） */
+export async function DELETE(request: NextRequest) {
+  try {
+    const currentUser = await getCurrentUserFromRequest(request);
+    if (!currentUser || !canAccessAdmin(currentUser)) {
+      return json({ error: "Forbidden" }, { status: 403 });
+    }
+    const id = parsePositiveId(new URL(request.url).searchParams.get("id"));
+    if (!id) {
+      return json({ error: "Invalid id" }, { status: 400 });
+    }
+    const ctx = getRequestContext();
+    const db = (ctx.env as any).DB;
+    await db.batch([
+      db.prepare("DELETE FROM announcements WHERE id = ?").bind(id),
+      db.prepare("DELETE FROM notifications WHERE type = 'announcement' AND target_id = ?").bind(id),
+    ]);
+    return json({ success: true });
+  } catch (error) {
+    console.error("Delete announcement error:", error);
+    return json({ error: "Failed to delete announcement" }, { status: 500 });
   }
 }

@@ -284,6 +284,13 @@ export default function AdminPage() {
     else toast("删除图片失败", "error");
   };
 
+  const deleteAnnouncement = async (id: number) => {
+    if (!confirm("确定删除这条公告吗？所有用户信箱中的该公告也会一并移除。")) return;
+    const res = await fetch(`/api/announcements?id=${id}`, { method: "DELETE", headers: authHeaders });
+    if (res.ok) setAnnouncements((current) => current.filter((item) => item.id !== id));
+    else toast("删除公告失败", "error");
+  };
+
   const sendAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!announcementForm.title.trim() || !announcementForm.content.trim()) {
@@ -680,7 +687,12 @@ export default function AdminPage() {
                         <div key={item.id} className="border border-cyan-dark/10 bg-paper/55 p-4">
                           <div className="flex items-center justify-between gap-3">
                             <span className="font-semibold">{item.title}</span>
-                            <span className="font-mono-tech text-xs text-ink-muted">{formatDate(item.created_at)}</span>
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono-tech text-xs text-ink-muted">{formatDate(item.created_at)}</span>
+                              <button type="button" onClick={() => deleteAnnouncement(item.id)} className="text-cinnabar transition-colors hover:text-cinnabar-dark" aria-label="删除公告">
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
                           </div>
                           <p className="mt-2 whitespace-pre-wrap text-sm leading-loose text-ink-light">{item.content}</p>
                           <div className="mt-2 text-xs text-ink-muted">发布人：{item.created_by_name || item.created_by_username || "未知"}</div>
