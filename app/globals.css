@@ -709,6 +709,134 @@ button:focus-visible {
   border-bottom-color: var(--color-cinnabar);
 }
 
+/* 标题锚点偏移（替代 Tailwind scroll-mt-24，与固定头部保持距离） */
+.markdown-content h2, .markdown-content h3 {
+  scroll-margin-top: 6rem;
+}
+
+/* 上下标（H~2~O / x^2^） */
+.markdown-content sub, .markdown-content sup {
+  font-size: 0.75em;
+  line-height: 0;
+}
+
+/* 缩写 *[abbr]: 定义 */
+.markdown-content abbr[title] {
+  text-decoration: underline dotted var(--color-bronze);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+/* 插入 ++ins++ */
+.markdown-content ins {
+  text-decoration: underline;
+  text-decoration-color: var(--color-bronze-dark);
+  text-underline-offset: 3px;
+}
+
+/* 键盘键位 <kbd> */
+.markdown-content kbd {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.8em;
+  font-family: 'Maple Mono NF', 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  color: var(--color-ink);
+  background: var(--color-paper-warm);
+  border: 1px solid var(--color-mist);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+}
+
+/* 定义列表 */
+.markdown-content dl {
+  margin: 1.5rem 0;
+}
+
+.markdown-content dt {
+  font-weight: 600;
+  font-family: 'LXGW WenKai GB', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
+  color: var(--color-ink);
+  margin-top: 0.9rem;
+}
+
+.markdown-content dd {
+  margin: 0.3rem 0 0.6rem 1.5rem;
+  color: var(--color-ink-light);
+  line-height: 1.8;
+}
+
+/* 分隔线 */
+.markdown-content hr {
+  border: none;
+  height: 1px;
+  margin: 2.5rem 0;
+  background: linear-gradient(90deg, transparent, var(--color-bronze), transparent);
+}
+
+/* 表格横向滚动容器（小屏不撑破布局） */
+.markdown-content .table-wrap {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.markdown-content .table-wrap table {
+  margin: 0;
+  min-width: 100%;
+}
+
+/* Callout 提示块：> [!note] / [!tip] / [!important] / [!warning] / [!caution]
+   水墨系：纸暖底色 + 清墨/青铜/朱红左侧竖条，不引入新彩色 */
+.markdown-content .callout {
+  margin: 1.5rem 0;
+  padding: 0.9rem 1.1rem;
+  background: rgba(237, 232, 224, 0.5);
+  border: 1px solid rgba(26, 58, 58, 0.1);
+  border-left: 3px solid var(--color-cyan-dark);
+  border-radius: 0 4px 4px 0;
+}
+
+.markdown-content .callout .callout-title {
+  margin-bottom: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: 'LXGW WenKai GB', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
+  letter-spacing: 0.12em;
+  color: var(--color-cyan-dark);
+}
+
+.markdown-content .callout p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content .callout-tip {
+  border-left-color: var(--color-bronze);
+}
+.markdown-content .callout-tip .callout-title {
+  color: var(--color-bronze-dark);
+}
+
+.markdown-content .callout-important {
+  border-left-color: var(--color-bronze-dark);
+}
+.markdown-content .callout-important .callout-title {
+  color: var(--color-bronze-dark);
+}
+
+.markdown-content .callout-warning {
+  border-left-color: var(--color-cinnabar);
+}
+.markdown-content .callout-warning .callout-title {
+  color: var(--color-cinnabar);
+}
+
+.markdown-content .callout-caution {
+  border-left-color: var(--color-cinnabar-dark);
+}
+.markdown-content .callout-caution .callout-title {
+  color: var(--color-cinnabar-dark);
+}
+
 /* 输入框 */
 input, textarea {
   background: var(--color-paper);

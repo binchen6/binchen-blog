@@ -11,6 +11,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { LikeButton } from "@/components/like-button";
 import { useAuth, authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
+import { renderMarkdown, type TocItem } from "@/lib/markdown";
 import { cn, formatDate, getReadingTime } from "@/lib/utils";
 
 interface Post {
@@ -47,34 +48,9 @@ interface Comment {
   user_avatar?: string | null;
 }
 
-interface TocItem {
-  id: string;
-  text: string;
-  level: number;
-}
-
 interface PostNavItem {
   slug: string;
   title: string;
-}
-
-/** 从 markdown 源提取目录（h2/h3，跳过代码块） */
-function extractToc(markdown: string): TocItem[] {
-  const items: TocItem[] = [];
-  let inFence = false;
-  markdown.split("\n").forEach((line) => {
-    if (/^\s*```/.test(line)) {
-      inFence = !inFence;
-      return;
-    }
-    if (inFence) return;
-    const match = /^(#{2,3})\s+(.+)$/.exec(line.trim());
-    if (!match) return;
-    const text = match[2].replace(/[*_`[\]()#]/g, "").trim();
-    if (!text) return;
-    items.push({ id: `toc-${items.length}`, text, level: match[1].length });
-  });
-  return items;
 }
 
 export default function BlogPostPage() {
@@ -164,46 +140,37 @@ export default function BlogPostPage() {
       setToc([]);
       return;
     }
-    if (post.mode === "moment") return; // 动态不渲染 markdown
+    if (post.mode === "moment") {
+      // 动态不渲染 markdown，清空上一篇遗留的渲染结果/目录
+      setRenderedContent("");
+      setToc([]);
+      return;
+    }
 
     let cancelled = false;
-    setToc(extractToc(post.content));
 
-    Promise.all([
-      import("markdown-it"),
-      import("dompurify"),
-      import("markdown-it-footnote"),
-      import("markdown-it-task-lists"),
-      import("markdown-it-mark"),
-    ]).then(([{ default: MarkdownIt }, { default: DOMPurify }, { default: footnote }, { default: taskLists }, { default: mark }]) => {
-      if (cancelled) return;
-      const md = new MarkdownIt({ html: false, linkify: true, typographer: true })
-        .use(footnote)
-        .use(taskLists, { enabled: true, label: true })
-        .use(mark);
-      const rendered = md.render(post.content);
-      setRenderedContent(DOMPurify.sanitize(rendered, {
-        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
-        ADD_ATTR: ["for", "checked", "disabled", "type", "id"],
-      }));
-    });
+    // 渲染与 TOC 同源于 lib/markdown.ts，锚点在渲染期生成，保证 100% 同步
+    renderMarkdown(post.content)
+      .then(({ html, toc }) => {
+        if (cancelled) return;
+        setRenderedContent(html);
+        setToc(toc);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRenderedContent("");
+        setToc([]);
+      });
 
     return () => {
       cancelled = true;
     };
   }, [post]);
 
-  // 渲染后增强：标题锚点 + 代码复制按钮 + 图片灯箱
+  // 渲染后增强：代码复制按钮 + 图片灯箱（标题 id 已在渲染期生成）
   useEffect(() => {
     const container = contentRef.current;
     if (!container || !renderedContent) return;
-
-    // 标题加 id（与 extractToc 顺序一致）
-    const headings = container.querySelectorAll("h2, h3");
-    headings.forEach((heading, index) => {
-      heading.id = `toc-${index}`;
-      heading.classList.add("scroll-mt-24");
-    });
 
     // 代码块复制按钮
     container.querySelectorAll("pre").forEach((pre) => {
@@ -238,21 +205,36 @@ export default function BlogPostPage() {
     };
   }, [renderedContent]);
 
-  // TOC 滚动高亮
+  // TOC 滚动高亮：IntersectionObserver 观察阅读视窗内的标题
   useEffect(() => {
-    if (toc.length === 0) return;
-    const onScroll = () => {
-      const headings = Array.from(document.querySelectorAll(".markdown-content h2, .markdown-content h3"));
-      let current = "";
-      for (const heading of headings) {
-        if (heading.getBoundingClientRect().top <= 120) current = heading.id;
-      }
-      setActiveTocId(current);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [toc]);
+    if (toc.length === 0 || !renderedContent) {
+      setActiveTocId("");
+      return;
+    }
+    const container = contentRef.current;
+    if (!container) return;
+    const headings = Array.from(container.querySelectorAll("h2[id], h3[id]"));
+    if (headings.length === 0) return;
+
+    // 记录当前落在“阅读线”附近的标题，取最靠上者为激活项
+    const visibleTops = new Map<string, number>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            visibleTops.set(entry.target.id, entry.boundingClientRect.top);
+          } else {
+            visibleTops.delete(entry.target.id);
+          }
+        });
+        const active = [...visibleTops.entries()].sort((a, b) => a[1] - b[1])[0]?.[0];
+        if (active) setActiveTocId(active);
+      },
+      { rootMargin: "-96px 0px -70% 0px", threshold: 0 }
+    );
+    headings.forEach((heading) => observer.observe(heading));
+    return () => observer.disconnect();
+  }, [toc, renderedContent]);
 
   // 灯箱 ESC 关闭 + 锁定背景滚动
   useEffect(() => {

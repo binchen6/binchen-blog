@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpen, FileText, Image, Images, LayoutList, Pen, Save, Send, Tag as TagIcon, Trash2, Upload } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
+import MarkdownToolbar from "@/components/markdown-toolbar";
 import { toast } from "@/components/toast";
 import { compressImageFile } from "@/lib/image-compress";
+import { renderMarkdown } from "@/lib/markdown";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -63,7 +65,9 @@ export default function WritePage() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
   const [draftRestored, setDraftRestored] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const DRAFT_KEY = "write-draft";
 
@@ -132,31 +136,18 @@ export default function WritePage() {
     const timer = setTimeout(() => {
       if (title || content) {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, content, tags, mode }));
+        setDraftSavedAt(new Date().toLocaleTimeString("zh-CN", { hour12: false }));
       }
     }, 1000);
     return () => clearTimeout(timer);
   }, [title, content, tags, mode, editingSlug, draftRestored]);
 
-  // Markdown 预览渲染
+  // Markdown 预览渲染（统一走 lib/markdown 单一渲染来源）
   useEffect(() => {
     if (!showPreview || mode !== "article") return;
     let cancelled = false;
-    Promise.all([
-      import("markdown-it"),
-      import("dompurify"),
-      import("markdown-it-footnote"),
-      import("markdown-it-task-lists"),
-      import("markdown-it-mark"),
-    ]).then(([{ default: MarkdownIt }, { default: DOMPurify }, { default: footnote }, { default: taskLists }, { default: mark }]) => {
-      if (cancelled) return;
-      const md = new MarkdownIt({ html: false, linkify: true, typographer: true })
-        .use(footnote)
-        .use(taskLists, { enabled: true })
-        .use(mark);
-      setPreviewHtml(DOMPurify.sanitize(md.render(content || "*暂无内容*"), {
-        ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.-]+(?:[^a-z+.-:]|$))/i,
-        ADD_ATTR: ["for", "checked", "disabled", "type", "id"],
-      }));
+    renderMarkdown(content || "*暂无内容*").then(({ html }) => {
+      if (!cancelled) setPreviewHtml(html);
     });
     return () => {
       cancelled = true;
@@ -179,6 +170,7 @@ export default function WritePage() {
     setImages([]);
     setEditingSlug(null);
     setShowPreview(false);
+    setDraftSavedAt(null);
     localStorage.removeItem(DRAFT_KEY);
   };
 
@@ -251,8 +243,8 @@ export default function WritePage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitPost = async (targetStatus: PostStatus) => {
+    if (publishing) return;
     if (!title.trim() || !content.trim()) {
       toast("请填写标题和内容", "error");
       return;
@@ -269,17 +261,17 @@ export default function WritePage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${currentToken}`,
         },
-        body: JSON.stringify({ title, content, tags, coverImage, status, mode, images }),
+        body: JSON.stringify({ title, content, tags, coverImage, status: targetStatus, mode, images }),
       });
       const data = (await res.json()) as { post?: ManagePost; error?: string };
       if (data.post) {
-        toast(editingSlug ? "文章已更新" : status === "published" ? "发布成功" : "草稿已保存");
+        toast(editingSlug ? "文章已更新" : targetStatus === "published" ? "发布成功" : "草稿已保存");
         localStorage.removeItem(DRAFT_KEY);
         setPosts((current) => {
           const rest = current.filter((item) => item.slug !== data.post!.slug);
           return [data.post!, ...rest];
         });
-        if (status === "published") router.push(`/blog/${data.post.slug}`);
+        if (targetStatus === "published") router.push(`/blog/${data.post.slug}`);
         else resetEditor();
       } else {
         toast(data.error || "保存失败", "error");
@@ -290,6 +282,28 @@ export default function WritePage() {
       setPublishing(false);
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitPost(status);
+  };
+
+  // Ctrl+S / Cmd+S：新建时保存草稿，编辑已有文章时按当前状态更新
+  const shortcutSaveRef = useRef<() => void>(() => {});
+  shortcutSaveRef.current = () => {
+    void submitPost(editingSlug ? status : "draft");
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        shortcutSaveRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const editPost = async (slug: string) => {
     const currentToken = requireToken();
@@ -409,7 +423,12 @@ export default function WritePage() {
                   内容
                 </label>
                 {mode === "article" && (
-                  <div className="inline-flex border border-mist bg-paper/60 p-0.5 text-xs">
+                  <div className="flex items-center gap-3">
+                    <Link href="/help/markdown" target="_blank" className="inline-flex items-center gap-1 text-xs text-ink-muted transition-colors hover:text-cyan-dark" title="查看 Markdown 语法指南">
+                      <BookOpen size={13} />
+                      语法指南
+                    </Link>
+                    <div className="inline-flex border border-mist bg-paper/60 p-0.5 text-xs">
                     <button
                       type="button"
                       onClick={() => setShowPreview(false)}
@@ -424,19 +443,27 @@ export default function WritePage() {
                     >
                       预览
                     </button>
+                    </div>
                   </div>
                 )}
               </div>
               {showPreview && mode === "article" ? (
-                <div className="markdown-content min-h-[28rem] w-full border border-mist bg-paper/60 p-4 text-sm leading-loose text-ink-light" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                <div className="markdown-content min-h-[16rem] w-full border border-mist bg-paper/60 p-4 text-sm leading-loose text-ink-light sm:min-h-[28rem]" dangerouslySetInnerHTML={{ __html: previewHtml }} />
               ) : (
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder={mode === "moment" ? "今天发生了什么？" : "支持 Markdown 格式..."}
-                  className={cn("w-full resize-y bg-paper/60 text-sm leading-loose", mode === "article" ? "h-[28rem] font-mono-tech" : "h-56")}
-                  required
-                />
+                <>
+                  {mode === "article" && <MarkdownToolbar textareaRef={textareaRef} onContentChange={setContent} />}
+                  <textarea
+                    ref={textareaRef}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder={mode === "moment" ? "今天发生了什么？" : "支持 Markdown 格式..."}
+                    className={cn("w-full resize-y bg-paper/60 text-sm leading-loose", mode === "article" ? "h-64 font-mono-tech sm:h-[28rem]" : "h-48 sm:h-56")}
+                    required
+                  />
+                  {!editingSlug && draftSavedAt && (
+                    <p className="mt-1 text-xs text-ink-muted">草稿已自动保存 {draftSavedAt}</p>
+                  )}
+                </>
               )}
             </div>
 
