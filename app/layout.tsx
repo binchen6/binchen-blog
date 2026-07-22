@@ -44,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <head>
-        <link rel="preload" href="/fonts/LXGWWenKaiGB-Medium.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="/fonts/lxgw-slices.css" />
       </head>
       <body>{children}</body>
     </html>

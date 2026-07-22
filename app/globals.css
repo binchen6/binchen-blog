@@ -3,14 +3,7 @@
 @tailwind utilities;
 
 /* ===== 自托管子集字体 (墨卷 2.1) ===== */
-/* 霞鹜文楷 GB Medium —— 标题/竖排题字/帖式卡片 (GB2312一级3755字子集) */
-@font-face {
-  font-family: 'LXGW WenKai GB';
-  src: url('/fonts/LXGWWenKaiGB-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
+/* 霞鹭文楷 GB Medium —— unicode-range 切片按需加载，见 layout <link href=/fonts/lxgw-slices.css> */
 /* Maple Mono NF —— 代码 (ASCII 子集) */
 @font-face {
   font-family: 'Maple Mono NF';
