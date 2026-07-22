@@ -58,9 +58,21 @@ interface UsernameRequestRow {
 
 interface PerformanceTaskRow {
   task: string;
+  description?: string;
   runs: number;
+  failures: number;
   avg_duration_ms: number;
   max_duration_ms: number;
+  last_failed_at?: string | null;
+}
+
+interface PerformanceRunRow {
+  run_id: string | null;
+  status: "ok" | "error";
+  duration_ms: number;
+  details: string;
+  created_at: string;
+  detailsText?: string;
 }
 
 interface AnnouncementRow {
@@ -125,6 +137,7 @@ export default function AdminPage() {
   const [images, setImages] = useState<ImageRow[]>([]);
   const [usernameRequests, setUsernameRequests] = useState<UsernameRequestRow[]>([]);
   const [performanceTasks, setPerformanceTasks] = useState<PerformanceTaskRow[]>([]);
+  const [performanceRuns, setPerformanceRuns] = useState<PerformanceRunRow[]>([]);
   const [githubStorage, setGithubStorage] = useState<GithubStorageStatus | null>(null);
   const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([]);
   const [announcementForm, setAnnouncementForm] = useState({ title: "", content: "" });
@@ -187,8 +200,20 @@ export default function AdminPage() {
       });
     } else if (tab === "performance") {
       add("/api/performance", async (res) => {
-        const data = (await res.json()) as { slowTasks?: PerformanceTaskRow[] };
-        setPerformanceTasks(data.slowTasks || []);
+        const data = (await res.json()) as { taskStats?: PerformanceTaskRow[]; recentRuns?: PerformanceRunRow[] };
+        setPerformanceTasks(data.taskStats || []);
+        setPerformanceRuns(
+          (data.recentRuns || []).map((run) => {
+            let detailsText = "";
+            try {
+              const d = JSON.parse(run.details || "{}") as { tasks?: number; failures?: number };
+              detailsText = `${d.tasks ?? "?"} 个任务 · ${d.failures ?? 0} 失败`;
+            } catch {
+              detailsText = "";
+            }
+            return { ...run, detailsText };
+          })
+        );
       });
     } else if (tab === "announcements") {
       add("/api/announcements?all=1", async (res) => {
@@ -706,38 +731,71 @@ export default function AdminPage() {
 
             {/* 性能 */}
             {activeTab === "performance" && (
-              <SurfacePanel className="p-6">
-                <h2 className="mb-5 flex items-center gap-2 font-serif-zh text-xl font-semibold tracking-[0.08em]">
-                  <BarChart3 size={20} className="text-bronze" />
-                  服务端性能调度
-                </h2>
-                {performanceTasks.length === 0 ? (
-                  <p className="text-sm text-ink-muted">暂无调度记录。部署后配置 CRON_SECRET，并定时 POST /api/cron/performance 即可开始记录。</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[620px] text-left text-sm">
-                      <thead className="border-b border-cyan-dark/10 text-ink-muted">
-                        <tr>
-                          <th className="py-3">任务</th>
-                          <th>7 日运行次数</th>
-                          <th>平均耗时</th>
-                          <th>最大耗时</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {performanceTasks.map((task) => (
-                          <tr key={task.task} className="border-b border-cyan-dark/5">
-                            <td className="py-3 font-mono-tech text-xs text-cyan-dark">{task.task}</td>
-                            <td>{task.runs}</td>
-                            <td>{Math.round(Number(task.avg_duration_ms || 0))}ms</td>
-                            <td>{Math.round(Number(task.max_duration_ms || 0))}ms</td>
+              <div className="space-y-6">
+                <SurfacePanel className="p-6">
+                  <h2 className="mb-5 flex items-center gap-2 font-serif-zh text-xl font-semibold tracking-[0.08em]">
+                    <BarChart3 size={20} className="text-bronze" />
+                    服务端性能调度
+                  </h2>
+                  {performanceTasks.length === 0 ? (
+                    <p className="text-sm text-ink-muted">暂无调度记录。部署后配置 CRON_SECRET，并定时 POST /api/cron/performance 即可开始记录。</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[760px] text-left text-sm">
+                        <thead className="border-b border-cyan-dark/10 text-ink-muted">
+                          <tr>
+                            <th className="py-3">任务</th>
+                            <th>说明</th>
+                            <th>7 日运行</th>
+                            <th>失败</th>
+                            <th>平均耗时</th>
+                            <th>最大耗时</th>
+                            <th>最近失败</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </SurfacePanel>
+                        </thead>
+                        <tbody>
+                          {performanceTasks.map((task) => (
+                            <tr key={task.task} className="border-b border-cyan-dark/5">
+                              <td className="py-3 font-mono-tech text-xs text-cyan-dark">{task.task}</td>
+                              <td className="max-w-[220px] text-xs text-ink-muted">{task.description || "—"}</td>
+                              <td>{task.runs}</td>
+                              <td className={task.failures > 0 ? "font-semibold text-cinnabar" : ""}>{task.failures}</td>
+                              <td>{Math.round(Number(task.avg_duration_ms || 0))}ms</td>
+                              <td>{Math.round(Number(task.max_duration_ms || 0))}ms</td>
+                              <td className="font-mono-tech text-xs text-ink-muted">{task.last_failed_at || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </SurfacePanel>
+
+                <SurfacePanel className="p-6">
+                  <h3 className="mb-4 flex items-center gap-2 font-serif-zh text-lg font-semibold tracking-[0.08em]">
+                    <BarChart3 size={18} className="text-bronze" />
+                    最近调度运行
+                  </h3>
+                  {performanceRuns.length === 0 ? (
+                    <p className="text-sm text-ink-muted">暂无运行记录。</p>
+                  ) : (
+                    <div className="divide-y divide-mist/60">
+                      {performanceRuns.map((run) => (
+                        <div key={run.run_id || run.created_at} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5 text-sm">
+                          <span className={`inline-flex w-14 justify-center border px-1.5 py-0.5 text-[10px] tracking-wider ${
+                            run.status === "ok" ? "border-dai/40 text-dai" : "border-cinnabar/50 text-cinnabar"
+                          }`}>
+                            {run.status === "ok" ? "成功" : "异常"}
+                          </span>
+                          <span className="font-mono-tech text-xs text-ink-muted">{run.created_at}</span>
+                          <span className="text-xs text-ink-light">耗时 {run.duration_ms}ms</span>
+                          <span className="text-xs text-ink-muted">{run.detailsText}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </SurfacePanel>
+              </div>
             )}
           </div>
         )}

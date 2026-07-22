@@ -82,6 +82,7 @@ export async function createTables() {
     db.prepare(`
       CREATE TABLE IF NOT EXISTS performance_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT,
         task TEXT NOT NULL,
         status TEXT NOT NULL CHECK (status IN ('ok', 'error')),
         duration_ms INTEGER NOT NULL,
@@ -199,6 +200,7 @@ async function migrateSchema(db: any) {
   await addColumnIfMissing(db, "comments", "parent_id", "INTEGER");
   await addColumnIfMissing(db, "users", "avatar_history", "TEXT");
   await addColumnIfMissing(db, "images", "purpose", "TEXT DEFAULT 'general'");
+  await addColumnIfMissing(db, "performance_events", "run_id", "TEXT");
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_posts_featured ON posts(is_featured, featured_rank)").run();
 }
 

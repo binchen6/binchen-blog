@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
       return json({ error: "Forbidden" }, { status: 403, headers: noStoreHeaders() });
     }
 
-    const results = await runPerformanceSchedule(env.DB);
-    return json({ success: true, results }, { headers: noStoreHeaders() });
+    const run = await runPerformanceSchedule(env.DB);
+    return json({ success: true, runId: run.runId, totalDurationMs: run.totalDurationMs, results: run.results }, { headers: noStoreHeaders() });
   } catch (error) {
     console.error("Performance schedule error:", error);
     return json({ error: "Performance schedule failed" }, { status: 500, headers: noStoreHeaders() });
