@@ -28,29 +28,30 @@ export async function GET(_request: NextRequest, { params }: { params: { usernam
       return json({ error: "User not found" }, { status: 404 });
     }
 
-    const posts = await db.prepare(
-      `SELECT id, title, slug, excerpt, cover_image, mode, published_at, created_at, tags, view_count
-       FROM posts
-       WHERE author_id = ? AND status = 'published'
-       ORDER BY published_at DESC
-       LIMIT 50`
-    ).bind(user.id).all();
+    const currentUser = await getCurrentUserFromRequest(_request);
+    const uid = Number(user.id);
 
-    // 关注数据
-    const [followerRow, followingRow] = await Promise.all([
-      db.prepare("SELECT COUNT(*) AS c FROM follows WHERE author_id = ?").bind(user.id).first(),
-      db.prepare("SELECT COUNT(*) AS c FROM follows WHERE follower_id = ?").bind(user.id).first(),
+    // 优化：合并为 2 条并行查询（posts + follow stats），替代原先 4 条串行/并行查询
+    const [postsResult, followData] = await Promise.all([
+      db.prepare(
+        `SELECT id, title, slug, excerpt, cover_image, mode, published_at, created_at, tags, view_count
+         FROM posts
+         WHERE author_id = ? AND status = 'published'
+         ORDER BY published_at DESC
+         LIMIT 50`
+      ).bind(uid).all(),
+      db.prepare(
+        `SELECT
+           (SELECT COUNT(*) FROM follows WHERE author_id = ?) AS follower_count,
+           (SELECT COUNT(*) FROM follows WHERE follower_id = ?) AS following_count` +
+        (currentUser && currentUser.id !== uid
+          ? `, (SELECT COUNT(*) FROM follows WHERE follower_id = ? AND author_id = ?) AS is_following`
+          : `, 0 AS is_following`)
+      ).bind(...(currentUser && currentUser.id !== uid ? [uid, uid, currentUser.id, uid] : [uid, uid])).first(),
     ]);
 
-    // 当前登录用户是否已关注
-    let isFollowing = false;
-    const currentUser = await getCurrentUserFromRequest(_request);
-    if (currentUser && currentUser.id !== Number(user.id)) {
-      const followRow = await db.prepare(
-        "SELECT id FROM follows WHERE follower_id = ? AND author_id = ?"
-      ).bind(currentUser.id, user.id).first();
-      isFollowing = !!followRow;
-    }
+    const fd = followData as Record<string, unknown> | null;
+    const isFollowing = !!(fd?.is_following);
 
     return json(
       {
@@ -62,10 +63,10 @@ export async function GET(_request: NextRequest, { params }: { params: { usernam
           roleLabel: ROLE_LABELS[(user.role as UserRole) || "author"] || "成员",
           bio: user.bio || null,
           created_at: user.created_at,
-          follower_count: Number((followerRow as any)?.c ?? 0),
-          following_count: Number((followingRow as any)?.c ?? 0),
+          follower_count: Number(fd?.follower_count ?? 0),
+          following_count: Number(fd?.following_count ?? 0),
         },
-        posts: posts.results,
+        posts: postsResult.results,
         isFollowing,
       },
       { headers: cacheHeaders(30, 120) }

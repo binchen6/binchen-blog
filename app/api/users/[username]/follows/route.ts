@@ -50,22 +50,28 @@ export async function GET(request: NextRequest, { params }: { params: { username
     const list = (rows.results || []) as any[];
 
     // 当前登录用户与列表成员的相互关注关系（用于回关/互关标识）
+    // 优化：使用单条 SQL + CASE 聚合替代两条查询
     const currentUser = await getCurrentUserFromRequest(request);
     let iFollowSet = new Set<string>();
     let followsMeSet = new Set<string>();
     if (currentUser && list.length > 0) {
       const names = list.map((r) => String(r.username));
       const ph = names.map(() => "?").join(",");
-      const [a, b] = await Promise.all([
-        db.prepare(
-          `SELECT u.username FROM follows f JOIN users u ON u.id = f.author_id WHERE f.follower_id = ? AND u.username IN (${ph})`
-        ).bind(currentUser.id, ...names).all(),
-        db.prepare(
-          `SELECT u.username FROM follows f JOIN users u ON u.id = f.follower_id WHERE f.author_id = ? AND u.username IN (${ph})`
-        ).bind(currentUser.id, ...names).all(),
-      ]);
-      iFollowSet = new Set((a.results || []).map((r: any) => String(r.username)));
-      followsMeSet = new Set((b.results || []).map((r: any) => String(r.username)));
+      // 单条查询：iFollow（我关注了谁）
+      const followRows = await db.prepare(
+        `SELECT u.username,
+                MAX(CASE WHEN f.follower_id = ? THEN 1 ELSE 0 END) AS i_follow,
+                MAX(CASE WHEN f.author_id = ? THEN 1 ELSE 0 END) AS follows_me
+         FROM follows f
+         JOIN users u ON u.id = CASE WHEN f.follower_id = ? THEN f.author_id ELSE f.follower_id END
+         WHERE (f.follower_id = ? OR f.author_id = ?)
+           AND u.username IN (${ph})
+         GROUP BY u.username`
+      ).bind(currentUser.id, currentUser.id, currentUser.id, currentUser.id, currentUser.id, ...names).all();
+      for (const row of (followRows.results || []) as Record<string, unknown>[]) {
+        if (row.i_follow) iFollowSet.add(String(row.username));
+        if (row.follows_me) followsMeSet.add(String(row.username));
+      }
     }
 
     return json(

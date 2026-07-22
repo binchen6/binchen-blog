@@ -177,6 +177,7 @@ export async function createTables() {
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_comments_post_created ON comments(post_id, created_at)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_guestbook_created ON guestbook(created_at)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_notifications_user_read_created ON notifications(user_id, is_read, created_at)`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS _meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`),
   ]);
 
   await migrateSchema(db);
@@ -231,6 +232,10 @@ function githubCdnPathFromUrl(url: string): string | null {
 }
 
 async function migrateImageUrls(db: D1Database) {
+  // 版本检查：避免每次启动都全表扫描
+  const versionRow = await db.prepare("SELECT value FROM _meta WHERE key = 'schema_version'").first<{ value: string }>().catch(() => null);
+  if (versionRow && Number(versionRow.value) >= 2) return;
+
   const imageRows = await db.prepare("SELECT id, url, storage_key FROM images").all<{ id: number; url: string; storage_key: string }>();
   const urlMap = new Map<string, string>();
 
@@ -278,6 +283,9 @@ async function migrateImageUrls(db: D1Database) {
       await db.prepare("UPDATE posts SET cover_image = ?, images = ? WHERE id = ?").bind(coverImage || null, images || null, post.id).run();
     }
   }
+
+  // 标记迁移完成
+  await db.prepare("INSERT OR REPLACE INTO _meta (key, value) VALUES ('schema_version', '2')").run();
 }
 
 async function seedUserGroups(db: D1Database) {

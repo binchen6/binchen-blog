@@ -35,9 +35,15 @@ function lazySweepExpiredBuckets(now: number): void {
   cleanupRateLimitBuckets(now);
 }
 
+/**
+ * 从请求中提取客户端 IP。
+ * 优先级：CF-Connecting-IP（Cloudflare 置入，不可伪造）> X-Real-IP > X-Forwarded-For 第一个。
+ * ⚠️ X-Forwarded-For 可被客户端篡改，仅作最后回退；生产环境应确保经过 CF 代理。
+ */
 export function getClientIp(request: NextRequest): string {
   return (
     request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-real-ip") ||
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     "unknown"
   );

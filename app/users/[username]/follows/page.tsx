@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, UserCheck, UserMinus, UserPlus, Users } from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, Loader2, Search, UserCheck, UserMinus, UserPlus, Users } from "lucide-react";
 import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { UserAvatar } from "@/components/user-avatar";
 import { toast } from "@/components/toast";
@@ -27,17 +27,12 @@ const PAGE_SIZE = 20;
 export default function FollowsPage() {
   const params = useParams();
   const username = params.username as string;
+  const searchParams = useSearchParams();
   const router = useRouter();
   const { user: currentUser } = useAuth();
 
-  const [tab, setTab] = useState<"followers" | "following">("followers");
-
-  // 从 URL 读取初始 tab（避免 useSearchParams 触发 CSR bailout）
-  useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "following") {
-      setTab("following");
-    }
-  }, []);
+  const initialTab = searchParams.get("tab") === "following" ? "following" : "followers";
+  const [tab, setTab] = useState<"followers" | "following">(initialTab);
   const [users, setUsers] = useState<FollowUser[]>([]);
   const [total, setTotal] = useState(0);
   const [isOwner, setIsOwner] = useState(false);
@@ -45,6 +40,18 @@ export default function FollowsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // 客户端搜索过滤
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const q = searchQuery.toLowerCase();
+    return users.filter(
+      (u) =>
+        u.username.toLowerCase().includes(q) ||
+        (u.display_name && u.display_name.toLowerCase().includes(q))
+    );
+  }, [users, searchQuery]);
 
   useDocumentTitle(`${username} 的${tab === "followers" ? "粉丝" : "关注"}`);
 
@@ -90,17 +97,25 @@ export default function FollowsPage() {
     }
     if (pending) return;
     setPending(target.username);
+    // 乐观更新：立即切换 UI 状态
+    const prevIFollow = target.iFollow;
+    setUsers((prev) => prev.map((u) => (u.username === target.username ? { ...u, iFollow: !prevIFollow } : u)));
     try {
       const res = await authFetch(`/api/users/${encodeURIComponent(target.username)}/follow`, { method: "POST" });
       const data = (await res.json()) as { following?: boolean; error?: string };
       if (!res.ok) {
         toast(data.error || "操作失败", "error");
+        // 回滚
+        setUsers((prev) => prev.map((u) => (u.username === target.username ? { ...u, iFollow: prevIFollow } : u)));
         return;
       }
+      // 用服务器返回值同步
       const now = !!data.following;
       setUsers((prev) => prev.map((u) => (u.username === target.username ? { ...u, iFollow: now } : u)));
       toast(now ? "已关注" : "已取消关注");
     } catch {
+      // 回滚
+      setUsers((prev) => prev.map((u) => (u.username === target.username ? { ...u, iFollow: prevIFollow } : u)));
       toast("网络异常，操作失败", "error");
     } finally {
       setPending(null);
@@ -108,8 +123,16 @@ export default function FollowsPage() {
   };
 
   const removeFollower = async (target: FollowUser) => {
+    // 确认对话框
+    const confirmed = window.confirm(`确认移除粉丝 ${target.display_name || target.username}？\n\n对方不会收到通知。`);
+    if (!confirmed) return;
+
     if (pending) return;
     setPending(target.username);
+    // 乐观更新：立即从列表移除
+    const prevUsers = users;
+    setUsers((prev) => prev.filter((u) => u.username !== target.username));
+    setTotal((n) => Math.max(0, n - 1));
     try {
       const res = await authFetch(
         `/api/users/${encodeURIComponent(username)}/follows?target=${encodeURIComponent(target.username)}`,
@@ -118,12 +141,16 @@ export default function FollowsPage() {
       const data = (await res.json()) as { removed?: boolean; error?: string };
       if (!res.ok) {
         toast(data.error || "移除失败", "error");
+        // 回滚
+        setUsers(prevUsers);
+        setTotal((n) => n + 1);
         return;
       }
-      setUsers((prev) => prev.filter((u) => u.username !== target.username));
-      setTotal((n) => Math.max(0, n - 1));
       toast(`已移除粉丝 ${target.display_name || target.username}`);
     } catch {
+      // 回滚
+      setUsers(prevUsers);
+      setTotal((n) => n + 1);
       toast("网络异常，移除失败", "error");
     } finally {
       setPending(null);
@@ -200,17 +227,41 @@ export default function FollowsPage() {
           ))}
         </div>
 
+        {/* 搜索过滤 */}
+        {users.length > 0 && (
+          <div className="mt-4">
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+              <input
+                type="text"
+                placeholder="搜索用户名..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full border border-mist bg-paper py-2 pl-9 pr-4 text-sm text-ink placeholder:text-ink-muted/60 focus:border-cyan-dark focus:outline-none"
+              />
+            </div>
+            {searchQuery && filteredUsers.length === 0 && (
+              <p className="mt-2 text-center text-xs text-ink-muted">没有找到匹配的用户</p>
+            )}
+          </div>
+        )}
+
         {users.length === 0 ? (
-          <SurfacePanel className="mt-8 p-8 text-center text-sm text-ink-muted">
-            {tab === "followers" ? "还没有粉丝。" : "还没有关注任何人。"}
-          </SurfacePanel>
+          <EmptyState
+            title={tab === "followers" ? "还没有粉丝" : "还没有关注任何人"}
+            description={
+              tab === "followers"
+                ? "发布更多优质内容，自然会吸引粉丝关注。"
+                : "去发现更多有趣的人，点击关注建立连接。"
+            }
+          />
         ) : (
           <div className="divide-y divide-mist/70">
-            {users.map((u) => {
+            {filteredUsers.map((u) => {
               const isSelf = currentUser?.username === u.username;
               const mutual = u.iFollow && u.followsMe;
               return (
-                <div key={u.username} className="flex items-center gap-4 px-2 py-4">
+                <div key={u.username} className="flex items-center gap-3 px-2 py-4 sm:gap-4">
                   <UserAvatar
                     username={u.username}
                     avatar={u.avatar}
@@ -232,13 +283,15 @@ export default function FollowsPage() {
                         <span className="border border-mist px-1.5 py-0.5 text-[10px] tracking-wider text-ink-muted">关注了你</span>
                       )}
                     </div>
-                    <p className="mt-0.5 font-mono-tech text-xs text-ink-muted">
-                      @{u.username} · {formatDate(u.followed_at)}
-                      {tab === "followers" ? " 关注" : " 被关注"}
+                    <p className="mt-1 font-mono-tech text-xs text-ink-muted">
+                      @{u.username}
+                      <span className="mx-1.5 text-mist">·</span>
+                      <span className="text-bronze">{formatDate(u.followed_at)}</span>
+                      {tab === "followers" ? " 关注了你" : " 被你关注"}
                     </p>
                     {u.bio && <p className="mt-1 truncate text-sm text-ink-light">{u.bio}</p>}
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
                     {currentUser && !isSelf && (
                       <button
                         type="button"

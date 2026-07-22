@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Shield } from "lucide-react";
 import { GroupInfoModal, GroupRulesPanel } from "@/components/profile/group-info-modal";
 import { MyImages } from "@/components/profile/my-images";
@@ -12,6 +12,7 @@ import { UsernameRequestForm } from "@/components/profile/username-request";
 import type { UserGroupInfo } from "@/components/profile/types";
 import { SurfacePanel } from "@/components/page-chrome";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- 上层 page.tsx 用 any，这里保持一致避免协变/逆变冲突
 interface ProfileEditingPanelProps {
   profile: any;
   setProfile: (u: any) => void;
@@ -32,7 +33,7 @@ interface ProfileEditingPanelProps {
 }
 
 /** 个人中心编辑面板 — 嵌入用户主页（仅自己可见） */
-export function ProfileEditingPanel(props: ProfileEditingPanelProps) {
+function ProfileEditingPanelInner(props: ProfileEditingPanelProps) {
   const [selectedGroup, setSelectedGroup] = useState<UserGroupInfo | null>(null);
 
   return (
@@ -94,3 +95,5 @@ export function ProfileEditingPanel(props: ProfileEditingPanelProps) {
     </>
   );
 }
+
+export const ProfileEditingPanel = memo(ProfileEditingPanelInner);

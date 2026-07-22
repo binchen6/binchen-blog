@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       groups: roleGroups(),
       pendingUsernameRequest: pendingRequest || null,
       avatarHistory,
-    }, { headers: noStoreHeaders() });
+    }, { headers: { ...noStoreHeaders(), "Vary": "Authorization" } });
   } catch (error) {
     console.error("Get profile error:", error);
     return json({ error: "Failed to fetch profile" }, { status: 500 });
