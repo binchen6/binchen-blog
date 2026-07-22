@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== 自托管子集字体 (墨卷 2.1) ===== */
+/* 霞鹜文楷 GB Medium —— 标题/竖排题字/帖式卡片 (GB2312一级3755字子集) */
+@font-face {
+  font-family: 'LXGW WenKai GB';
+  src: url('/fonts/LXGWWenKaiGB-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+/* Maple Mono NF —— 代码 (ASCII 子集) */
+@font-face {
+  font-family: 'Maple Mono NF';
+  src: url('/fonts/MapleMonoNF-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Maple Mono NF';
+  src: url('/fonts/MapleMonoNF-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+
 :root {
   /* ===== 墨卷 2.0 五级墨色 ===== */
   --ink-1: #16130e; /* 墨·浓：标题、正文 */
@@ -78,7 +104,7 @@ img {
 
 /* 标题字体 —— 系统宋体栈，零下载秒开 */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Songti SC', 'STSong', 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', serif;
+  font-family: 'LXGW WenKai GB', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
   font-weight: 500;
   line-height: 1.4;
   letter-spacing: 0.08em;
@@ -86,7 +112,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* 科技字体 */
 .tech-font {
-  font-family: 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Consolas, 'Noto Sans SC', monospace;
+  font-family: 'Maple Mono NF', 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
   letter-spacing: 0.05em;
 }
 
@@ -95,7 +121,7 @@ h1, h2, h3, h4, h5, h6 {
   border: 2px solid var(--color-cinnabar);
   color: var(--color-cinnabar);
   padding: 0.25rem 0.5rem;
-  font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+  font-family: 'LXGW WenKai GB', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
   font-weight: 700;
   display: inline-block;
   transform: rotate(-2deg);
@@ -235,7 +261,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-ink);
   color: var(--color-paper);
   padding: 0.75rem 1.5rem;
-  font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+  font-family: 'LXGW WenKai GB', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
   font-size: 0.9rem;
   letter-spacing: 0.1em;
   transition: all 0.3s ease;
@@ -270,7 +296,7 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
   color: var(--color-ink);
   padding: 0.75rem 1.5rem;
-  font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+  font-family: 'LXGW WenKai GB', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
   font-size: 0.9rem;
   letter-spacing: 0.1em;
   border: 1px solid var(--color-ink);
@@ -287,7 +313,7 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--color-cyan-dark);
   color: var(--color-bronze-light);
   padding: 0.75rem 1.5rem;
-  font-family: 'SF Mono', 'Cascadia Code', Consolas, 'Noto Sans SC', monospace;
+  font-family: 'Maple Mono NF', 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
   font-size: 0.85rem;
   letter-spacing: 0.05em;
   border: 1px solid var(--color-cyan-muted);
@@ -426,7 +452,7 @@ button:focus-visible {
 
 /* Markdown 内容样式 */
 .markdown-content h1, .markdown-content h2, .markdown-content h3 {
-  font-family: 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
+  font-family: 'LXGW WenKai GB', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
   margin-top: 2rem;
   margin-bottom: 1rem;
   color: var(--color-ink);
@@ -469,7 +495,7 @@ button:focus-visible {
   padding: 0.2rem 0.4rem;
   border-radius: 3px;
   font-size: 0.9em;
-  font-family: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  font-family: 'Maple Mono NF', 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
   color: var(--color-cyan-dark);
   border: 1px solid rgba(26, 58, 58, 0.1);
 }
@@ -516,7 +542,7 @@ button:focus-visible {
 
 .markdown-content th {
   background: var(--color-paper-warm);
-  font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+  font-family: 'LXGW WenKai GB', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
   letter-spacing: 0.06em;
 }
 
@@ -531,7 +557,7 @@ button:focus-visible {
   right: 0.5rem;
   padding: 0.25rem 0.6rem;
   font-size: 0.7rem;
-  font-family: 'SF Mono', Consolas, monospace;
+  font-family: 'Maple Mono NF', 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
   color: var(--color-cyan-dark);
   background: rgba(248, 245, 240, 0.9);
   border: 1px solid rgba(26, 58, 58, 0.2);
@@ -866,7 +892,7 @@ input::placeholder, textarea::placeholder {
   writing-mode: vertical-rl;
   text-orientation: upright;
   letter-spacing: 0.35em;
-  font-family: 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
+  font-family: 'LXGW WenKai GB', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
 }
 
 /* ---------- 首页 Hero 长卷 ---------- */
@@ -972,7 +998,7 @@ input::placeholder, textarea::placeholder {
   writing-mode: vertical-rl;
   text-orientation: upright;
   letter-spacing: 0.3em;
-  font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+  font-family: 'LXGW WenKai GB', 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
   font-size: 0.8rem;
   color: var(--ink-3);
   padding: 0.75rem 0.35rem;
