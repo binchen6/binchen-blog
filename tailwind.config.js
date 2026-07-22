@@ -8,21 +8,29 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // 国风古代科技风 - 核心配色
-        'ink': '#0d0d0d',
-        'ink-light': '#4a4a4a',
-        'ink-muted': '#8c8c8c',
-        'paper': '#f8f5f0',
-        'paper-warm': '#ede8e0',
+        // 墨卷 2.0 五级墨色
+        'ink': '#16130e',
+        'ink-2': '#3d3629',
+        'ink-3': '#6b6252',
+        'ink-4': '#a39a87',
+        'ink-5': '#cfc8b8',
+        'paper': '#f7f3ea',
+        'paper-2': '#efe9db',
+        'cinnabar': '#b3352b',
+        'dai': '#2f4a4a',
+        'gold': '#b8933f',
+        // 兼容 1.x 别名
+        'ink-light': '#3d3629',
+        'ink-muted': '#a39a87',
+        'paper-warm': '#efe9db',
         'paper-cool': '#e5e0d8',
-        'cyan-dark': '#1a3a3a',
+        'cyan-dark': '#2f4a4a',
         'cyan-muted': '#2a5a5a',
-        'bronze': '#c9a84c',
+        'bronze': '#b8933f',
         'bronze-light': '#e8d5a3',
         'bronze-dark': '#8a6a2a',
-        'cinnabar': '#c23a30',
         'cinnabar-dark': '#9a2a20',
-        'mist': '#d4cfc7',
+        'mist': '#cfc8b8',
         'mist-light': '#e8e4dc',
       },
       fontFamily: {

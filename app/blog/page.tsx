@@ -26,6 +26,8 @@ interface Post {
 
 const PAGE_SIZE = 9;
 
+const NUMERALS = ["壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"];
+
 const modeTabs = [
   { value: "", label: "全部" },
   { value: "article", label: "文章" },
@@ -238,57 +240,41 @@ function BlogContent() {
             />
           ) : (
             <>
-              <div className="grid gap-7 md:grid-cols-2 lg:grid-cols-3">
-                {posts.map((post) => (
-                  <Link key={post.id} href={`/blog/${post.slug}`} className="paper-card group flex h-full flex-col">
-                    {post.cover_image ? (
-                      <div className="aspect-[16/10] overflow-hidden bg-paper-warm">
-                        <img
-                          src={post.cover_image}
-                          alt={post.title}
-                          loading="lazy"
-                          decoding="async"
-                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        />
-                      </div>
-                    ) : (
-                      <div className="grid aspect-[16/10] place-items-center bg-gradient-to-br from-paper-warm to-paper-cool">
-                        <PenLine size={28} className="text-bronze/50" />
-                      </div>
-                    )}
-                    <div className="flex flex-1 flex-col p-6">
-                      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-ink-muted">
-                        <span className="border border-bronze/25 px-2 py-0.5 text-bronze">{post.mode === "moment" ? "动态" : "文章"}</span>
-                        <span className="inline-flex items-center gap-1 font-mono-tech">
-                          <Calendar size={12} />
+              <div>
+                {posts.map((post, index) => (
+                  <Link key={post.id} href={`/blog/${post.slug}`} className="tie-card group">
+                    <span className="tie-card__num">{NUMERALS[index % PAGE_SIZE]}</span>
+                    <div className="tie-card__body">
+                      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                        <h2 className="font-serif-zh text-xl font-bold tracking-[0.06em] transition-colors group-hover:text-dai">
+                          {post.title}
+                        </h2>
+                        <span className="font-mono-tech text-xs text-ink-4">
                           {formatDate(post.published_at || post.created_at)}
                         </span>
-                        <span className="inline-flex items-center gap-1 font-mono-tech">
+                        {post.mode === "moment" && <span className="text-xs text-gold">动态</span>}
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-3">{post.excerpt}</p>
+                      <div className="mt-3 flex items-center gap-4 font-mono-tech text-xs text-ink-4">
+                        <span className="inline-flex items-center gap-1">
                           <Eye size={12} />
                           {post.view_count}
                         </span>
                         {post.reading_time_minutes ? (
-                          <span className="inline-flex items-center gap-1 font-mono-tech">
+                          <span className="inline-flex items-center gap-1">
                             <Clock size={12} />
                             {post.reading_time_minutes} 分钟
                           </span>
                         ) : null}
+                        {post.tags && (
+                          <span className="inline-flex items-center gap-1 text-gold/80">
+                            <Tag size={11} />
+                            {post.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 3).join(" · ")}
+                          </span>
+                        )}
                       </div>
-                      <h2 className="font-serif-zh text-xl font-bold tracking-[0.08em] transition-colors group-hover:text-cyan-dark">
-                        {post.title}
-                      </h2>
-                      <p className="mt-4 line-clamp-3 text-sm leading-loose text-ink-light">{post.excerpt}</p>
-                      {post.tags && (
-                        <div className="mt-5 flex items-center gap-2 text-xs text-bronze">
-                          <Tag size={12} />
-                          <span>{post.tags.split(",").map((t) => t.trim()).filter(Boolean).join(" · ")}</span>
-                        </div>
-                      )}
-                      <span className="mt-6 inline-flex items-center gap-2 text-xs text-cyan-dark">
-                        阅读全文
-                        <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
-                      </span>
                     </div>
+                    <ArrowRight size={16} className="mt-2 shrink-0 text-ink-4 transition-all group-hover:translate-x-1 group-hover:text-dai" />
                   </Link>
                 ))}
               </div>

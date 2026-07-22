@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from "react";
-import { Compass, SearchX } from "lucide-react";
+import { Compass } from "lucide-react";
 import Navigation from "@/components/navigation";
 import Footer from "@/components/footer";
 import { BackToTop } from "@/components/site-widgets";
@@ -17,23 +17,20 @@ type SiteShellProps = {
   compactDecor?: boolean;
 };
 
-export function SiteShell({
-  children,
-  className,
-  contentClassName,
-  withFooter = true,
-  compactDecor = false,
-}: SiteShellProps) {
+/**
+ * 墨卷 2.0 页面骨架：干净宣纸底 + 角落墨晕点缀（克制，不铺满）
+ */
+export function SiteShell({ children, className, contentClassName, withFooter = true, compactDecor = false }: SiteShellProps) {
   return (
-    <main className={cn("min-h-screen relative overflow-hidden bg-paper text-ink", className)}>
+    <main className={cn("min-h-screen relative overflow-hidden bg-paper text-ink has-tab-bar", className)}>
       <Navigation />
-      <div className="site-bg" aria-hidden="true">
-        <div className="site-bg__paper" />
-        <div className="site-bg__stars" />
-        <div className="site-bg__compass" />
-        <div className="site-bg__gear" />
-        {!compactDecor && <div className="site-bg__wash" />}
-      </div>
+      {/* 墨晕只落在角落，留白给内容 */}
+      {!compactDecor && (
+        <>
+          <img src="/assets/ink/ink-blot-2.jpg" alt="" aria-hidden="true" className="ink-blot -right-24 top-24 w-72 opacity-35" />
+          <img src="/assets/ink/ink-blot-1.jpg" alt="" aria-hidden="true" className="ink-blot -left-28 bottom-16 w-80 opacity-30" />
+        </>
+      )}
       <div className={cn("relative z-10", contentClassName)}>{children}</div>
       {withFooter && <Footer />}
       <BackToTop />
@@ -52,39 +49,32 @@ type PageHeaderProps = {
   className?: string;
 };
 
-export function PageHeader({
-  eyebrow,
-  title,
-  description,
-  icon,
-  align = "center",
-  className,
-}: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, description, icon, align = "center", className }: PageHeaderProps) {
   const isCenter = align === "center";
 
   return (
     <header className={cn(isCenter ? "text-center" : "text-left", className)}>
       <div className={cn("mb-4 flex", isCenter ? "justify-center" : "justify-start")}>
-        <span className="inline-flex h-11 w-11 items-center justify-center border border-bronze/35 bg-paper/75 text-bronze shadow-sm">
+        <span className="inline-flex h-11 w-11 items-center justify-center border border-gold/35 bg-paper/75 text-gold shadow-sm">
           {icon ?? <Compass size={22} />}
         </span>
       </div>
-      <span className="mb-2 block font-mono-tech text-xs uppercase tracking-[0.18em] text-cyan-dark/70">
+      <span className="mb-2 block font-mono-tech text-xs uppercase tracking-[0.18em] text-dai/70">
         {eyebrow}
       </span>
       <h1 className="font-serif-zh text-3xl font-bold tracking-[0.12em] text-ink md:text-5xl">
         {title}
       </h1>
       {description && (
-        <p className={cn("mt-5 text-sm leading-loose text-ink-light md:text-base", isCenter && "mx-auto max-w-2xl")}>
+        <p className={cn("mt-5 text-sm leading-loose text-ink-2 md:text-base", isCenter && "mx-auto max-w-2xl")}>
           {description}
         </p>
       )}
-      <div
-        className={cn(
-          "mt-6 h-px w-20 bg-gradient-to-r from-transparent via-bronze to-transparent",
-          isCenter && "mx-auto"
-        )}
+      <img
+        src="/assets/ink/brush-divider-2.jpg"
+        alt=""
+        aria-hidden="true"
+        className={cn("brush-divider mt-6", !isCenter && "brush-divider--left")}
       />
     </header>
   );
@@ -115,11 +105,11 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <SurfacePanel className="mx-auto max-w-md px-8 py-12 text-center">
-      <SearchX size={30} className="mx-auto mb-4 text-bronze" />
-      <h2 className="font-serif-zh text-xl font-semibold tracking-[0.08em]">{title}</h2>
-      {description && <p className="mt-3 text-sm leading-loose text-ink-muted">{description}</p>}
+    <div className="mx-auto max-w-md px-8 py-10 text-center">
+      <img src="/assets/ink/empty-boat.jpg" alt="" aria-hidden="true" className="mx-auto mb-5 w-52 mix-blend-multiply opacity-80" />
+      <h2 className="font-serif-zh text-xl font-semibold tracking-[0.08em] text-ink-2">{title}</h2>
+      {description && <p className="mt-3 text-sm leading-loose text-ink-3">{description}</p>}
       {action && <div className="mt-6">{action}</div>}
-    </SurfacePanel>
+    </div>
   );
 }

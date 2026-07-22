@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Calendar, Compass, Cpu, Eye, Feather, MapPin, MessageCircle, Sparkles, Star } from "lucide-react";
-import { PageHeader, SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { ArrowRight, BookOpen, Eye, MessageCircle, Star } from "lucide-react";
+import { SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { formatDate } from "@/lib/utils";
 
 interface PostItem {
@@ -16,23 +16,21 @@ interface PostItem {
   published_at: string | null;
   created_at: string;
   view_count?: number;
+  like_count?: number;
 }
 
 const principles = [
   {
-    icon: <Compass size={28} />,
-    title: "自由地抵达",
-    description: "把旅行当作观察世界的方式，也当作重新校准自己的仪器。",
+    title: "藏",
+    description: "少装饰，多留白。内容是主角，界面退后一步。",
   },
   {
-    icon: <Feather size={28} />,
-    title: "安静地书写",
-    description: "用更少的噪声承载更多细节，让文字和图片自然呼吸。",
+    title: "叙",
+    description: "文章按时间铺开，像一幅长卷，从最近往回翻。",
   },
   {
-    icon: <Cpu size={28} />,
-    title: "轻量地运行",
-    description: "页面共享背景与组件结构，动画克制，资源可缓存，适合 Cloudflare Pages。",
+    title: "双",
+    description: "鼠标和手指是两种生物。桌面有桌面的玩法，手机有手机的。",
   },
 ];
 
@@ -48,7 +46,7 @@ export default function HomePage() {
       try {
         const [featuredRes, latestRes] = await Promise.all([
           fetch("/api/posts?featured=1&limit=3"),
-          fetch("/api/posts?limit=6"),
+          fetch("/api/posts?limit=7"),
         ]);
         const featuredData = (await featuredRes.json()) as { posts?: PostItem[] };
         const latestData = (await latestRes.json()) as { posts?: PostItem[] };
@@ -71,153 +69,157 @@ export default function HomePage() {
     };
   }, []);
 
-  const getCategory = (post: PostItem) => (
-    post.tags?.split(",").map((tag) => tag.trim()).filter(Boolean)[0] || (post.mode === "moment" ? "动态" : "文章")
-  );
-
   return (
     <SiteShell>
-      <section className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-12 px-6 pb-20 pt-28 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="reveal-up">
-          <span className="seal-stamp mb-7">旅行者</span>
-          <h1 className="font-serif-zh text-5xl font-bold leading-tight tracking-[0.14em] text-ink md:text-7xl">
-            <span className="bronze-text">binchen</span>
-            <span className="mt-3 block text-3xl text-ink md:text-5xl">自由与宁静</span>
-          </h1>
-          <p className="mt-7 max-w-xl font-serif-zh text-xl leading-loose tracking-[0.08em] text-ink-light">
-            喜欢自由与宁静地生活，旅行，也记录路上的风景。
-          </p>
-          <p className="mt-5 max-w-xl text-sm leading-loose text-ink-muted md:text-base">
-            这里记录路上的山海、日常里的片刻安宁，以及我对古代科技与现代工具的兴趣。图文可以在线撰写上传，留言也会安静地留下来。
-          </p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <Link href="/blog" className="btn-ink inline-flex items-center justify-center gap-2">
-              <BookOpen size={18} />
-              <span>阅读文章</span>
-              <ArrowRight size={15} />
-            </Link>
-            <Link href="/guestbook" className="btn-tech inline-flex items-center justify-center gap-2">
-              <MessageCircle size={18} />
-              <span>留下足迹</span>
-            </Link>
-          </div>
-        </div>
-
-        <div className="reveal-soft relative">
-          <div className="hero-mark">
-            <Compass size={72} className="text-bronze" />
-          </div>
-          <SurfacePanel className="mt-8 p-7">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <div>
-                <p className="font-mono-tech text-xs uppercase tracking-[0.18em] text-cyan-dark/70">profile</p>
-                <h2 className="mt-2 font-serif-zh text-2xl font-semibold tracking-[0.1em]">尘墨手记</h2>
+      {/* ===== Hero 长卷 ===== */}
+      <section className="ink-hero">
+        <div className="ink-hero__bg" aria-hidden="true" />
+        <div className="ink-hero__content mx-auto flex min-h-[88vh] max-w-5xl items-center px-5 pb-24 pt-28">
+          <div className="w-full">
+            <div className="flex items-start justify-between gap-6">
+              <div className="unfold">
+                <img src="/assets/ink/seal-logo.png" alt="尘墨印章" className="ink-hero__seal mb-7" />
+                <h1 className="font-serif-zh text-5xl font-bold leading-tight tracking-[0.12em] text-ink md:text-7xl">
+                  binchen
+                </h1>
+                <p className="mt-5 max-w-md font-serif-zh text-xl leading-loose tracking-[0.06em] text-ink-2">
+                  喜欢自由与宁静地生活，旅行，也记录路上的风景。
+                </p>
+                <p className="mt-4 max-w-md text-sm leading-loose text-ink-3">
+                  山海、日常、古代科技与现代工具——想到就写，写完就放这儿。
+                </p>
+                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                  <Link href="/blog" className="btn-ink inline-flex items-center justify-center gap-2">
+                    <BookOpen size={17} />
+                    <span>展开长卷</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                  <Link href="/guestbook" className="btn-tech inline-flex items-center justify-center gap-2">
+                    <MessageCircle size={17} />
+                    <span>留个言</span>
+                  </Link>
+                </div>
               </div>
-              <Sparkles size={24} className="text-bronze" />
+
+              {/* 竖排题字（桌面显示，移动隐藏） */}
+              <div className="v-text hidden shrink-0 select-none text-2xl text-ink-2/80 md:block" aria-hidden="true">
+                行到水穷处　坐看云起时
+              </div>
             </div>
-            <div className="space-y-4 text-sm leading-loose text-ink-light">
-              <p>以宣纸为底，以星图为序，用技术托住日常表达。</p>
-              <p>少一点喧哗，多一点留白，让博客像一本可以继续翻开的旅行册。</p>
-            </div>
-          </SurfacePanel>
+          </div>
         </div>
       </section>
 
-      {/* 最新文章 */}
-      <section className="quiet-band px-6 py-20">
-        <div className="mx-auto max-w-6xl">
-          <PageHeader eyebrow="Latest" title="最新文章" description="最近写下的山海、片刻与笔记。" />
+      {/* ===== 最新文章·时间轴 ===== */}
+      <section className="mx-auto max-w-5xl px-5 py-20">
+        <div className="mb-10 flex items-end justify-between">
+          <div>
+            <span className="font-mono-tech text-xs uppercase tracking-[0.18em] text-dai/70">Latest</span>
+            <h2 className="mt-2 font-serif-zh text-3xl font-bold tracking-[0.1em]">最近写的</h2>
+          </div>
+          <Link href="/blog" className="group inline-flex items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-dai">
+            全部文章
+            <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="space-y-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="skeleton h-20 w-full" />
+            ))}
+          </div>
+        ) : latestPosts.length === 0 ? (
+          <p className="text-sm text-ink-3">还没有发布内容。第一篇正在路上。</p>
+        ) : (
+          <div className="ink-timeline">
+            {latestPosts.map((post, index) => (
+              <Link
+                key={post.id}
+                href={`/blog/${post.slug}`}
+                className="ink-timeline__item unfold group"
+                style={{ animationDelay: `${index * 0.06}s` }}
+              >
+                <div className="ink-timeline__date">
+                  <div className="font-mono-tech text-xs text-ink-4">
+                    {formatDate(post.published_at || post.created_at)}
+                  </div>
+                  {post.mode === "moment" && (
+                    <div className="mt-1 text-[10px] text-gold">动态</div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 border-b border-ink-5/70 pb-5">
+                  <h3 className="font-serif-zh text-lg font-semibold tracking-[0.05em] transition-colors group-hover:text-dai">
+                    {post.title}
+                  </h3>
+                  {post.excerpt && (
+                    <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed text-ink-3">{post.excerpt}</p>
+                  )}
+                  <div className="mt-2 flex items-center gap-4 font-mono-tech text-xs text-ink-4">
+                    <span className="inline-flex items-center gap-1">
+                      <Eye size={11} />
+                      {post.view_count ?? 0}
+                    </span>
+                    {post.tags && (
+                      <span className="text-gold/80">
+                        {post.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 2).join(" · ")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <img src="/assets/ink/brush-divider-1.jpg" alt="" aria-hidden="true" className="brush-divider" />
+
+      {/* ===== 精选 ===== */}
+      {(loading || featuredPosts.length > 0) && (
+        <section className="mx-auto max-w-5xl px-5 py-16">
+          <div className="mb-10">
+            <span className="font-mono-tech text-xs uppercase tracking-[0.18em] text-dai/70">Featured</span>
+            <h2 className="mt-2 font-serif-zh text-3xl font-bold tracking-[0.1em]">值得一读再读</h2>
+          </div>
           {loading ? (
-            <div className="mx-auto mt-12 max-w-3xl space-y-4">
+            <div className="grid gap-6 md:grid-cols-3">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="skeleton h-24 w-full" />
+                <div key={i} className="skeleton h-52 w-full" />
               ))}
             </div>
-          ) : latestPosts.length === 0 ? (
-            <SurfacePanel className="mt-12 p-6 text-sm leading-loose text-ink-muted">
-              还没有发布内容。第一篇文章正在路上。
-            </SurfacePanel>
           ) : (
-            <div className="mx-auto mt-12 max-w-3xl divide-y divide-mist/70">
-              {latestPosts.map((post) => (
-                <Link key={post.id} href={`/blog/${post.slug}`} className="group flex items-baseline gap-5 px-2 py-5 transition-colors hover:bg-paper/60">
-                  <span className="shrink-0 font-mono-tech text-xs text-ink-muted">
-                    {formatDate(post.published_at || post.created_at)}
+            <div className="grid gap-6 md:grid-cols-3">
+              {featuredPosts.map((post) => (
+                <Link key={post.id} href={`/blog/${post.slug}`} className="paper-card group block h-full p-6">
+                  <div className="mb-4 flex items-center gap-2 text-xs text-ink-4">
+                    <Star size={13} className="text-gold" />
+                    <span className="font-mono-tech">{formatDate(post.published_at || post.created_at)}</span>
+                  </div>
+                  <h3 className="font-serif-zh text-xl font-semibold tracking-[0.06em] transition-colors group-hover:text-dai">
+                    {post.title}
+                  </h3>
+                  <p className="mt-4 line-clamp-3 text-sm leading-loose text-ink-2">{post.excerpt || "打开读全文。"}</p>
+                  <span className="mt-6 inline-flex items-center gap-2 text-xs text-dai">
+                    读这篇
+                    <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-serif-zh text-lg font-semibold tracking-[0.06em] transition-colors group-hover:text-cyan-dark">
-                      {post.title}
-                    </span>
-                    {post.excerpt && (
-                      <span className="mt-1 block truncate text-sm text-ink-muted">{post.excerpt}</span>
-                    )}
-                  </span>
-                  <span className="hidden shrink-0 items-center gap-1 font-mono-tech text-xs text-ink-muted sm:inline-flex">
-                    <Eye size={12} />
-                    {post.view_count ?? 0}
-                  </span>
-                  <ArrowRight size={15} className="shrink-0 self-center text-bronze opacity-0 transition-opacity group-hover:opacity-100" />
                 </Link>
               ))}
             </div>
           )}
-          <div className="mt-10 text-center">
-            <Link href="/blog" className="btn-outline inline-flex items-center gap-2">
-              查看全部文章
-              <ArrowRight size={14} />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 精选文章 */}
-      {(loading || featuredPosts.length > 0) && (
-        <section className="px-6 py-20">
-          <div className="mx-auto max-w-6xl">
-            <PageHeader eyebrow="Featured Articles" title="精选文章" description="由管理员在控制台指定展示，只有已发布文章会出现在这里。" />
-            {loading ? (
-              <div className="mt-12 grid gap-6 md:grid-cols-3">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="skeleton h-56 w-full" />
-                ))}
-              </div>
-            ) : (
-              <div className="mt-12 grid gap-6 md:grid-cols-3">
-                {featuredPosts.map((post) => (
-                  <Link key={post.id} href={`/blog/${post.slug}`} className="paper-card group block h-full p-6">
-                    <div className="mb-4 flex items-center gap-2 text-xs text-ink-muted">
-                      <Star size={14} className="text-bronze" />
-                      <span className="font-mono-tech">{getCategory(post)}</span>
-                      <span className="ml-auto font-mono-tech">{formatDate(post.published_at || post.created_at)}</span>
-                    </div>
-                    <h3 className="font-serif-zh text-xl font-semibold tracking-[0.08em] transition-colors group-hover:text-cyan-dark">
-                      {post.title}
-                    </h3>
-                    <p className="mt-4 text-sm leading-loose text-ink-light">{post.excerpt || "打开阅读全文。"}</p>
-                    <span className="mt-6 inline-flex items-center gap-2 text-xs text-cyan-dark">
-                      阅读更多
-                      <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
         </section>
       )}
 
-      <section className="px-6 py-20">
-        <div className="mx-auto max-w-6xl">
-          <PageHeader eyebrow="Design Logic" title="古风科技的秩序" description="不把风格做成表演，而是让纹理、留白、数据感与内容一起工作。" />
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {principles.map((item) => (
-              <SurfacePanel key={item.title} className="p-6">
-                <div className="mb-5 text-bronze">{item.icon}</div>
-                <h3 className="font-serif-zh text-xl font-semibold tracking-[0.08em]">{item.title}</h3>
-                <p className="mt-4 text-sm leading-loose text-ink-light">{item.description}</p>
-              </SurfacePanel>
-            ))}
-          </div>
+      {/* ===== 三条理念 ===== */}
+      <section className="mx-auto max-w-5xl px-5 pb-24 pt-8">
+        <div className="grid gap-6 md:grid-cols-3">
+          {principles.map((item, index) => (
+            <SurfacePanel key={item.title} className="unfold p-6" >
+              <div className="font-serif-zh text-3xl font-bold text-gold">{item.title}</div>
+              <p className="mt-4 text-sm leading-loose text-ink-2">{item.description}</p>
+            </SurfacePanel>
+          ))}
         </div>
       </section>
     </SiteShell>

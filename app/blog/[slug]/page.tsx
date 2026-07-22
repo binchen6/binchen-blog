@@ -409,20 +409,43 @@ export default function BlogPostPage() {
         </aside>
       )}
 
-      {/* 移动端 TOC 按钮 */}
-      {toc.length > 0 && post.mode !== "moment" && (
-        <div className="fixed bottom-8 left-6 z-40 xl:hidden">
-          <button
-            type="button"
-            onClick={() => setTocOpen((value) => !value)}
-            aria-label="打开目录"
-            className="grid h-11 w-11 place-items-center border border-bronze/40 bg-paper/90 text-bronze shadow-lg backdrop-blur-md transition-colors hover:bg-bronze hover:text-paper"
-          >
-            <ListTree size={18} />
+      {/* 触屏底部操作栏：点赞 / 评论 / 目录 / 分享 */}
+      <div className="action-bar touch-only-2" role="toolbar" aria-label="文章操作">
+        <div className="action-bar__btn">
+          <LikeButton targetType="post" targetId={post.id} initialCount={post.like_count || 0} initialLiked={likedByMe} size={20} />
+          <span>点赞</span>
+        </div>
+        <button
+          type="button"
+          className="action-bar__btn"
+          onClick={() => document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+        >
+          <MessageCircle size={20} />
+          <span>评论</span>
+        </button>
+        {toc.length > 0 && post.mode !== "moment" && (
+          <button type="button" className="action-bar__btn" onClick={() => setTocOpen((value) => !value)} aria-expanded={tocOpen}>
+            <ListTree size={20} />
+            <span>目录</span>
           </button>
-          {tocOpen && (
-            <SurfacePanel className="absolute bottom-14 left-0 max-h-[50vh] w-60 overflow-y-auto p-5">{tocPanel}</SurfacePanel>
-          )}
+        )}
+        <button
+          type="button"
+          className="action-bar__btn"
+          onClick={() => {
+            navigator.clipboard.writeText(window.location.href);
+            toast("链接已复制到剪贴板", "ok");
+          }}
+        >
+          <Copy size={20} />
+          <span>分享</span>
+        </button>
+      </div>
+
+      {/* 触屏目录面板（从底部操作栏展开） */}
+      {tocOpen && toc.length > 0 && post.mode !== "moment" && (
+        <div className="fixed inset-x-0 bottom-16 z-40 px-4 xl:hidden">
+          <SurfacePanel className="max-h-[46vh] overflow-y-auto p-5 shadow-xl">{tocPanel}</SurfacePanel>
         </div>
       )}
 

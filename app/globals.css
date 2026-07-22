@@ -3,21 +3,33 @@
 @tailwind utilities;
 
 :root {
-  /* 国风古代科技风 - 核心色板 */
-  --color-ink: #0d0d0d;
-  --color-ink-light: #4a4a4a;
-  --color-ink-muted: #8c8c8c;
-  --color-paper: #f8f5f0;
-  --color-paper-warm: #ede8e0;
+  /* ===== 墨卷 2.0 五级墨色 ===== */
+  --ink-1: #16130e; /* 墨·浓：标题、正文 */
+  --ink-2: #3d3629; /* 墨·重：次级正文 */
+  --ink-3: #6b6252; /* 墨·中：辅助说明 */
+  --ink-4: #a39a87; /* 墨·淡：时间、标签 */
+  --ink-5: #cfc8b8; /* 墨·远：边框、分割 */
+  --paper-1: #f7f3ea; /* 宣·纸：页面底色 */
+  --paper-2: #efe9db; /* 宣·影：分区底 */
+  --cinnabar-2: #b3352b; /* 朱·砂：印章、强调 */
+  --dai-2: #2f4a4a; /* 黛·青：链接、科技 */
+  --gold-2: #b8933f; /* 金·箔：点缀、精选 */
+
+  /* 兼容 1.x 变量（旧页面/组件仍可工作） */
+  --color-ink: var(--ink-1);
+  --color-ink-light: var(--ink-2);
+  --color-ink-muted: var(--ink-4);
+  --color-paper: var(--paper-1);
+  --color-paper-warm: var(--paper-2);
   --color-paper-cool: #e5e0d8;
-  --color-cyan-dark: #1a3a3a;
+  --color-cyan-dark: var(--dai-2);
   --color-cyan-muted: #2a5a5a;
-  --color-bronze: #c9a84c;
+  --color-bronze: var(--gold-2);
   --color-bronze-light: #e8d5a3;
   --color-bronze-dark: #8a6a2a;
-  --color-cinnabar: #c23a30;
+  --color-cinnabar: var(--cinnabar-2);
   --color-cinnabar-dark: #9a2a20;
-  --color-mist: #d4cfc7;
+  --color-mist: var(--ink-5);
   --color-mist-light: #e8e4dc;
 }
 
@@ -29,13 +41,13 @@
 
 html {
   scroll-behavior: smooth;
-  background-color: var(--color-paper);
+  background-color: var(--paper-1);
 }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
-  color: var(--color-ink);
-  background-color: var(--color-paper);
+  color: var(--ink-1);
+  background-color: var(--paper-1);
   line-height: 1.8;
   letter-spacing: 0.02em;
   -webkit-font-smoothing: antialiased;
@@ -817,4 +829,327 @@ input::placeholder, textarea::placeholder {
 @media print {
   body { background: white; }
   .paper-texture-bg { background: white; }
+}
+
+/* ============================================================
+   墨卷 InkScroll 2.0 —— 长卷叙事设计系统
+   ============================================================ */
+
+/* ---------- 笔触分隔（multiply 融合宣纸底） ---------- */
+.brush-divider {
+  display: block;
+  width: min(320px, 60%);
+  height: auto;
+  margin: 0 auto;
+  mix-blend-mode: multiply;
+  opacity: 0.75;
+  pointer-events: none;
+  user-select: none;
+}
+
+.brush-divider--left {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* ---------- 墨晕装饰 ---------- */
+.ink-blot {
+  position: absolute;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.5;
+}
+
+/* ---------- 竖排文字（2.0 点睛） ---------- */
+.v-text {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 0.35em;
+  font-family: 'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', serif;
+}
+
+/* ---------- 首页 Hero 长卷 ---------- */
+.ink-hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--ink-5);
+}
+
+.ink-hero__bg {
+  position: absolute;
+  inset: 0;
+  background-image: url('/assets/ink/ink-hero.jpg');
+  background-size: cover;
+  background-position: center 38%;
+  opacity: 0.9;
+}
+
+.ink-hero__bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(247, 243, 234, 0.25), rgba(247, 243, 234, 0) 45%, rgba(247, 243, 234, 0.88) 96%);
+}
+
+.ink-hero__content {
+  position: relative;
+  z-index: 1;
+}
+
+.ink-hero__seal {
+  width: 64px;
+  height: 64px;
+  mix-blend-mode: multiply;
+  opacity: 0.92;
+  transition: transform 0.3s ease;
+}
+
+.ink-hero__seal:hover {
+  transform: rotate(-3deg) scale(1.05);
+}
+
+/* ---------- 时间轴（最新文章） ---------- */
+.ink-timeline {
+  position: relative;
+}
+
+.ink-timeline::before {
+  content: '';
+  position: absolute;
+  left: 2.65rem;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, var(--ink-5) 8%, var(--ink-5) 92%, transparent);
+}
+
+.ink-timeline__date {
+  width: 5.3rem;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.ink-timeline__item {
+  position: relative;
+  display: flex;
+  gap: 1.25rem;
+  padding: 1.1rem 0.5rem;
+  transition: background 0.25s ease;
+}
+
+/* ---------- 帖式卡片（文章列表） ---------- */
+.tie-card {
+  position: relative;
+  display: flex;
+  gap: 1.1rem;
+  padding: 1.35rem 1.25rem;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid transparent;
+  border-bottom: 1px solid var(--ink-5);
+  overflow: hidden;
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.tie-card__num {
+  flex-shrink: 0;
+  width: 2.2rem;
+  padding-top: 0.2rem;
+  font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+  font-size: 1.35rem;
+  color: var(--ink-4);
+  text-align: center;
+  transition: color 0.3s ease;
+}
+
+.tie-card__body {
+  min-width: 0;
+  flex: 1;
+}
+
+/* ---------- 卷签（竖排 TOC / 分区标记） ---------- */
+.scroll-tab {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 0.3em;
+  font-family: 'Songti SC', 'STSong', 'SimSun', serif;
+  font-size: 0.8rem;
+  color: var(--ink-3);
+  padding: 0.75rem 0.35rem;
+  border-left: 1px solid var(--ink-5);
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+
+.scroll-tab--active {
+  color: var(--cinnabar-2);
+  border-left-color: var(--cinnabar-2);
+}
+
+/* ---------- 移动端底部 tab bar ---------- */
+.tab-bar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-around;
+  padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
+  background: rgba(247, 243, 234, 0.94);
+  border-top: 1px solid var(--ink-5);
+  backdrop-filter: blur(12px);
+}
+
+.tab-bar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 52px;
+  min-height: 44px;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: var(--ink-3);
+  transition: color 0.2s ease;
+}
+
+.tab-bar__item--active {
+  color: var(--cinnabar-2);
+}
+
+/* ---------- 文章页底部操作栏（触屏） ---------- */
+.action-bar {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 50;
+  display: flex;
+  justify-content: space-around;
+  padding: 0.45rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
+  background: rgba(247, 243, 234, 0.95);
+  border-top: 1px solid var(--ink-5);
+  backdrop-filter: blur(12px);
+}
+
+.action-bar__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 56px;
+  min-height: 44px;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: var(--ink-2);
+}
+
+/* 给页面底部留出 tab/action bar 空间 */
+@media (hover: none), (pointer: coarse) {
+  .has-tab-bar {
+    padding-bottom: 4.5rem;
+  }
+}
+
+/* ---------- 双交互层：鼠标专属 ---------- */
+@media (hover: hover) and (pointer: fine) {
+  .tie-card:hover {
+    background: rgba(255, 255, 255, 0.75);
+    border-color: var(--ink-5);
+  }
+
+  .tie-card:hover .tie-card__num {
+    color: var(--cinnabar-2);
+  }
+
+  /* 墨晕 hover 扩散 */
+  .ink-spread {
+    position: relative;
+  }
+
+  .ink-spread::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(47, 74, 74, 0.07), transparent 65%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+
+  .ink-spread:hover::before {
+    opacity: 1;
+  }
+
+  .scroll-tab:hover {
+    color: var(--dai-2);
+  }
+}
+
+/* ---------- 双交互层：触屏专属 ---------- */
+@media (hover: none), (pointer: coarse) {
+  .tie-card {
+    padding: 1.2rem 1rem;
+  }
+
+  .tie-card:active {
+    background: rgba(255, 255, 255, 0.8);
+  }
+
+  /* 触屏隐藏桌面 TOC，显示底部操作 */
+  .desktop-only-2 {
+    display: none !important;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .touch-only-2 {
+    display: none !important;
+  }
+}
+
+/* ---------- 精选横向滑动（触屏 scroll-snap） ---------- */
+@media (hover: none), (pointer: coarse) {
+  .snap-row {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+  }
+
+  .snap-row > * {
+    scroll-snap-align: start;
+    flex: 0 0 82%;
+  }
+
+  .snap-row::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ---------- 页面进场（卷轴展开感） ---------- */
+@keyframes scrollUnfold {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.unfold {
+  animation: scrollUnfold 0.65s ease-out both;
+}
+
+.unfold-1 { animation-delay: 0.08s; }
+.unfold-2 { animation-delay: 0.16s; }
+.unfold-3 { animation-delay: 0.24s; }
+.unfold-4 { animation-delay: 0.32s; }
+
+/* ---------- 印章图章小尺寸 ---------- */
+.seal-img {
+  mix-blend-mode: multiply;
+  opacity: 0.9;
+  user-select: none;
+  pointer-events: none;
 }
