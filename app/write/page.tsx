@@ -458,7 +458,7 @@ export default function WritePage() {
                 )}
               </div>
               {showPreview && mode === "article" ? (
-                <div className="markdown-content min-h-[16rem] w-full border border-mist bg-paper/60 p-4 text-sm leading-loose text-ink-light sm:min-h-[28rem]" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                <div className="markdown-content min-h-[12rem] w-full border border-mist bg-paper/60 p-4 text-sm leading-loose text-ink-light sm:min-h-[16rem] lg:min-h-[28rem]" dangerouslySetInnerHTML={{ __html: previewHtml }} />
               ) : (
                 <>
                   {mode === "article" && <MarkdownToolbar textareaRef={textareaRef} onContentChange={setContent} />}
@@ -467,7 +467,7 @@ export default function WritePage() {
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder={mode === "moment" ? "今天发生了什么？" : "支持 Markdown 格式..."}
-                    className={cn("w-full resize-y bg-paper/60 text-sm leading-loose", mode === "article" ? "h-64 font-mono-tech sm:h-[28rem]" : "h-48 sm:h-56")}
+                    className={cn("w-full resize-y bg-paper/60 text-sm leading-loose", mode === "article" ? "h-48 font-mono-tech sm:h-64 lg:h-[28rem]" : "h-48 sm:h-56")}
                     required
                   />
                   {!editingSlug && draftSavedAt && (
@@ -541,8 +541,8 @@ export default function WritePage() {
                         <img src={asset.url} alt={asset.filename} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       </button>
                       <div className="flex gap-1 p-2">
-                        <button type="button" onClick={() => setCoverImage(asset.url)} className="flex-1 text-xs text-cyan-dark hover:text-bronze">封面</button>
-                        <button type="button" onClick={() => insertImageMarkdown(asset.url)} className="flex-1 text-xs text-cyan-dark hover:text-bronze">插入</button>
+                        <button type="button" onClick={() => setCoverImage(asset.url)} className="flex-1 whitespace-nowrap text-xs text-cyan-dark hover:text-bronze">封面</button>
+                        <button type="button" onClick={() => insertImageMarkdown(asset.url)} className="flex-1 whitespace-nowrap text-xs text-cyan-dark hover:text-bronze">插入</button>
                       </div>
                     </div>
                   ))}

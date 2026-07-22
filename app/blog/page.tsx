@@ -243,7 +243,9 @@ function BlogContent() {
               <div>
                 {posts.map((post, index) => (
                   <Link key={post.id} href={`/blog/${post.slug}`} className="tie-card group">
-                    <span className="tie-card__num">{NUMERALS[index % PAGE_SIZE]}</span>
+                    {index < NUMERALS.length && (
+                      <span className="tie-card__num">{NUMERALS[index]}</span>
+                    )}
                     <div className="tie-card__body">
                       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
                         <h2 className="font-serif-zh text-xl font-bold tracking-[0.06em] transition-colors group-hover:text-dai">

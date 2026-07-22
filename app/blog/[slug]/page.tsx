@@ -399,7 +399,7 @@ export default function BlogPostPage() {
       {/* 灯箱 */}
       {lightboxSrc && (
         <div className="lightbox-overlay" onClick={() => setLightboxSrc(null)} role="dialog" aria-label="查看图片">
-          <button type="button" className="absolute right-6 top-6 text-paper/80 transition-colors hover:text-bronze" aria-label="关闭">
+          <button type="button" className="absolute right-4 top-4 text-paper/80 transition-colors hover:text-bronze sm:right-6 sm:top-6" aria-label="关闭">
             <X size={28} />
           </button>
           <img src={lightboxSrc} alt="放大查看" />
@@ -630,7 +630,7 @@ export default function BlogPostPage() {
               placeholder={replyTo ? "写下你的回复..." : "写下你的想法..."}
               value={commentForm.content}
               onChange={(e) => setCommentForm({ ...commentForm, content: e.target.value })}
-              className="h-32 w-full resize-none bg-paper/60"
+              className="h-24 w-full resize-none bg-paper/60 sm:h-32"
               required
             />
             <button type="submit" disabled={submitting} className="btn-tech inline-flex items-center gap-2 disabled:opacity-50">

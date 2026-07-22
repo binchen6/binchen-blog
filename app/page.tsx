@@ -46,7 +46,7 @@ export default function HomePage() {
       try {
         const [featuredRes, latestRes] = await Promise.all([
           fetch("/api/posts?featured=1&limit=3"),
-          fetch("/api/posts?limit=7"),
+          fetch("/api/posts?limit=3"),
         ]);
         const featuredData = (await featuredRes.json()) as { posts?: PostItem[] };
         const latestData = (await latestRes.json()) as { posts?: PostItem[] };

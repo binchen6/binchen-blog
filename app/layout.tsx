@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const runtime = "edge";
 
@@ -42,11 +43,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <head>
+        {/* 防 FOUC：body 渲染前同步读取主题 */}
+        <script dangerouslySetInnerHTML={{
+          __html: `(function(){try{var t=localStorage.getItem("theme");var d=document.documentElement;if(t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches)){d.classList.add("dark")}else{d.classList.remove("dark")}}catch(e){}})()`
+        }} />
         <link rel="stylesheet" href="/fonts/lxgw-slices.css" />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* 主题切换按钮：桌面端固定于导航栏右侧 */}
+        <div className="fixed right-6 top-[0.85rem] z-[60] hidden md:block">
+          <ThemeToggle />
+        </div>
+        {children}
+      </body>
     </html>
   );
 }

@@ -9,15 +9,17 @@ import { useDocumentTitle } from "@/lib/use-document-title";
 /** 单个语法示例：左源码 / 右渲染（小屏上下堆叠），渲染走全站同一 renderMarkdown 管线 */
 function DemoBlock({ source, note }: { source: string; note?: string }) {
   const [html, setHtml] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     renderMarkdown(source)
       .then(({ html }) => {
-        if (!cancelled) setHtml(html);
+        if (!cancelled) { setHtml(html); setLoading(false); }
       })
       .catch(() => {
-        if (!cancelled) setHtml("");
+        if (!cancelled) { setHtml(""); setLoading(false); }
       });
     return () => {
       cancelled = true;
@@ -28,14 +30,22 @@ function DemoBlock({ source, note }: { source: string; note?: string }) {
     <div className="grid gap-4 md:grid-cols-2">
       <div className="min-w-0">
         <p className="mb-2 font-mono-tech text-[11px] uppercase tracking-[0.16em] text-ink-3">源码</p>
-        <pre className="h-full whitespace-pre-wrap break-words border border-mist bg-paper/70 p-4 font-mono-tech text-xs leading-relaxed text-ink-2">{source}</pre>
+        <pre className="h-full overflow-x-auto whitespace-pre border border-mist bg-paper/70 p-4 font-mono-tech text-xs leading-relaxed text-ink-2">{source}</pre>
       </div>
       <div className="min-w-0">
         <p className="mb-2 font-mono-tech text-[11px] uppercase tracking-[0.16em] text-ink-3">渲染效果</p>
-        <div
-          className="markdown-content h-full border border-mist bg-paper/40 p-4 text-sm leading-loose text-ink-light"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
+        {loading ? (
+          <div className="min-h-[6rem] border border-mist bg-paper/40 p-4">
+            <div className="skeleton h-3 w-3/4" />
+            <div className="skeleton mt-2 h-3 w-full" />
+            <div className="skeleton mt-2 h-3 w-1/2" />
+          </div>
+        ) : (
+          <div
+            className="markdown-content h-full border border-mist bg-paper/40 p-4 text-sm leading-loose text-ink-light"
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        )}
         {note && <p className="mt-2 text-xs leading-relaxed text-ink-3">{note}</p>}
       </div>
     </div>

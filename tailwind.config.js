@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,30 +9,30 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // 墨卷 2.0 五级墨色
-        'ink': '#16130e',
-        'ink-2': '#3d3629',
-        'ink-3': '#6b6252',
-        'ink-4': '#8a8580',
-        'ink-5': '#cfc8b8',
-        'paper': '#f7f3ea',
-        'paper-2': '#efe9db',
-        'cinnabar': '#b3352b',
-        'dai': '#2f4a4a',
-        'gold': '#b8933f',
+        // 墨卷 2.0 五级墨色 —— 引用 CSS 变量，暗色模式自动切换
+        'ink': 'rgba(var(--ink-rgb), <alpha-value>)',
+        'ink-2': 'rgba(var(--ink-2-rgb), <alpha-value>)',
+        'ink-3': 'rgba(var(--ink-3-rgb), <alpha-value>)',
+        'ink-4': 'rgba(var(--ink-4-rgb), <alpha-value>)',
+        'ink-5': 'rgba(var(--ink-5-rgb), <alpha-value>)',
+        'paper': 'rgba(var(--paper-rgb), <alpha-value>)',
+        'paper-2': 'rgba(var(--paper-2-rgb), <alpha-value>)',
+        'cinnabar': 'rgba(var(--cinnabar-rgb), <alpha-value>)',
+        'dai': 'rgba(var(--dai-rgb), <alpha-value>)',
+        'gold': 'rgba(var(--gold-rgb), <alpha-value>)',
         // 兼容 1.x 别名
-        'ink-light': '#3d3629',
-        'ink-muted': '#8a8580',
-        'paper-warm': '#efe9db',
-        'paper-cool': '#e5e0d8',
-        'cyan-dark': '#2f4a4a',
-        'cyan-muted': '#2a5a5a',
-        'bronze': '#b8933f',
-        'bronze-light': '#e8d5a3',
-        'bronze-dark': '#8a6a2a',
-        'cinnabar-dark': '#9a2a20',
-        'mist': '#cfc8b8',
-        'mist-light': '#e8e4dc',
+        'ink-light': 'rgba(var(--ink-2-rgb), <alpha-value>)',
+        'ink-muted': 'rgba(var(--ink-4-rgb), <alpha-value>)',
+        'paper-warm': 'rgba(var(--paper-2-rgb), <alpha-value>)',
+        'paper-cool': 'rgba(var(--paper-cool-rgb), <alpha-value>)',
+        'cyan-dark': 'rgba(var(--dai-rgb), <alpha-value>)',
+        'cyan-muted': 'rgba(var(--cyan-muted-rgb), <alpha-value>)',
+        'bronze': 'rgba(var(--gold-rgb), <alpha-value>)',
+        'bronze-light': 'rgba(var(--bronze-light-rgb), <alpha-value>)',
+        'bronze-dark': 'rgba(var(--bronze-dark-rgb), <alpha-value>)',
+        'cinnabar-dark': 'rgba(var(--cinnabar-dark-rgb), <alpha-value>)',
+        'mist': 'rgba(var(--ink-5-rgb), <alpha-value>)',
+        'mist-light': 'rgba(var(--mist-light-rgb), <alpha-value>)',
       },
       fontFamily: {
         // 系统字体栈：零网络下载，首屏秒开（CSP 也不允许外链字体）

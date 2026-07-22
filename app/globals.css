@@ -34,6 +34,24 @@
   --dai-2: #2f4a4a; /* 黛·青：链接、科技 */
   --gold-2: #b8933f; /* 金·箔：点缀、精选 */
 
+  /* ===== RGB 三元组（Tailwind <alpha-value> 兼容） ===== */
+  --ink-rgb: 22, 19, 14;
+  --ink-2-rgb: 61, 54, 41;
+  --ink-3-rgb: 107, 98, 82;
+  --ink-4-rgb: 138, 133, 128;
+  --ink-5-rgb: 207, 200, 184;
+  --paper-rgb: 247, 243, 234;
+  --paper-2-rgb: 239, 233, 219;
+  --cinnabar-rgb: 179, 53, 43;
+  --dai-rgb: 47, 74, 74;
+  --gold-rgb: 184, 147, 63;
+  --paper-cool-rgb: 229, 224, 216;
+  --cyan-muted-rgb: 42, 90, 90;
+  --bronze-light-rgb: 232, 213, 163;
+  --bronze-dark-rgb: 138, 106, 42;
+  --cinnabar-dark-rgb: 154, 42, 32;
+  --mist-light-rgb: 232, 228, 220;
+
   /* 兼容 1.x 变量（旧页面/组件仍可工作） */
   --color-ink: var(--ink-1);
   --color-ink-light: var(--ink-2);
@@ -467,6 +485,7 @@ button:focus-visible {
 
 .markdown-content img {
   max-width: 100%;
+  height: auto;
   border-radius: 4px;
   margin: 1.5rem 0;
   border: 1px solid rgba(26, 58, 58, 0.1);
@@ -498,6 +517,8 @@ button:focus-visible {
   padding: 1rem;
   border-radius: 4px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
   margin: 1.5rem 0;
   border: 1px solid rgba(26, 58, 58, 0.1);
 }
@@ -669,11 +690,12 @@ button:focus-visible {
 }
 
 .markdown-content .task-list-item input[type="checkbox"] {
-  width: 0.85rem;
-  height: 0.85rem;
-  margin-right: 0.45rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-right: 0.55rem;
   accent-color: var(--color-cyan-dark);
-  vertical-align: -0.1em;
+  vertical-align: -0.15em;
+  cursor: pointer;
 }
 
 /* 脚注 */
@@ -1338,6 +1360,47 @@ input::placeholder, textarea::placeholder {
   }
 }
 
+/* ===== 响应式补丁：博客 R3 多端适配 ===== */
+
+/* 768px 以下：移动端 - action-bar 显示、桌面 TOC 隐藏、两栏→单列 */
+@media (max-width: 767px) {
+  .action-bar {
+    display: flex !important;
+  }
+
+  .markdown-content .table-wrap {
+    margin: 1rem 0;
+  }
+
+  .markdown-content {
+    font-size: 1rem;
+    max-width: none;
+  }
+
+  .lightbox-overlay img {
+    max-width: 96vw;
+    max-height: 82vh;
+  }
+}
+
+/* 768-1023px：平板过渡态 */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .action-bar {
+    display: flex;
+  }
+
+  .markdown-content {
+    max-width: 42em;
+  }
+}
+
+/* 1024px 以上：桌面布局 */
+@media (min-width: 1024px) {
+  .action-bar {
+    display: none;
+  }
+}
+
 /* 移动端时间轴：轴退化为左侧 2px 描边，日期移至标题上方 */
 @media (max-width: 767px) {
   .ink-timeline::before {
@@ -1356,4 +1419,288 @@ input::placeholder, textarea::placeholder {
     width: auto;
     text-align: left;
   }
+}
+
+/* ============================================================
+   夜色宣纸 —— 暗色模式
+   ============================================================ */
+
+.dark {
+  color-scheme: dark;
+
+  /* 五级墨色 —— 夜色宣纸 */
+  --ink-1: #e8e4dc;
+  --ink-2: #cfc8b8;
+  --ink-3: #a09888;
+  --ink-4: #787068;
+  --ink-5: #3a3530;
+  --paper-1: #1a1815;
+  --paper-2: #252220;
+  --cinnabar-2: #d4453a;
+  --dai-2: #5a9a9a;
+  --gold-2: #c9a84c;
+
+  /* RGB 三元组覆盖 */
+  --ink-rgb: 232, 228, 220;
+  --ink-2-rgb: 207, 200, 184;
+  --ink-3-rgb: 160, 152, 136;
+  --ink-4-rgb: 120, 112, 104;
+  --ink-5-rgb: 58, 53, 48;
+  --paper-rgb: 26, 24, 21;
+  --paper-2-rgb: 37, 34, 32;
+  --cinnabar-rgb: 212, 69, 58;
+  --dai-rgb: 90, 154, 154;
+  --gold-rgb: 201, 168, 76;
+  --paper-cool-rgb: 40, 38, 35;
+  --cyan-muted-rgb: 60, 110, 110;
+  --bronze-light-rgb: 180, 160, 110;
+  --bronze-dark-rgb: 110, 85, 40;
+  --cinnabar-dark-rgb: 180, 50, 40;
+  --mist-light-rgb: 46, 42, 37;
+
+  /* 兼容 1.x 变量 */
+  --color-ink: var(--ink-1);
+  --color-ink-light: var(--ink-2);
+  --color-ink-muted: var(--ink-4);
+  --color-paper: var(--paper-1);
+  --color-paper-warm: var(--paper-2);
+  --color-paper-cool: #282623;
+  --color-cyan-dark: var(--dai-2);
+  --color-cyan-muted: #3c6e6e;
+  --color-bronze: var(--gold-2);
+  --color-bronze-light: #b4a06e;
+  --color-bronze-dark: #6e5528;
+  --color-cinnabar: var(--cinnabar-2);
+  --color-cinnabar-dark: #b43228;
+  --color-mist: var(--ink-5);
+  --color-mist-light: #2e2a25;
+}
+
+/* 滚动条暗色适配 */
+.dark ::-webkit-scrollbar-track {
+  background: #252220;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #3a3530;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #787068;
+}
+
+/* 选择高亮暗色 */
+.dark ::selection {
+  background: rgba(212, 69, 58, 0.3);
+  color: #e8e4dc;
+}
+
+/* 墨晕装饰暗色（multiply → screen） */
+.dark .ink-blot,
+.dark .brush-divider,
+.dark .seal-img,
+.dark .ink-hero__seal {
+  mix-blend-mode: screen;
+}
+
+/* 卡片 & 面板暗色 */
+.dark .paper-card {
+  background: linear-gradient(135deg, #22201c 0%, #1e1c18 100%);
+  border-color: rgba(90, 154, 154, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+.dark .paper-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.dark .surface-panel {
+  background: rgba(26, 24, 21, 0.88);
+  border-color: rgba(90, 154, 154, 0.15);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+}
+
+/* Hero 暗色 */
+.dark .ink-hero__bg::after {
+  background: linear-gradient(to bottom, rgba(26, 24, 21, 0.45), rgba(26, 24, 21, 0) 45%, rgba(26, 24, 21, 0.92) 96%);
+}
+
+.dark .hero-mark {
+  background: rgba(26, 24, 21, 0.6);
+  border-color: rgba(201, 168, 76, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(26, 24, 21, 0.7), 0 18px 60px rgba(0, 0, 0, 0.35);
+}
+
+.dark .quiet-band {
+  border-color: rgba(90, 154, 154, 0.1);
+  background: rgba(37, 34, 32, 0.5);
+}
+
+/* 按钮暗色 */
+.dark .btn-ink {
+  background: #e8e4dc;
+  color: #1a1815;
+  border-color: #e8e4dc;
+}
+.dark .btn-ink:hover {
+  background: transparent;
+  color: #e8e4dc;
+}
+
+.dark .btn-outline {
+  color: #e8e4dc;
+  border-color: #e8e4dc;
+}
+.dark .btn-outline:hover {
+  background: #e8e4dc;
+  color: #1a1815;
+}
+
+.dark .btn-tech {
+  background: #2f4a4a;
+  color: #c9a84c;
+  border-color: #3c6e6e;
+  box-shadow: 0 0 15px rgba(90, 154, 154, 0.15);
+}
+.dark .btn-tech:hover {
+  box-shadow: 0 0 25px rgba(90, 154, 154, 0.3);
+  border-color: #c9a84c;
+}
+
+/* Markdown 内容暗色 */
+.dark .markdown-content blockquote {
+  background: rgba(37, 34, 32, 0.7);
+  color: #cfc8b8;
+}
+
+.dark .markdown-content code {
+  background: #252220;
+  border-color: rgba(90, 154, 154, 0.15);
+  color: #5a9a9a;
+}
+
+.dark .markdown-content pre {
+  background: #1a1815;
+  border-color: rgba(58, 53, 48, 0.6);
+}
+
+.dark .markdown-content pre code {
+  background: none;
+  border: none;
+  color: #e8e4dc;
+}
+
+.dark .markdown-content th {
+  background: #252220;
+}
+
+.dark .markdown-content th,
+.dark .markdown-content td {
+  border-color: #3a3530;
+}
+
+.dark .markdown-content img {
+  border-color: rgba(90, 154, 154, 0.15);
+}
+
+.dark .markdown-content .callout {
+  background: rgba(37, 34, 32, 0.6);
+  border-color: rgba(58, 53, 48, 0.5);
+}
+
+.dark .markdown-content mark {
+  background: rgba(201, 168, 76, 0.25);
+}
+
+/* 代码复制按钮暗色 */
+.dark .code-copy-btn {
+  color: #5a9a9a;
+  background: rgba(26, 24, 21, 0.9);
+  border-color: rgba(90, 154, 154, 0.3);
+}
+
+.dark .code-copy-btn:hover {
+  color: #c9a84c;
+  border-color: #c9a84c;
+}
+
+.dark .code-copy-btn.copied {
+  color: #4a9a6a;
+  border-color: #4a9a6a;
+}
+
+/* 帖式卡片暗色 */
+.dark .tie-card {
+  background: rgba(26, 24, 21, 0.5);
+  border-bottom-color: #3a3530;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .dark .tie-card:hover {
+    background: rgba(37, 34, 32, 0.7);
+    border-color: #3a3530;
+  }
+
+  .dark .ink-spread::before {
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(90, 154, 154, 0.07), transparent 65%);
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .dark .tie-card:active {
+    background: rgba(37, 34, 32, 0.7);
+  }
+}
+
+/* Tab bar & action bar 暗色 */
+.dark .tab-bar {
+  background: rgba(26, 24, 21, 0.95);
+  border-top-color: #3a3530;
+}
+
+.dark .action-bar {
+  background: rgba(26, 24, 21, 0.96);
+  border-top-color: #3a3530;
+}
+
+/* 页脚 Logo 暗色 */
+.dark img[src*="/assets/ink/seal-logo.png"] {
+  mix-blend-mode: screen;
+}
+
+/* 输入框暗色 */
+.dark input,
+.dark textarea {
+  background: #252220;
+  border-color: #3a3530;
+  color: #e8e4dc;
+}
+.dark input:focus,
+.dark textarea:focus {
+  border-color: #5a9a9a;
+  box-shadow: 0 0 0 3px rgba(90, 154, 154, 0.15);
+}
+
+/* 骨架屏暗色 */
+.dark .skeleton {
+  background: #252220;
+}
+.dark .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+/* 科技发光暗色 */
+.dark .tech-glow {
+  box-shadow: 0 0 20px rgba(90, 154, 154, 0.2), 0 0 40px rgba(90, 154, 154, 0.08);
+}
+.dark .tech-glow-sm {
+  box-shadow: 0 0 10px rgba(90, 154, 154, 0.12), 0 0 20px rgba(90, 154, 154, 0.04);
+}
+
+/* 图片灯箱暗色 */
+.dark .lightbox-overlay {
+  background: rgba(0, 0, 0, 0.88);
+}
+
+/* Toast 暗色 */
+.dark .toast-in {
+  background: #252220;
+  border-color: rgba(90, 154, 154, 0.2);
 }

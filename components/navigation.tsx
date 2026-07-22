@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, BookOpen, Compass, Home, LogIn, LogOut, MessageCircle, Pen, User, X } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar } from "@/components/user-avatar";
 import { NotificationBell } from "@/components/notification-bell";
 import { useAuth } from "@/lib/client-auth";
@@ -109,8 +110,9 @@ export default function Navigation() {
             )}
           </div>
 
-          {/* 移动端：铃铛 + 用户菜单按钮 */}
+          {/* 移动端：主题切换 + 铃铛 + 用户菜单按钮 */}
           <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle />
             <NotificationBell />
             <button
               type="button"
