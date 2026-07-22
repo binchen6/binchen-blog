@@ -79,7 +79,14 @@ function extractToc(markdown: string): TocItem[] {
 
 export default function BlogPostPage() {
   const params = useParams();
-  const slug = params.slug as string;
+  // next-on-pages/edge 下 useParams 可能返回未解码的原始 slug，统一解码后再使用
+  const rawSlug = params.slug as string;
+  let slug = rawSlug;
+  try {
+    slug = decodeURIComponent(rawSlug);
+  } catch {
+    slug = rawSlug;
+  }
 
   const [post, setPost] = useState<Post | null>(null);
   const [likedByMe, setLikedByMe] = useState(false);
