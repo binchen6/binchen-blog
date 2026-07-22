@@ -22,6 +22,9 @@ export default function Navigation() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // 文章详情页（触屏）用底部操作栏替代全局 tab bar
+  const isArticlePage = pathname?.startsWith("/blog/") && pathname !== "/blog";
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 16);
     handleScroll();
@@ -143,19 +146,21 @@ export default function Navigation() {
         )}
       </nav>
 
-      {/* ===== 移动端底部 tab bar ===== */}
-      <nav className="tab-bar md:hidden" aria-label="主导航">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.href);
-          return (
-            <Link key={item.href} href={item.href} className={cn("tab-bar__item", active && "tab-bar__item--active")}>
-              <Icon size={20} />
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      {/* ===== 移动端底部 tab bar（文章详情页隐藏，让位给操作栏） ===== */}
+      {!isArticlePage && (
+        <nav className="tab-bar md:hidden" aria-label="主导航">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
+            return (
+              <Link key={item.href} href={item.href} className={cn("tab-bar__item", active && "tab-bar__item--active")}>
+                <Icon size={20} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </>
   );
 }
