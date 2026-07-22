@@ -22,11 +22,11 @@ module.exports = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://static.cloudflareinsights.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://api.github.com",
+              "connect-src 'self' https://api.github.com https://cloudflareinsights.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
