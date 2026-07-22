@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { toast } from "@/components/toast";
-import { useAuth } from "@/lib/client-auth";
+import { useAuth, authFetch } from "@/lib/client-auth";
 import { cn } from "@/lib/utils";
 
 type LikeButtonProps = {
@@ -41,7 +41,7 @@ export function LikeButton({ targetType, targetId, initialCount, initialLiked = 
       setTimeout(() => setBurst(false), 400);
     }
     try {
-      const res = await fetch("/api/likes", {
+      const res = await authFetch("/api/likes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ targetType, targetId }),

@@ -8,7 +8,7 @@ import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { PostCardSkeleton } from "@/components/site-widgets";
 import { UserAvatar } from "@/components/user-avatar";
 import { toast } from "@/components/toast";
-import { useAuth } from "@/lib/client-auth";
+import { useAuth, authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { formatDate } from "@/lib/utils";
 
@@ -93,7 +93,7 @@ export default function PublicProfilePage() {
     if (followPending || !user) return;
     setFollowPending(true);
     try {
-      const res = await fetch(`/api/users/${encodeURIComponent(user.username)}/follow`, { method: "POST" });
+      const res = await authFetch(`/api/users/${encodeURIComponent(user.username)}/follow`, { method: "POST" });
       const data = (await res.json()) as { following?: boolean; followerCount?: number; error?: string };
       if (!res.ok) {
         toast(data.error || "操作失败", "error");
