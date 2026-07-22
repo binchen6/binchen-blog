@@ -94,7 +94,7 @@ export default function Navigation() {
 
             {user ? (
               <div className="flex items-center gap-2.5">
-                <Link href="/profile" className="flex max-w-[10rem] items-center gap-2 truncate text-sm text-ink-2 transition-colors hover:text-dai">
+                <Link href={`/users/${encodeURIComponent(user.username)}`} className="flex max-w-[10rem] items-center gap-2 truncate text-sm text-ink-2 transition-colors hover:text-dai">
                   <UserAvatar username={null} avatar={user.avatar} size={26} linkToProfile={false} className="!rounded-full" />
                   <span className="truncate">{user.display_name || user.username}</span>
                 </Link>
@@ -131,7 +131,7 @@ export default function Navigation() {
           <div className="border-t border-ink-5 bg-paper/97 px-5 py-3 backdrop-blur-lg md:hidden">
             {user ? (
               <div className="space-y-1">
-                <Link href="/profile" className="block py-2.5 text-sm text-ink-2">个人中心</Link>
+                <Link href={`/users/${encodeURIComponent(user.username)}`} className="block py-2.5 text-sm text-ink-2">个人中心</Link>
                 <Link href="/notifications" className="flex items-center gap-2 py-2.5 text-sm text-ink-2">
                   <Bell size={15} />
                   信箱

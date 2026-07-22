@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import {
   Bold,
   ChevronDown,
@@ -230,6 +231,18 @@ function MarkdownToolbar({ textareaRef, onContentChange }: MarkdownToolbarProps)
     [wrap, linePrefix, blockInsert, insertLink, insertImage, insertFootnote]
   );
 
+  // Callout 下拉菜单位置（portal 渲染，不受工具栏 overflow 裁剪）
+  const calloutBtnRef = useRef<HTMLButtonElement>(null);
+  const [calloutPos, setCalloutPos] = useState({ top: 0, left: 0 });
+
+  const openCallout = useCallback(() => {
+    if (calloutBtnRef.current) {
+      const rect = calloutBtnRef.current.getBoundingClientRect();
+      setCalloutPos({ top: rect.bottom + 4, left: rect.left });
+    }
+    setCalloutOpen(true);
+  }, []);
+
   return (
     <div className="flex items-center gap-0.5 overflow-x-auto border border-mist bg-paper/60 p-1 whitespace-nowrap">
       {buttons.map((item, index) => {
@@ -253,43 +266,50 @@ function MarkdownToolbar({ textareaRef, onContentChange }: MarkdownToolbarProps)
       <span className={DIVIDER_CLASS} />
       <div className="relative shrink-0">
         <button
+          ref={calloutBtnRef}
           type="button"
           title="Callout 提示块 > [!note]"
           aria-label="Callout 提示块"
           aria-haspopup="menu"
           aria-expanded={calloutOpen}
-          onClick={() => setCalloutOpen((open) => !open)}
+          onClick={() => (calloutOpen ? setCalloutOpen(false) : openCallout())}
           className="inline-flex items-center gap-0.5 p-1.5 text-ink-light transition-colors hover:bg-paper-warm hover:text-cyan-dark"
         >
           <Megaphone size={15} />
           <ChevronDown size={11} />
         </button>
-        {calloutOpen && (
-          <>
-            <button
-              type="button"
-              aria-hidden
-              tabIndex={-1}
-              onClick={() => setCalloutOpen(false)}
-              className="fixed inset-0 z-10 cursor-default"
-            />
-            <div className="absolute left-0 top-full z-20 mt-1 w-32 border border-mist bg-paper" role="menu">
-              {CALLOUT_TYPES.map((item) => (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => {
-                    setCalloutOpen(false);
-                    insertCallout(item.value);
-                  }}
-                  className="block w-full px-3 py-1.5 text-left text-xs text-ink-light transition-colors hover:bg-paper-warm hover:text-cyan-dark"
-                >
-                  {item.label}（{item.value}）
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+        {calloutOpen &&
+          createPortal(
+            <>
+              <button
+                type="button"
+                aria-hidden
+                tabIndex={-1}
+                onClick={() => setCalloutOpen(false)}
+                className="fixed inset-0 z-40 cursor-default"
+              />
+              <div
+                className="fixed z-50 w-36 border border-mist bg-paper shadow-lg dark:border-ink-5 dark:bg-paper-1"
+                role="menu"
+                style={{ top: calloutPos.top, left: calloutPos.left }}
+              >
+                {CALLOUT_TYPES.map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => {
+                      setCalloutOpen(false);
+                      insertCallout(item.value);
+                    }}
+                    className="block w-full px-3 py-1.5 text-left text-xs text-ink-light transition-colors hover:bg-paper-warm hover:text-cyan-dark dark:hover:bg-paper-warm dark:hover:text-dai-2"
+                  >
+                    {item.label}（{item.value}）
+                  </button>
+                ))}
+              </div>
+            </>,
+            document.body
+          )}
       </div>
     </div>
   );

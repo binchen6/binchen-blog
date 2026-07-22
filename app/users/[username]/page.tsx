@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Calendar, Eye, FileText, Shield, Tag, UserPlus, UserCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, Eye, FileText, Settings, Shield, Tag, UserPlus, UserCheck } from "lucide-react";
 import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { PostCardSkeleton } from "@/components/site-widgets";
 import { UserAvatar } from "@/components/user-avatar";
+import { ProfileEditingPanel } from "@/components/profile-editing-panel";
 import { toast } from "@/components/toast";
 import { useAuth, authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -37,6 +38,14 @@ interface UserPost {
   view_count: number;
 }
 
+/** 个人中心 profile 数据（仅自己页面加载） */
+interface ProfileData {
+  user: any;
+  groups: any[];
+  pendingUsernameRequest: any;
+  avatarHistory: string[];
+}
+
 export default function PublicProfilePage() {
   const params = useParams();
   const username = params.username as string;
@@ -51,8 +60,18 @@ export default function PublicProfilePage() {
   const { user: currentUser } = useAuth();
   const router = useRouter();
 
+  // 自己主页：编辑模式
+  const isOwner = currentUser?.username === username;
+  const [editMode, setEditMode] = useState(false);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [profileForm, setProfileForm] = useState({ displayName: "", email: "", bio: "" });
+  const [myPosts, setMyPosts] = useState<any[]>([]);
+  const [myImages, setMyImages] = useState<any[]>([]);
+  const [profileLoading, setProfileLoading] = useState(false);
+
   useDocumentTitle(user ? `${user.display_name || user.username} 的主页` : "用户主页");
 
+  // 加载公开用户数据
   useEffect(() => {
     if (!username) return;
     let cancelled = false;
@@ -83,6 +102,52 @@ export default function PublicProfilePage() {
       cancelled = true;
     };
   }, [username]);
+
+  // 自己主页：加载 profile 编辑数据（点击编辑时懒加载）
+  const loadProfileData = async () => {
+    if (profileData || profileLoading) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    setProfileLoading(true);
+    try {
+      const [profileRes, postRes, imageRes] = await Promise.all([
+        fetch("/api/profile", { headers }),
+        fetch("/api/posts?mine=1&limit=100", { headers }),
+        fetch("/api/upload", { headers }),
+      ]);
+      const pData = await profileRes.json() as { user?: any; groups?: any[]; pendingUsernameRequest?: any; avatarHistory?: string[] };
+      const poData = await postRes.json() as { posts?: any[] };
+      const iData = await imageRes.json() as { images?: any[] };
+
+      setProfileData({
+        user: pData.user || null,
+        groups: pData.groups || [],
+        pendingUsernameRequest: pData.pendingUsernameRequest || null,
+        avatarHistory: pData.avatarHistory || [],
+      });
+      setMyPosts(poData.posts || []);
+      setMyImages(iData.images || []);
+      if (pData.user) {
+        setProfileForm({
+          displayName: pData.user.display_name || "",
+          email: pData.user.email || "",
+          bio: pData.user.bio || "",
+        });
+      }
+    } catch {
+      toast("加载编辑数据失败", "error");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleToggleEdit = () => {
+    if (!editMode) {
+      loadProfileData();
+    }
+    setEditMode(!editMode);
+  };
 
   const toggleFollow = async () => {
     if (!currentUser) {
@@ -141,6 +206,8 @@ export default function PublicProfilePage() {
     );
   }
 
+  const currentGroup = profileData?.groups?.find((g: any) => g.name === profileData?.user?.role) || null;
+
   return (
     <SiteShell>
       <section className="mx-auto max-w-5xl px-6 pb-20 pt-28">
@@ -179,20 +246,61 @@ export default function PublicProfilePage() {
                   <span className="text-cyan-dark">{user.following_count || 0}</span> 关注
                 </Link>
               </div>
-              {(!currentUser || currentUser.username !== user.username) && (
-                <button
-                  type="button"
-                  onClick={toggleFollow}
-                  disabled={followPending}
-                  className={isFollowing ? "btn-outline mt-5 inline-flex items-center gap-2 px-5 py-2 text-sm disabled:opacity-50" : "btn-tech mt-5 inline-flex items-center gap-2 px-5 py-2 text-sm disabled:opacity-50"}
-                >
-                  {isFollowing ? <UserCheck size={15} /> : <UserPlus size={15} />}
-                  {isFollowing ? "已关注" : "关注 TA"}
-                </button>
-              )}
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                {isOwner ? (
+                  <button
+                    type="button"
+                    onClick={handleToggleEdit}
+                    className={editMode ? "btn-outline inline-flex items-center gap-2 px-5 py-2 text-sm" : "btn-tech inline-flex items-center gap-2 px-5 py-2 text-sm"}
+                  >
+                    <Settings size={15} />
+                    {editMode ? "收起编辑" : "编辑资料"}
+                  </button>
+                ) : (
+                  currentUser && (
+                    <button
+                      type="button"
+                      onClick={toggleFollow}
+                      disabled={followPending}
+                      className={isFollowing ? "btn-outline inline-flex items-center gap-2 px-5 py-2 text-sm disabled:opacity-50" : "btn-tech inline-flex items-center gap-2 px-5 py-2 text-sm disabled:opacity-50"}
+                    >
+                      {isFollowing ? <UserCheck size={15} /> : <UserPlus size={15} />}
+                      {isFollowing ? "已关注" : "关注 TA"}
+                    </button>
+                  )
+                )}
+              </div>
             </div>
           </div>
         </SurfacePanel>
+
+        {/* 自己的编辑面板 */}
+        {isOwner && editMode && (
+          <div className="mt-12">
+            {profileLoading ? (
+              <div className="ink-loading mx-auto h-1 max-w-md" />
+            ) : profileData?.user ? (
+              <ProfileEditingPanel
+                profile={profileData.user}
+                setProfile={(u: any) => setProfileData((prev) => prev ? { ...prev, user: u } : prev)}
+                profileForm={profileForm}
+                setProfileForm={setProfileForm}
+                groups={profileData.groups}
+                currentGroup={currentGroup}
+                pendingUsernameRequest={profileData.pendingUsernameRequest}
+                setPendingUsernameRequest={(r: any) => setProfileData((prev) => prev ? { ...prev, pendingUsernameRequest: r } : prev)}
+                posts={myPosts}
+                setPosts={setMyPosts}
+                images={myImages}
+                setImages={setMyImages}
+                avatarHistory={profileData.avatarHistory}
+                setAvatarHistory={(h: string[]) => setProfileData((prev) => prev ? { ...prev, avatarHistory: h } : prev)}
+                token={localStorage.getItem("token")}
+                authHeaders={{ Authorization: `Bearer ${localStorage.getItem("token")}` }}
+              />
+            ) : null}
+          </div>
+        )}
 
         {/* 发布的文章 */}
         <div className="mt-12">
