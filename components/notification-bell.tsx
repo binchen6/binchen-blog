@@ -43,7 +43,7 @@ export function NotificationBell() {
   return (
     <Link
       href="/notifications"
-      className="relative grid h-9 w-9 place-items-center text-ink-muted transition-colors hover:text-cyan-dark"
+      className="icon-btn relative grid h-9 w-9 place-items-center text-ink-muted transition-colors hover:text-cyan-dark"
       aria-label={unread > 0 ? `信箱（${unread} 条未读）` : "信箱"}
     >
       <Bell size={17} />

@@ -12,7 +12,7 @@ module.exports = {
         'ink': '#16130e',
         'ink-2': '#3d3629',
         'ink-3': '#6b6252',
-        'ink-4': '#a39a87',
+        'ink-4': '#8a8580',
         'ink-5': '#cfc8b8',
         'paper': '#f7f3ea',
         'paper-2': '#efe9db',
@@ -21,7 +21,7 @@ module.exports = {
         'gold': '#b8933f',
         // 兼容 1.x 别名
         'ink-light': '#3d3629',
-        'ink-muted': '#a39a87',
+        'ink-muted': '#8a8580',
         'paper-warm': '#efe9db',
         'paper-cool': '#e5e0d8',
         'cyan-dark': '#2f4a4a',

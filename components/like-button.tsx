@@ -73,7 +73,7 @@ export function LikeButton({ targetType, targetId, initialCount, initialLiked = 
       aria-label={liked ? "取消点赞" : "点赞"}
       aria-pressed={liked}
       className={cn(
-        "inline-flex items-center gap-1.5 transition-colors disabled:opacity-60",
+        "icon-btn inline-flex items-center gap-1.5 transition-colors disabled:opacity-60",
         liked ? "text-cinnabar" : "text-ink-muted hover:text-cinnabar",
         className
       )}

@@ -33,7 +33,7 @@
   --ink-1: #16130e; /* 墨·浓：标题、正文 */
   --ink-2: #3d3629; /* 墨·重：次级正文 */
   --ink-3: #6b6252; /* 墨·中：辅助说明 */
-  --ink-4: #a39a87; /* 墨·淡：时间、标签 */
+  --ink-4: #8a8580; /* 墨·淡：时间、标签 */
   --ink-5: #cfc8b8; /* 墨·远：边框、分割 */
   --paper-1: #f7f3ea; /* 宣·纸：页面底色 */
   --paper-2: #efe9db; /* 宣·影：分区底 */
@@ -1018,6 +1018,7 @@ input::placeholder, textarea::placeholder {
   z-index: 50;
   display: flex;
   justify-content: space-around;
+  padding: 0.4rem 0.5rem calc(0.4rem + constant(safe-area-inset-bottom));
   padding: 0.4rem 0.5rem calc(0.4rem + env(safe-area-inset-bottom));
   background: rgba(247, 243, 234, 0.94);
   border-top: 1px solid var(--ink-5);
@@ -1048,6 +1049,7 @@ input::placeholder, textarea::placeholder {
   z-index: 50;
   display: flex;
   justify-content: space-around;
+  padding: 0.45rem 0.5rem calc(0.45rem + constant(safe-area-inset-bottom));
   padding: 0.45rem 0.5rem calc(0.45rem + env(safe-area-inset-bottom));
   background: rgba(247, 243, 234, 0.95);
   border-top: 1px solid var(--ink-5);
@@ -1178,4 +1180,59 @@ input::placeholder, textarea::placeholder {
   opacity: 0.9;
   user-select: none;
   pointer-events: none;
+}
+
+/* ---------- 墨卷 2.1：深度研究落地（排版/命中区/触屏/时间轴） ---------- */
+
+/* 文章正文：17px + 行长上限 38em（左对齐单栏） */
+.markdown-content {
+  font-size: 1.0625rem;
+  max-width: 38em;
+}
+
+/* 数字等宽：日期/统计对齐 */
+.tech-font,
+.ink-timeline__date,
+.tab-bar__item,
+.action-bar__btn {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 小图标按钮命中区扩展（视觉不变，命中 >=40px） */
+.icon-btn {
+  position: relative;
+}
+.icon-btn::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+}
+
+/* 触屏层：全局 44px 点击目标底线 */
+@media (hover: none), (pointer: coarse) {
+  .btn-ink,
+  .btn-outline,
+  .btn-tech {
+    min-height: 44px;
+  }
+}
+
+/* 移动端时间轴：轴退化为左侧 2px 描边，日期移至标题上方 */
+@media (max-width: 767px) {
+  .ink-timeline::before {
+    display: none;
+  }
+  .ink-timeline {
+    border-left: 2px solid var(--ink-5);
+    padding-left: 0.75rem;
+  }
+  .ink-timeline__item {
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1rem 0.25rem;
+  }
+  .ink-timeline__date {
+    width: auto;
+    text-align: left;
+  }
 }
