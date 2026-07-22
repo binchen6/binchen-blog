@@ -434,7 +434,7 @@ export default function WritePage() {
                 </label>
                 {mode === "article" && (
                   <div className="flex items-center gap-3">
-                    <Link href="/help/markdown" target="_blank" className="inline-flex items-center gap-1 text-xs text-ink-muted transition-colors hover:text-cyan-dark" title="查看 Markdown 语法指南">
+                    <Link href="/help/markdown" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-ink-muted transition-colors hover:text-cyan-dark" title="查看 Markdown 语法指南">
                       <BookOpen size={13} />
                       语法指南
                     </Link>
