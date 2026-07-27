@@ -1,217 +1,92 @@
-# binchen-blog 项目概述与进度报告
+# 尘墨博客 · 项目状态
 
-> 本文档用于交接给 Codex 继续完成 Cloudflare Pages 部署工作。
+> 最后更新：2026-07-27 · 此文件记录项目当前状态、部署配置与运维要点
+> 设计规范见 `DESIGN_SYSTEM.md`，功能与 API 文档见 `README.md`
 
 ---
 
-## 一、项目概述
+## 一、项目概况
 
-### 1.1 项目简介
-**binchen-blog** 是一个个人博客网站，采用现代前端技术栈 + Cloudflare 边缘基础设施构建，支持文章发布、评论系统、留言板、用户认证等功能。
+**binchen-blog**（尘墨）是部署在 Cloudflare 边缘网络上的个人博客，基于墨卷 InkScroll 2.0 新中式设计系统。零服务器成本运行，全站 Edge Runtime。
 
-### 1.2 技术栈
+| 项 | 值 |
+|----|-----|
+| 生产域名 | https://cryoconite.cn |
+| 仓库 | https://github.com/binchen6/binchen-blog |
+| 部署方式 | Cloudflare Pages Git 集成（push main 自动构建） |
+| D1 数据库 | `binchen-blog-db`（id: `7f97de5c-477b-49bb-85de-7a9d8076652e`） |
+| 图床 | GitHub 私有仓库 + Worker 字节代理 |
 
-| 层级 | 技术 |
+## 二、技术栈
+
+| 层 | 技术 | 备注 |
+|----|------|------|
+| 框架 | Next.js 14.2.35 (App Router) | 全站 `runtime = "edge"` |
+| 语言 | TypeScript 严格模式 | 零 `any`，`.first<T>()` 泛型查询 |
+| 样式 | Tailwind CSS 3 | `darkMode: 'class'`，79 条暗色规则 |
+| 数据库 | Cloudflare D1 (SQLite) | 幂等迁移见 `lib/db.ts` |
+| 认证 | Jose JWT (7d) + PBKDF2 100k | Web Crypto，Edge 兼容 |
+| Markdown | markdown-it + 10 插件 | DOMPurify 消毒，渲染期生成 TOC 锚点 |
+| 图床 | GitHub Contents API | 可选 `IMAGE_CDN=jsdelivr` 直出 |
+| 构建 | `@cloudflare/next-on-pages` 1.12.1 | 版本锁定原因见「坑位」 |
+
+## 三、部署配置
+
+### 3.1 环境变量（Pages → 设置 → 环境变量）
+
+| 变量 | 必需 | 说明 |
+|------|:----:|------|
+| `JWT_SECRET` | ✅ | ≥32 字符 |
+| `INIT_TOKEN` | ✅ | 数据库初始化令牌 |
+| `GITHUB_TOKEN` | ✅ | 图床 Fine-grained token（Contents: RW） |
+| `GITHUB_OWNER` / `GITHUB_REPO` | ✅ | 图床仓库 |
+| `GITHUB_BRANCH` / `GITHUB_UPLOAD_DIR` | 可选 | 默认 `main` / `uploads` |
+| `CRON_SECRET` | 可选 | 性能调度密钥 |
+| `IMAGE_CDN` | 可选 | `jsdelivr` 时公开仓库图片走 CDN |
+| `MAX_UPLOAD_MB` | 可选 | 默认 25，硬上限 50 |
+| `NEXT_PUBLIC_SITE_URL` | 可选 | metadataBase |
+
+### 3.2 数据库初始化 / 迁移
+
+```
+GET https://cryoconite.cn/api/init?token=<INIT_TOKEN>
+```
+
+- **幂等**：`CREATE TABLE IF NOT EXISTS` + `addColumnIfMissing`，可反复执行
+- schema 变更后必须重跑一次
+- 附带：seed 五级角色权限组；无 owner 时自动提升用户 `binchen` 为站主
+- 旧库数据迁移（跨 D1 实例）：`wrangler d1 export` 导出旧库 → `wrangler d1 execute <新库> --file=backup.sql --remote` 导入，再跑 init 对齐 schema
+
+### 3.3 定时任务（可选）
+
+`POST /api/cron/performance`（带 `x-cron-secret` 头）执行：限流桶清理 / 表行数快照 / PRAGMA optimize / 90 天前改名申请 + 30 天前性能事件清理。建议在 Pages Cron Triggers 配置每日触发。
+
+## 四、功能现状（2026-07-27）
+
+全部在线可用：Markdown 写作（工具栏/预览/草稿）· 朋友圈动态 · 图片库 · 评论/留言楼中楼（一层）· 点赞 · 关注/粉丝列表 · 统一信箱（七类消息，30 条自动销毁）· 公告广播 · 五级权限 · 控制台七 Tab · 暗色模式 · RSS/Sitemap
+
+## 五、最近变更
+
+| 提交 | 内容 |
 |------|------|
-| 前端框架 | Next.js 14 (App Router) |
-| 样式 | Tailwind CSS + 自定义水墨主题 |
-| 语言 | TypeScript |
-| 动画 | Framer Motion |
-| 部署平台 | Cloudflare Pages |
-| 边缘函数 | Cloudflare Workers (Edge Runtime) |
-| 数据库 | Cloudflare D1 (SQLite) |
-| 对象存储 | Cloudflare R2 |
+| `5e1acfc` | README 全面更新（暗色模式/Callout/结构/安全） |
+| `5f972b1` | 修复登录时序均衡失效（DUMMY_USER_HASH 长度错误→用户名可枚举）、留言板/评论孤儿回复校验、RETURNING null 守卫补全、prev/next 导航 id tiebreaker、authFetch 迁移、theme-toggle 闭包 bug |
+| `7aa9e56` | 抽离 CommentSection 组件（page.tsx 707→499 行）；全项目 `: any` 清零（30 文件，ProfileUser/ImageAsset/PostWriteBody 等具名类型） |
+| `930cf61` | 全面性能/安全/代码质量优化 |
 
-### 1.3 项目结构
+## 六、坑位备忘
 
-```
-app/
-├── page.tsx              # 首页（客户端组件）
-├── blog/
-│   ├── page.tsx          # 文章列表
-│   └── [slug]/page.tsx   # 文章详情 + 评论
-├── guestbook/page.tsx    # 留言板
-├── login/page.tsx        # 登录页
-├── register/page.tsx     # 注册页
-├── write/page.tsx        # 文章写作页
-├── api/                  # API 路由（Edge Runtime）
-│   ├── auth/            # 登录/注册/验证
-│   ├── init/route.ts    # 数据库初始化
-│   ├── posts/           # 文章 CRUD
-│   ├── comments/        # 评论系统
-│   ├── guestbook/       # 留言板
-│   └── upload/route.ts  # R2 文件上传
-├── lib/
-│   ├── db.ts            # D1 数据库封装
-│   └── utils.ts         # 工具函数
-├── components/          # React 组件
-└── types/               # 类型定义
-```
+1. **npm 必须 `--include=dev`**：全局 `omit=dev` 会让 devDependencies 静默缺失
+2. **版本锁定**：`vercel@34.3.1`（overrides，高版本 async_hooks 炸 Pages 构建）；`@cloudflare/next-on-pages@1.12.1`（1.13.x 要求 next≥14.3）
+3. **本地不跑 `pages:build`**：内存占用大，交给 Cloudflare Git 集成；本地验证用 `npm run build`
+4. **init 是 schema 迁移不是数据迁移**：换新 D1 实例需手动 export/import 数据
+5. **上传 INSERT 后需二次 UPDATE 写 url**：`/api/images/{id}` 依赖自增 id，无法用单语句完成
 
----
+## 七、架构要点
 
-## 二、已完成工作
-
-### 2.1 代码层面
-
-| 任务 | 状态 | 说明 |
-|------|------|------|
-| 项目基础架构 | ✅ 完成 | Next.js 14 + Tailwind CSS + TypeScript |
-| 水墨主题 UI | ✅ 完成 | 自定义 CSS 变量、字体、动画 |
-| 首页页面 | ✅ 完成 | 展示最新文章、网站介绍 |
-| 文章列表页 | ✅ 完成 | 分页、标签筛选 |
-| 文章详情页 | ✅ 完成 | Markdown 渲染、阅读时间、浏览计数 |
-| 评论系统 | ✅ 完成 | 文章评论 CRUD |
-| 留言板 | ✅ 完成 | 独立留言功能 |
-| 用户认证 | ✅ 完成 | JWT + D1 用户表，登录/注册/验证 |
-| 文章写作 | ✅ 完成 | Markdown 编辑器 + 封面图上传 |
-| D1 数据库封装 | ✅ 完成 | `lib/db.ts` 封装所有数据操作 |
-| R2 文件上传 | ✅ 完成 | 图片上传 API |
-| Edge Runtime 配置 | ✅ 完成 | 所有 API 路由和页面已添加 `export const runtime = "edge"` |
-
-### 2.2 构建修复历史
-
-1. **递归构建问题** → 修复：`package.json` 中 `build` 脚本改为 `next build`，`pages:build` 单独调用 `npx @cloudflare/next-on-pages`
-2. **TypeScript 类型错误** → 修复：添加 `@cloudflare/workers-types` + `env.d.ts` + `tsconfig.json` 包含
-3. **D1 返回类型错误** → 修复：所有 `db.prepare().first()` 结果改为 `as any` 断言
-4. **API 请求类型错误** → 修复：`await request.json() as any`、`(ctx.env as any).DB`
-5. **客户端 fetch 类型错误** → 修复：`res.json() as any`
-6. **Edge Runtime 缺失** → 修复：为所有 6 个客户端页面添加 `export const runtime = "edge"`
-
----
-
-## 三、当前状态与待办事项
-
-### 3.1 构建状态
-**最后构建结果**：编译成功，但卡在 Edge Runtime 配置检查
-- 已修复：所有页面和 API 路由已添加 `export const runtime = "edge"`
-- **待验证**：需要重新运行构建确认是否完全成功
-
-### 3.2 Cloudflare 配置
-
-| 配置项 | 状态 | 说明 |
-|--------|------|------|
-| Pages 项目 | ✅ 已创建 | `binchen-blog` |
-| Git 集成 | ✅ 已绑定 | GitHub: `binchen6/binchen-blog` |
-| D1 数据库 | ✅ 已创建 | 需要绑定到 Pages 项目 |
-| R2 存储桶 | ✅ 已创建 | 需要绑定到 Pages 项目 |
-| 环境变量 | ❌ 待配置 | `JWT_SECRET` 未设置 |
-| 数据库初始化 | ❌ 待执行 | 需要访问 `/api/init` 创建表 |
-| 自定义域名 | ❌ 待配置 | 用户有 `www.binchen.me` |
-
-### 3.3 待办清单（优先级排序）
-
-```
-P0 - 部署阻塞项
-  [ ] 1. 重新运行 Cloudflare Pages 构建，确认完全成功
-  [ ] 2. 在 Cloudflare Pages 设置中绑定 D1 数据库
-  [ ] 3. 在 Cloudflare Pages 设置中绑定 R2 存储桶
-  [ ] 4. 设置环境变量 JWT_SECRET（随机字符串，如 crypto.randomUUID()）
-  [ ] 5. 访问 https://binchen-blog.pages.dev/api/init 初始化数据库表
-
-P1 - 功能完善
-  [ ] 6. 配置自定义域名 www.binchen.me（DNS + Pages 自定义域）
-  [ ] 7. 测试用户注册/登录流程
-  [ ] 8. 测试文章发布流程（含图片上传）
-  [ ] 9. 测试评论系统
-  [ ] 10. 测试留言板功能
-
-P2 - 优化
-  [ ] 11. 添加 404 页面
-  [ ] 12. 添加 SEO meta 标签
-  [ ] 13. 添加 Loading 状态优化
-  [ ] 14. 移动端样式微调
-```
-
----
-
-## 四、环境配置信息
-
-### 4.1 重要账号/项目信息
-- **GitHub 仓库**: `binchen6/binchen-blog` (public)
-- **Cloudflare 账号**: `804758625@qq.com`
-- **Cloudflare Pages 项目**: `binchen-blog`
-- **部署 URL**: `https://binchen-blog.pages.dev`
-- **目标域名**: `www.cryoconite.cn`
-
-### 4.2 构建命令配置
-```
-构建命令: npm run pages:build
-输出目录: .vercel/output/static
-（或 Cloudflare 自动检测）
-```
-
-### 4.3 环境变量清单
-| 变量名 | 必需 | 用途 | 示例值 |
-|--------|------|------|--------|
-| `JWT_SECRET` | ✅ 是 | JWT 签名密钥 | 随机 32+ 字符字符串 |
-| `NEXT_PUBLIC_SITE_URL` | 可选 | 站点 URL | `https://binchen-blog.pages.dev` |
-
-### 4.4 D1 数据库表结构
-数据库初始化脚本位于 `app/api/init/route.ts`，会创建以下表：
-- `users` - 用户表
-- `posts` - 文章表
-- `comments` - 评论表
-- `guestbook` - 留言表
-
----
-
-## 五、已知问题与注意事项
-
-1. **Edge Runtime 限制**：所有 API 路由和页面必须使用 Edge Runtime，不能使用 Node.js 原生 API（如 `fs`、`crypto` 的某些方法）
-2. **D1 查询限制**：D1 在 Edge 环境中返回 `Record<string, unknown>` 类型，已统一使用 `as any` 处理
-3. **图片上传**：上传依赖 R2，需要确保 R2 存储桶已绑定且有正确权限
-4. **构建工具**：本地构建需要 `npm`/`bun`，但当前环境无可用包管理器，建议通过 Cloudflare Dashboard 的 Git 集成自动构建
-
----
-
-## 六、快速验证清单（部署后）
-
-```
-□ 访问 https://binchen-blog.pages.dev 首页正常加载
-□ 访问 https://binchen-blog.pages.dev/api/init 返回 "Database initialized"
-□ 访问 https://binchen-blog.pages.dev/blog 文章列表正常
-□ 注册新用户成功
-□ 登录成功
-□ 发布文章成功（含 Markdown 渲染）
-□ 上传封面图成功
-□ 文章评论成功
-□ 留言板留言成功
-```
-
----
-
-## 七、相关文件路径
-
-```
-C:\Users\binchen\Desktop\code\blog\          # 项目根目录
-├── app/                                      # Next.js App Router
-├── lib/                                      # 工具库
-├── components/                               # React 组件
-├── public/                                   # 静态资源
-├── package.json                              # 依赖 + 构建脚本
-├── next.config.js                            # Next.js 配置
-├── tailwind.config.ts                        # Tailwind 配置
-├── tsconfig.json                             # TypeScript 配置
-├── env.d.ts                                  # Cloudflare 类型声明
-└── wrangler.toml                             # Wrangler 配置（待完善）
-```
-
----
-
-## 八、下一步行动建议
-
-**立即执行**：
-1. 在 Cloudflare Pages Dashboard 中点击 "Retry Deploy" 或重新触发构建
-2. 检查构建日志，确认是否成功
-3. 如果构建成功，按上方 P0 清单配置 D1/R2 绑定和环境变量
-
-**如果遇到构建错误**：
-- 检查是否还有未添加 `export const runtime = "edge"` 的页面
-- 检查是否有 Node.js 原生 API 调用（如 `fs`）
-- 检查 TypeScript 类型错误
-
----
-
-*文档生成时间：2025年*
-*项目状态：构建修复完成，等待部署验证*
+- **认证链**：登录 → JWT 存 localStorage → `authFetch` 自动附带 Bearer → 401 自动清理本地状态
+- **权限模型**：五级角色（owner/admin/editor/author/member），`ROLE_PERMISSIONS` 声明式映射，路由用 `requireLogin/requirePermission/requireAdmin` 三级守卫
+- **通知系统**：所有互动汇入 notifications 表，`createNotification` 自动跳过自通知，每人保留最新 30 条
+- **评论/留言**：仅支持一层嵌套（UI + API 双重约束，父级必须是顶层，防孤儿回复）
+- **Markdown 渲染**：`lib/markdown.ts` 唯一渲染源，TOC 锚点渲染期生成保证同步，DOMPurify 白名单消毒
+- **限流**：内存桶（isolate 级，阈值≈limit×活跃 isolate 数），仅作低成本兜底
