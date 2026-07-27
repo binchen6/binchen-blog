@@ -6,7 +6,9 @@ import { getDb, parseJsonBody } from "../../_shared";
 export const runtime = "edge";
 
 // 虚拟哈希用于时序均衡（未知用户不提前返回，防止用户名字典枚举）
-const DUMMY_USER_HASH = "0000000000000000000000000000000000000000000000000000000000000000:00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+// 格式必须与 hashPassword 产物一致（16 字节盐=32 hex + 256 位哈希=64 hex），
+// 否则 verifyPassword 长度校验提前返回、时序均衡失效
+const DUMMY_USER_HASH = `${"0".repeat(32)}:${"0".repeat(64)}`;
 
 export async function POST(request: NextRequest) {
   try {

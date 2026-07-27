@@ -133,6 +133,9 @@ export async function POST(request: NextRequest) {
        VALUES (?, ?, ?)
        RETURNING *`
     ).bind(currentUser.id, currentUser.username, requestedUsername).first();
+    if (!requestRow) {
+      return json({ error: "Failed to submit username request" }, { status: 500 });
+    }
 
     return json({ request: requestRow }, { status: 201 });
   } catch (error) {

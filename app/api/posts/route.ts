@@ -164,6 +164,9 @@ export async function POST(request: NextRequest) {
       publishedAt,
       tags || null
     ).first();
+    if (!result) {
+      return json({ error: "Failed to save post" }, { status: 500 });
+    }
 
     return json({ post: result }, { status: 201 });
   } catch (error) {

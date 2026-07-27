@@ -47,6 +47,13 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getDb();
+    // 父留言必须存在且为顶层留言，防止伪造 replyTo 产生永不显示的孤儿回复
+    if (replyTo) {
+      const parentCheck = await db.prepare("SELECT id FROM guestbook WHERE id = ? AND reply_to IS NULL").bind(replyTo).first();
+      if (!parentCheck) {
+        return json({ error: "Invalid parent entry" }, { status: 400 });
+      }
+    }
     const result = await db.prepare(
       "INSERT INTO guestbook (name, email, content, user_id, reply_to) VALUES (?, ?, ?, ?, ?) RETURNING *"
     ).bind(entryName, entryEmail, content, currentUser?.id || null, replyTo || null).first<GuestbookEntry>();

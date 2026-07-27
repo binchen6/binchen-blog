@@ -114,15 +114,13 @@ export default function PublicProfilePage() {
   // 自己主页：加载 profile 编辑数据（点击编辑时懒加载）
   const loadProfileData = async () => {
     if (profileData || profileLoading) return;
-    const token = authToken;
-    if (!token) return;
-    const headers = { Authorization: `Bearer ${token}` };
+    if (!authToken) return;
     setProfileLoading(true);
     try {
       const [profileRes, postRes, imageRes] = await Promise.all([
-        fetch("/api/profile", { headers }),
-        fetch("/api/posts?mine=1&limit=100", { headers }),
-        fetch("/api/upload", { headers }),
+        authFetch("/api/profile"),
+        authFetch("/api/posts?mine=1&limit=100"),
+        authFetch("/api/upload"),
       ]);
       const pData = await profileRes.json() as {
         user?: ProfileUser;

@@ -31,10 +31,11 @@ export function ThemeToggle() {
     setTheme(initial);
     applyTheme(initial);
 
-    // 跟随系统主题变化
+    // 跟随系统主题变化（仅当前仍是 system 时响应；读 storage 而非闭包，避免覆盖用户后续手动选择）
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = () => {
-      if (initial === "system") applyTheme("system");
+      const current = (localStorage.getItem(THEME_KEY) as Theme | null) ?? "system";
+      if (current === "system") applyTheme("system");
     };
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);

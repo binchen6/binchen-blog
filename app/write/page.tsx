@@ -9,6 +9,7 @@ import MarkdownToolbar from "@/components/markdown-toolbar";
 import { toast } from "@/components/toast";
 import { compressImageFile } from "@/lib/image-compress";
 import { renderMarkdown } from "@/lib/markdown";
+import { authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -83,8 +84,8 @@ export default function WritePage() {
     async function loadData() {
       try {
         const [imageRes, postRes] = await Promise.all([
-          fetch("/api/upload", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("/api/posts?mine=1&limit=100", { headers: { Authorization: `Bearer ${token}` } }),
+          authFetch("/api/upload"),
+          authFetch("/api/posts?mine=1&limit=100"),
         ]);
         const imageData = (await imageRes.json()) as { images?: ImageAsset[] };
         const postData = (await postRes.json()) as { posts?: ManagePost[] };
@@ -203,9 +204,8 @@ export default function WritePage() {
         }
         const formData = new FormData();
         formData.append("file", uploadFile);
-        const res = await fetch("/api/upload", {
+        const res = await authFetch("/api/upload", {
           method: "POST",
-          headers: { Authorization: `Bearer ${currentToken}` },
           body: formData,
         });
         const data = (await res.json()) as { image?: ImageAsset; url?: string; error?: string };
@@ -257,11 +257,10 @@ export default function WritePage() {
     setPublishing(true);
     try {
       const endpoint = editingSlug ? `/api/posts/${editingSlug}` : "/api/posts";
-      const res = await fetch(endpoint, {
+      const res = await authFetch(endpoint, {
         method: editingSlug ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${currentToken}`,
         },
         body: JSON.stringify({ title, content, tags, coverImage, status: targetStatus, mode, images }),
       });
@@ -311,7 +310,7 @@ export default function WritePage() {
     const currentToken = requireToken();
     if (!currentToken) return;
     try {
-      const res = await fetch(`/api/posts/${slug}`, { headers: { Authorization: `Bearer ${currentToken}` } });
+      const res = await authFetch(`/api/posts/${slug}`);
       const data = (await res.json()) as { post?: PostDetail; error?: string };
       if (!data.post) {
         toast(data.error || "读取文章失败", "error");
@@ -342,9 +341,8 @@ export default function WritePage() {
     const currentToken = requireToken();
     if (!currentToken) return;
     try {
-      const res = await fetch(`/api/posts/${slug}`, {
+      const res = await authFetch(`/api/posts/${slug}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${currentToken}` },
       });
       if (res.ok) {
         setPosts((current) => current.filter((post) => post.slug !== slug));

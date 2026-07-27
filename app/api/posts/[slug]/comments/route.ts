@@ -69,9 +69,9 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
     if (!post || post.status !== "published") {
       return json({ error: "Post not found" }, { status: 404 });
     }
-    // 父评论必须属于本帖，防止跨帖伪造回复关系
+    // 父评论必须属于本帖且为顶层评论，防止跨帖伪造/回复套回复产生永不显示的孤儿
     if (parentId) {
-      const parentCheck = await db.prepare("SELECT id FROM comments WHERE id = ? AND post_id = ?").bind(parentId, post.id).first();
+      const parentCheck = await db.prepare("SELECT id FROM comments WHERE id = ? AND post_id = ? AND parent_id IS NULL").bind(parentId, post.id).first();
       if (!parentCheck) {
         return json({ error: "Invalid parent comment" }, { status: 400 });
       }
@@ -79,6 +79,9 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
     const result = await db.prepare(
       "INSERT INTO comments (post_id, name, email, content, user_id, parent_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING *"
     ).bind(post.id, commentName, commentEmail, content, currentUser?.id || null, parentId || null).first();
+    if (!result) {
+      return json({ error: "Failed to save comment" }, { status: 500 });
+    }
 
     const postLink = `/blog/${slug}`;
     // 1. 通知文章作者（新评论）

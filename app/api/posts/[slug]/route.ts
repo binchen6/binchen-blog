@@ -34,10 +34,11 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
       likedByMe = !!liked;
     }
 
-    // 上一篇（新）/ 下一篇（旧）
+    // 上一篇（新）/ 下一篇（旧）；published_at 相同时以 id 决胜，保证导航确定性
+    const postTime = post.published_at || post.created_at;
     const [prevPost, nextPost] = await Promise.all([
-      db.prepare("SELECT slug, title FROM posts WHERE status = 'published' AND published_at > ? ORDER BY published_at ASC LIMIT 1").bind(post.published_at || post.created_at).first(),
-      db.prepare("SELECT slug, title FROM posts WHERE status = 'published' AND published_at < ? ORDER BY published_at DESC LIMIT 1").bind(post.published_at || post.created_at).first(),
+      db.prepare("SELECT slug, title FROM posts WHERE status = 'published' AND (published_at > ? OR (published_at = ? AND id > ?)) ORDER BY published_at ASC, id ASC LIMIT 1").bind(postTime, postTime, post.id).first(),
+      db.prepare("SELECT slug, title FROM posts WHERE status = 'published' AND (published_at < ? OR (published_at = ? AND id < ?)) ORDER BY published_at DESC, id DESC LIMIT 1").bind(postTime, postTime, post.id).first(),
     ]);
 
     return json({ post, likedByMe, prevPost: prevPost || null, nextPost: nextPost || null }, { headers: post.status === "published" ? cacheHeaders(15, 60) : noStoreHeaders() });
@@ -114,6 +115,9 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
       status,
       params.slug
     ).first();
+    if (!updated) {
+      return json({ error: "Failed to update post" }, { status: 500 });
+    }
 
     return json({ post: updated });
   } catch (error) {
