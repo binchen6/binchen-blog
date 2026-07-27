@@ -3,6 +3,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { hasPermission } from "@/lib/auth";
 import { getGithubImageConfig } from "@/lib/github-config";
 import { json, parseBoundedInt, rateLimit } from "@/lib/security";
+import type { ImageAsset } from "@/lib/types";
 import { getDb, parseJsonBody, requireLogin, requirePermission } from "../_shared";
 
 export const runtime = "edge";
@@ -16,7 +17,7 @@ const MIME_TO_EXT: Record<string, string> = {
 
 const DEFAULT_MAX_UPLOAD_MB = 25;
 
-function getMaxUploadBytes(env: any): number {
+function getMaxUploadBytes(env: CloudflareEnv): number {
   const configuredMb = Number(env.MAX_UPLOAD_MB || DEFAULT_MAX_UPLOAD_MB);
   const safeMb = Number.isFinite(configuredMb) ? Math.min(Math.max(configuredMb, 1), 50) : DEFAULT_MAX_UPLOAD_MB;
   return safeMb * 1024 * 1024;
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ctx = getRequestContext();
-    const env = ctx.env as any;
+    const env = ctx.env as unknown as CloudflareEnv;
     const db = getDb();
     const github = getGithubImageConfig(env);
 
@@ -169,11 +170,14 @@ export async function POST(request: NextRequest) {
       return json({ error: errorMessage }, { status: 502 });
     }
 
-    const githubData = await githubRes.json() as any;
+    const githubData = await githubRes.json() as { content?: { sha?: string } };
     const image = await db.prepare(
       `INSERT INTO images (user_id, url, storage_key, filename, mime_type, size, sha, purpose)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`
-    ).bind(currentUser.id, "", key, file.name, file.type, file.size, githubData?.content?.sha || null, purpose).first();
+    ).bind(currentUser.id, "", key, file.name, file.type, file.size, githubData?.content?.sha || null, purpose).first<ImageAsset>();
+    if (!image) {
+      return json({ error: "Failed to save image record" }, { status: 500 });
+    }
     const publicUrl = `/api/images/${image.id}`;
     const updatedImage = await db.prepare("UPDATE images SET url = ? WHERE id = ? RETURNING *").bind(publicUrl, image.id).first();
 

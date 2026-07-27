@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getDB } from "@/lib/db";
 import { buildFeedXml, fetchFeedPosts } from "@/lib/feed";
 
 export const runtime = "edge";
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
   let xml: string;
   try {
-    const db = (getRequestContext().env as any).DB;
+    const db = getDB();
     xml = buildFeedXml(await fetchFeedPosts(db), origin);
   } catch (error) {
     // D1 不可用时仍返回合法空 feed，而非 500

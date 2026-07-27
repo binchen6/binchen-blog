@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       return json({ error: "Invalid username or password" }, { status: 401 });
     }
     const userWithoutPassword = serializeUser(user);
-    const token = await createToken(userWithoutPassword as any);
+    const token = await createToken(userWithoutPassword);
     return json({ user: userWithoutPassword, token });
   } catch (error) {
     console.error("Login error:", error);

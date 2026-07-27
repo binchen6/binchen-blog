@@ -9,25 +9,31 @@ import { PasswordForm } from "@/components/profile/password-form";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { UsernameRequestForm } from "@/components/profile/username-request";
-import type { UserGroupInfo } from "@/components/profile/types";
+import type {
+  ImageAsset,
+  ManagePost,
+  ProfileFormState,
+  ProfileUser,
+  UserGroupInfo,
+  UsernameRequest,
+} from "@/components/profile/types";
 import { SurfacePanel } from "@/components/page-chrome";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- 上层 page.tsx 用 any，这里保持一致避免协变/逆变冲突
 interface ProfileEditingPanelProps {
-  profile: any;
-  setProfile: (u: any) => void;
-  profileForm: any;
-  setProfileForm: (f: any) => void;
+  profile: ProfileUser;
+  setProfile: (user: ProfileUser) => void;
+  profileForm: ProfileFormState;
+  setProfileForm: (form: ProfileFormState) => void;
   groups: UserGroupInfo[];
   currentGroup: UserGroupInfo | null;
-  pendingUsernameRequest: any;
-  setPendingUsernameRequest: (r: any) => void;
-  posts: any[];
-  setPosts: (p: any[]) => void;
-  images: any[];
-  setImages: (i: any[]) => void;
+  pendingUsernameRequest: UsernameRequest | null;
+  setPendingUsernameRequest: (request: UsernameRequest) => void;
+  posts: ManagePost[];
+  setPosts: (posts: ManagePost[]) => void;
+  images: ImageAsset[];
+  setImages: (images: ImageAsset[]) => void;
   avatarHistory: string[];
-  setAvatarHistory: (h: string[]) => void;
+  setAvatarHistory: (history: string[]) => void;
   token: string | null;
   authHeaders: Record<string, string>;
 }
@@ -82,12 +88,12 @@ function ProfileEditingPanelInner(props: ProfileEditingPanelProps) {
         <MyPosts
           posts={props.posts}
           authHeaders={props.authHeaders}
-          onDeleted={(slug) => props.setPosts(props.posts.filter((p: any) => p.slug !== slug))}
+          onDeleted={(slug) => props.setPosts(props.posts.filter((post) => post.slug !== slug))}
         />
         <MyImages
           images={props.images}
           authHeaders={props.authHeaders}
-          onDeleted={(id) => props.setImages(props.images.filter((i: any) => i.id !== id))}
+          onDeleted={(id) => props.setImages(props.images.filter((image) => image.id !== id))}
         />
       </div>
 

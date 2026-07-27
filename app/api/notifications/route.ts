@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return json(
-      { notifications: rows.results, unreadCount: Number((unreadRow as any)?.c ?? 0) },
+      { notifications: rows.results, unreadCount: Number(unreadRow?.c ?? 0) },
       { headers: noStoreHeaders() }
     );
   } catch (error) {

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { canAccessAdmin, getCurrentUserFromRequest } from "@/lib/auth";
 import { generateSlug, generateExcerpt } from "@/lib/utils";
 import { cacheHeaders, isSafePublicUrl, json, noStoreHeaders, parseBoundedInt, rateLimit, requireText } from "@/lib/security";
-import { getDb, parseJsonBody, requirePermission } from "../_shared";
+import { getDb, parseJsonBody, PostWriteBody, requirePermission } from "../_shared";
 
 export const runtime = "edge";
 
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     // 列表查询不取 content 全文，显著减少传输量（性能优化）
     const selectClause = "SELECT posts.id, posts.title, posts.slug, posts.excerpt, posts.cover_image, posts.images, posts.mode, posts.author_id, posts.status, posts.created_at, posts.updated_at, posts.published_at, posts.tags, posts.view_count, posts.is_featured, posts.featured_rank, LENGTH(posts.content) AS content_length, users.display_name AS author_name, users.username AS author_username, (SELECT COUNT(*) FROM likes WHERE target_type = 'post' AND target_id = posts.id) AS like_count FROM posts LEFT JOIN users ON users.id = posts.author_id";
-    const params: any[] = [];
+    const params: (string | number)[] = [];
     const where: string[] = [];
 
     if (featured) {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     if (withTotal && publicScope) {
       // WHERE 条件均为 posts 表字段，计数无需 JOIN；此时 limit/offset 尚未 push
       const countRow = await db.prepare(`SELECT COUNT(*) AS c FROM posts${whereSql}`).bind(...params).first();
-      total = Number((countRow as any)?.c ?? 0);
+      total = Number(countRow?.c ?? 0);
     }
 
     // 公开/精选场景走 posts(status, published_at) 复合索引（published 行必有 published_at）；
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
     const results = await db.prepare(query).bind(...params).all();
 
     // 用 content_length 估算阅读时长，不再传输全文
-    const postsWithTime = (results.results as any[]).map((post) => {
+    const postsWithTime = results.results.map((post) => {
       const { content_length, ...rest } = post;
       return {
         ...rest,
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     const limited = rateLimit(request, { key: `post:${currentUser.id}`, limit: 20, windowMs: 60 * 60 * 1000 });
     if (limited) return limited;
 
-    const body = await parseJsonBody(request);
+    const body = await parseJsonBody<PostWriteBody>(request);
     if (!body) {
       return json({ error: "Invalid JSON body" }, { status: 400 });
     }

@@ -7,6 +7,16 @@ export const runtime = "edge";
 
 const USERNAME_RE = /^[a-zA-Z0-9_-]{3,24}$/;
 
+/** 关注/粉丝列表行（JOIN users 后的公开字段 + 关注时间） */
+interface FollowListRow {
+  username: string;
+  display_name: string | null;
+  avatar: string | null;
+  bio: string | null;
+  role: string;
+  followed_at: string;
+}
+
 /**
  * GET /api/users/[username]/follows?type=followers|following&page=1&limit=20
  * 粉丝 / 关注列表（公开）。iFollow / followsMe 相对于当前登录用户。
@@ -37,7 +47,7 @@ export async function GET(request: NextRequest, { params }: { params: { username
     const joinCol = type === "followers" ? "f.follower_id" : "f.author_id";
 
     const countRow = await db.prepare(`SELECT COUNT(*) AS c FROM follows f WHERE ${whereCol} = ?`).bind(uid).first();
-    const total = Number((countRow as any)?.c ?? 0);
+    const total = Number(countRow?.c ?? 0);
 
     const rows = await db.prepare(
       `SELECT u.username, u.display_name, u.avatar, u.bio, u.role, f.created_at AS followed_at
@@ -45,9 +55,9 @@ export async function GET(request: NextRequest, { params }: { params: { username
        WHERE ${whereCol} = ? AND u.is_active = 1
        ORDER BY f.created_at DESC, f.id DESC
        LIMIT ? OFFSET ?`
-    ).bind(uid, limit, offset).all();
+    ).bind(uid, limit, offset).all<FollowListRow>();
 
-    const list = (rows.results || []) as any[];
+    const list = rows.results || [];
 
     // 当前登录用户与列表成员的相互关注关系（用于回关/互关标识）
     // 优化：使用单条 SQL + CASE 聚合替代两条查询
@@ -138,7 +148,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { usern
 
     await db.prepare("DELETE FROM follows WHERE follower_id = ? AND author_id = ?").bind(target.id, owner.id).run();
     const countRow = await db.prepare("SELECT COUNT(*) AS c FROM follows WHERE author_id = ?").bind(owner.id).first();
-    return json({ removed: true, followerCount: Number((countRow as any)?.c ?? 0) });
+    return json({ removed: true, followerCount: Number(countRow?.c ?? 0) });
   } catch (error) {
     console.error("Remove follower error:", error);
     return json({ error: "Failed to remove follower" }, { status: 500 });

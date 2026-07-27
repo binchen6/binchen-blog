@@ -54,7 +54,7 @@ export async function POST(request: NextRequest, { params }: { params: { usernam
     }
 
     const countRow = await db.prepare("SELECT COUNT(*) AS c FROM follows WHERE author_id = ?").bind(author.id).first();
-    return json({ following, followerCount: Number((countRow as any)?.c ?? 0) });
+    return json({ following, followerCount: Number(countRow?.c ?? 0) });
   } catch (error) {
     console.error("Follow toggle error:", error);
     return json({ error: "Failed to toggle follow" }, { status: 500 });

@@ -10,6 +10,13 @@ interface CloudflareEnv {
   GITHUB_REPO: string;
   GITHUB_BRANCH?: string;
   GITHUB_UPLOAD_DIR?: string;
+  INIT_TOKEN?: string;
+  ALLOW_PUBLIC_INIT?: string;
+  CRON_SECRET?: string;
+  /** 上传大小上限（MB），默认 25，硬上限 50 */
+  MAX_UPLOAD_MB?: string;
+  /** 设为 jsdelivr 且图床仓库公开时，图片走 CDN 302 直出 */
+  IMAGE_CDN?: string;
 }
 
 type EnhancedRequest = import('next').NextRequest & {

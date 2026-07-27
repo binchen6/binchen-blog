@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Calendar, Copy, Eye, ListTree, MessageCircle, Send, Tag, Trash2, User, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, Copy, Eye, ListTree, MessageCircle, Tag, X } from "lucide-react";
 import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { ReadingProgress } from "@/components/site-widgets";
 import { toast } from "@/components/toast";
 import { UserAvatar } from "@/components/user-avatar";
 import { LikeButton } from "@/components/like-button";
-import { useAuth, authFetch } from "@/lib/client-auth";
+import { CommentSection } from "@/components/comment-section";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { renderMarkdown, type TocItem } from "@/lib/markdown";
 import { cn, formatDate, getReadingTime } from "@/lib/utils";
@@ -35,19 +35,6 @@ interface Post {
   author_bio?: string | null;
 }
 
-interface Comment {
-  id: number;
-  name: string;
-  content: string;
-  created_at: string;
-  parent_id: number | null;
-  user_id: number | null;
-  like_count?: number;
-  user_display_name?: string | null;
-  username?: string | null;
-  user_avatar?: string | null;
-}
-
 interface PostNavItem {
   slug: string;
   title: string;
@@ -66,20 +53,15 @@ export default function BlogPostPage() {
 
   const [post, setPost] = useState<Post | null>(null);
   const [likedByMe, setLikedByMe] = useState(false);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [likedCommentIds, setLikedCommentIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [renderedContent, setRenderedContent] = useState("");
+  const [commentCount, setCommentCount] = useState(0);
   const [toc, setToc] = useState<TocItem[]>([]);
   const [activeTocId, setActiveTocId] = useState("");
   const [tocOpen, setTocOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [prevPost, setPrevPost] = useState<PostNavItem | null>(null);
   const [nextPost, setNextPost] = useState<PostNavItem | null>(null);
-  const [commentForm, setCommentForm] = useState({ name: "", email: "", content: "" });
-  const [replyTo, setReplyTo] = useState<Comment | null>(null);
-  const { user: loggedInUser } = useAuth();
-  const [submitting, setSubmitting] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useDocumentTitle(post?.title, post?.excerpt || undefined);
@@ -99,18 +81,10 @@ export default function BlogPostPage() {
           setLikedByMe(!!postData.likedByMe);
           setPrevPost(postData.prevPost || null);
           setNextPost(postData.nextPost || null);
-
-          const commentsRes = await fetch(`/api/posts/${slug}/comments`);
-          const commentsData = (await commentsRes.json()) as { comments?: Comment[]; likedIds?: number[] };
-          if (cancelled) return;
-
-          setComments(commentsData.comments || []);
-          setLikedCommentIds(commentsData.likedIds || []);
         }
       } catch {
         if (!cancelled) {
           setPost(null);
-          setComments([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -259,76 +233,6 @@ export default function BlogPostPage() {
       return [] as string[];
     }
   }, [post]);
-
-  // 评论按楼层分组：一次遍历建 Map，替代渲染期 topLevel + 每条全表 filter 的 O(n²)
-  const groupedComments = useMemo(() => {
-    const topLevel: Comment[] = [];
-    const repliesMap = new Map<number, Comment[]>();
-    comments.forEach((comment) => {
-      if (!comment.parent_id) {
-        topLevel.push(comment);
-        return;
-      }
-      const bucket = repliesMap.get(comment.parent_id);
-      if (bucket) bucket.push(comment);
-      else repliesMap.set(comment.parent_id, [comment]);
-    });
-    return { topLevel, repliesMap };
-  }, [comments]);
-
-  const startReply = (comment: Comment) => {
-    setReplyTo(comment);
-    document.getElementById("comment-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loggedInUser && (!commentForm.name || !commentForm.email)) return;
-    if (!commentForm.content) return;
-    setSubmitting(true);
-    try {
-      const res = await authFetch(`/api/posts/${slug}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...commentForm, parentId: replyTo?.id }),
-      });
-      const data = (await res.json()) as { comment?: Comment };
-      if (!res.ok || !data.comment) {
-        toast("评论发表失败，请稍后重试", "error");
-        return;
-      }
-      if (data.comment) {
-        // 回复插入到对应楼层下方，顶层评论排到最前
-        setComments((current) => {
-          if (!replyTo) return [data.comment!, ...current];
-          const index = current.findIndex((item) => item.id === replyTo.id);
-          if (index < 0) return [...current, data.comment!];
-          const next = [...current];
-          next.splice(index + 1, 0, data.comment!);
-          return next;
-        });
-        setCommentForm({ name: "", email: "", content: "" });
-        setReplyTo(null);
-      }
-    } catch {
-      toast("网络异常，评论发表失败", "error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const deleteComment = async (id: number) => {
-    if (!confirm("确定删除这条评论吗？其回复会一并删除。")) return;
-    try {
-      const res = await authFetch(`/api/posts/${slug}/comments?id=${id}`, { method: "DELETE" });
-      if (res.ok) {
-        // 后端级联删除子回复，前端同步移除
-        setComments((current) => current.filter((comment) => comment.id !== id && comment.parent_id !== id));
-      } else toast("删除失败", "error");
-    } catch {
-      toast("网络异常，删除失败", "error");
-    }
-  };
 
   if (loading) {
     return (
@@ -588,119 +492,7 @@ export default function BlogPostPage() {
           </nav>
         )}
 
-        <section className="mt-14 border-t border-cyan-dark/10 pt-12">
-          <h2 className="mb-8 flex items-center gap-2 font-serif-zh text-2xl font-bold tracking-[0.1em]">
-            <MessageCircle size={24} className="text-bronze" />
-            评论 ({comments.length})
-          </h2>
-
-          <SurfacePanel as="form" id="comment-form" onSubmit={handleSubmitComment} className="mb-10 space-y-4 p-6 scroll-mt-24">
-            {replyTo && (
-              <div className="flex items-center justify-between gap-3 border border-bronze/30 bg-bronze/10 px-3 py-2 text-xs text-ink-light">
-                <span>回复 <span className="font-semibold text-bronze-dark">@{replyTo.user_display_name || replyTo.name}</span>：{replyTo.content.slice(0, 40)}{replyTo.content.length > 40 ? "…" : ""}</span>
-                <button type="button" onClick={() => setReplyTo(null)} className="shrink-0 text-ink-muted transition-colors hover:text-cinnabar" aria-label="取消回复">
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-            {!loggedInUser && (
-              <div className="grid gap-4 md:grid-cols-2">
-                <input
-                  type="text"
-                  placeholder="姓名"
-                  value={commentForm.name}
-                  onChange={(e) => setCommentForm({ ...commentForm, name: e.target.value })}
-                  className="w-full bg-paper/60"
-                  required
-                />
-                <input
-                  type="email"
-                  placeholder="邮箱"
-                  value={commentForm.email}
-                  onChange={(e) => setCommentForm({ ...commentForm, email: e.target.value })}
-                  className="w-full bg-paper/60"
-                  required
-                />
-              </div>
-            )}
-            {loggedInUser && (
-              <p className="text-sm text-ink-muted">将以 {loggedInUser.display_name || loggedInUser.username} 的身份发表评论。</p>
-            )}
-            <textarea
-              placeholder={replyTo ? "写下你的回复..." : "写下你的想法..."}
-              value={commentForm.content}
-              onChange={(e) => setCommentForm({ ...commentForm, content: e.target.value })}
-              className="h-24 w-full resize-none bg-paper/60 sm:h-32"
-              required
-            />
-            <button type="submit" disabled={submitting} className="btn-tech inline-flex items-center gap-2 disabled:opacity-50">
-              <Send size={16} />
-              <span>{submitting ? "提交中..." : replyTo ? "发表回复" : "发表评论"}</span>
-            </button>
-          </SurfacePanel>
-
-          <div className="space-y-5">
-            {comments.length === 0 ? (
-              <EmptyState title="暂无评论" description="来做第一个评论者吧。" />
-            ) : (
-              (() => {
-                const { topLevel, repliesMap } = groupedComments;
-                const renderCard = (comment: Comment, isReply = false) => {
-                  const displayName = comment.user_display_name || comment.name;
-                  const isAuthor = comment.user_id !== null && comment.user_id === post.author_id;
-                  return (
-                    <div key={comment.id} className={cn("paper-card p-6", isReply && "ml-6 border-l-2 border-l-bronze/40 md:ml-10")}>
-                      <div className="mb-3 flex items-center gap-3">
-                        <UserAvatar username={comment.username} avatar={comment.user_avatar} size={36} />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            {comment.username ? (
-                              <Link href={`/users/${encodeURIComponent(comment.username)}`} className="transition-colors hover:text-cyan-dark">
-                                {displayName}
-                              </Link>
-                            ) : (
-                              displayName
-                            )}
-                            {isAuthor && <span className="border border-cinnabar/40 px-1.5 py-px text-[10px] font-normal text-cinnabar">作者</span>}
-                          </div>
-                          <div className="font-mono-tech text-xs text-ink-muted">{formatDate(comment.created_at)}</div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <LikeButton
-                            targetType="comment"
-                            targetId={comment.id}
-                            initialCount={comment.like_count || 0}
-                            initialLiked={likedCommentIds.includes(comment.id)}
-                            size={13}
-                          />
-                          {!isReply && (
-                            <button type="button" onClick={() => startReply(comment)} className="inline-flex items-center gap-1 text-xs text-ink-muted transition-colors hover:text-cyan-dark">
-                              <MessageCircle size={13} />
-                              回复
-                            </button>
-                          )}
-                          {loggedInUser && comment.user_id === loggedInUser.id && (
-                            <button type="button" onClick={() => deleteComment(comment.id)} className="inline-flex items-center gap-1 text-xs text-cinnabar">
-                              <Trash2 size={13} />
-                              删除
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-sm leading-loose text-ink-light">{comment.content}</p>
-                    </div>
-                  );
-                };
-                return topLevel.map((comment) => (
-                  <div key={comment.id} className="space-y-3">
-                    {renderCard(comment)}
-                    {(repliesMap.get(comment.id) || []).map((reply) => renderCard(reply, true))}
-                  </div>
-                ));
-              })()
-            )}
-          </div>
-        </section>
+        <CommentSection postId={post.id} postAuthorId={post.author_id} slug={slug} onCountChange={setCommentCount} />
       </article>
     </SiteShell>
   );

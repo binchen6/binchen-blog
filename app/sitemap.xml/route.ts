@@ -1,7 +1,15 @@
 import { NextRequest } from "next/server";
-import { getRequestContext } from "@cloudflare/next-on-pages";
+import { getDB } from "@/lib/db";
 
 export const runtime = "edge";
+
+/** sitemap 文章行（仅取生成 URL 所需字段） */
+interface SitemapPostRow {
+  slug: string;
+  updated_at: string;
+  published_at: string | null;
+  created_at: string;
+}
 
 export async function GET(request: NextRequest) {
   const origin = new URL(request.url).origin;
@@ -14,15 +22,14 @@ export async function GET(request: NextRequest) {
 
   let postUrls = "";
   try {
-    const ctx = getRequestContext();
-    const db = (ctx.env as any).DB;
+    const db = getDB();
     const results = await db
       .prepare(
         "SELECT slug, updated_at, published_at, created_at FROM posts WHERE status = 'published' ORDER BY COALESCE(published_at, created_at) DESC LIMIT 500"
       )
-      .all();
+      .all<SitemapPostRow>();
 
-    postUrls = (results.results as any[])
+    postUrls = results.results
       .map((post) => {
         const lastmod = new Date(post.updated_at || post.published_at || post.created_at).toISOString().slice(0, 10);
         return `  <url>

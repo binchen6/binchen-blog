@@ -6,11 +6,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { AuthUser, getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
 import { json, noStoreHeaders } from "@/lib/security";
+import type { PostMode, PostStatus } from "@/lib/types";
 
 /** 取当前请求的 D1 连接 */
-export function getDb(): any {
+export function getDb(): D1Database {
   const ctx = getRequestContext();
-  return (ctx.env as any).DB;
+  return (ctx.env as unknown as CloudflareEnv).DB;
 }
 
 export type AuthResult =
@@ -42,10 +43,21 @@ export async function requireAdmin(request: NextRequest, permission: string): Pr
 }
 
 /** 解析 JSON body；格式非法返回 null（路由据此返回 400，而非裸崩 500） */
-export async function parseJsonBody(request: NextRequest): Promise<any | null> {
+export async function parseJsonBody<T = Record<string, unknown>>(request: NextRequest): Promise<T | null> {
   try {
-    return await request.json();
+    return (await request.json()) as T;
   } catch {
     return null;
   }
+}
+
+/** 文章创建/更新请求体（posts POST/PUT 共用；字段均为可选，由路由内校验兜底） */
+export interface PostWriteBody {
+  title?: string;
+  content?: string;
+  tags?: string;
+  coverImage?: string;
+  status?: PostStatus;
+  mode?: PostMode;
+  images?: string[];
 }

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { getCurrentUserFromRequest, hasPermission } from "@/lib/auth";
 import { createNotification, notifyMentions } from "@/lib/notifications";
+import type { GuestbookEntry } from "@/lib/types";
 import { cacheHeaders, json, parsePositiveId, rateLimit, requireText } from "@/lib/security";
 import { validateEmail } from "@/lib/utils";
 import { getDb, parseJsonBody, requireLogin } from "../_shared";
@@ -48,7 +49,10 @@ export async function POST(request: NextRequest) {
     const db = getDb();
     const result = await db.prepare(
       "INSERT INTO guestbook (name, email, content, user_id, reply_to) VALUES (?, ?, ?, ?, ?) RETURNING *"
-    ).bind(entryName, entryEmail, content, currentUser?.id || null, replyTo || null).first();
+    ).bind(entryName, entryEmail, content, currentUser?.id || null, replyTo || null).first<GuestbookEntry>();
+    if (!result) {
+      return json({ error: "Failed to save entry" }, { status: 500 });
+    }
 
     // 1. 通知站主（新留言）
     const owner = await db.prepare("SELECT id FROM users WHERE role = 'owner' AND is_active = 1 LIMIT 1").first();

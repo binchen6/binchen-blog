@@ -8,6 +8,14 @@ import { EmptyState, SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { PostCardSkeleton } from "@/components/site-widgets";
 import { UserAvatar } from "@/components/user-avatar";
 import { ProfileEditingPanel } from "@/components/profile-editing-panel";
+import type {
+  ImageAsset,
+  ManagePost,
+  ProfileFormState,
+  ProfileUser,
+  UserGroupInfo,
+  UsernameRequest,
+} from "@/components/profile/types";
 import { toast } from "@/components/toast";
 import { useAuth, authFetch } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
@@ -40,9 +48,9 @@ interface UserPost {
 
 /** 个人中心 profile 数据（仅自己页面加载） */
 interface ProfileData {
-  user: any;
-  groups: any[];
-  pendingUsernameRequest: any;
+  user: ProfileUser | null;
+  groups: UserGroupInfo[];
+  pendingUsernameRequest: UsernameRequest | null;
   avatarHistory: string[];
 }
 
@@ -57,16 +65,16 @@ export default function PublicProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [followPending, setFollowPending] = useState(false);
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, token: authToken } = useAuth();
   const router = useRouter();
 
   // 自己主页：编辑模式
   const isOwner = currentUser?.username === username;
   const [editMode, setEditMode] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
-  const [profileForm, setProfileForm] = useState({ displayName: "", email: "", bio: "" });
-  const [myPosts, setMyPosts] = useState<any[]>([]);
-  const [myImages, setMyImages] = useState<any[]>([]);
+  const [profileForm, setProfileForm] = useState<ProfileFormState>({ displayName: "", email: "", bio: "" });
+  const [myPosts, setMyPosts] = useState<ManagePost[]>([]);
+  const [myImages, setMyImages] = useState<ImageAsset[]>([]);
   const [profileLoading, setProfileLoading] = useState(false);
 
   useDocumentTitle(user ? `${user.display_name || user.username} 的主页` : "用户主页");
@@ -106,7 +114,7 @@ export default function PublicProfilePage() {
   // 自己主页：加载 profile 编辑数据（点击编辑时懒加载）
   const loadProfileData = async () => {
     if (profileData || profileLoading) return;
-    const token = localStorage.getItem("token");
+    const token = authToken;
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
     setProfileLoading(true);
@@ -116,9 +124,14 @@ export default function PublicProfilePage() {
         fetch("/api/posts?mine=1&limit=100", { headers }),
         fetch("/api/upload", { headers }),
       ]);
-      const pData = await profileRes.json() as { user?: any; groups?: any[]; pendingUsernameRequest?: any; avatarHistory?: string[] };
-      const poData = await postRes.json() as { posts?: any[] };
-      const iData = await imageRes.json() as { images?: any[] };
+      const pData = await profileRes.json() as {
+        user?: ProfileUser;
+        groups?: UserGroupInfo[];
+        pendingUsernameRequest?: UsernameRequest;
+        avatarHistory?: string[];
+      };
+      const poData = await postRes.json() as { posts?: ManagePost[] };
+      const iData = await imageRes.json() as { images?: ImageAsset[] };
 
       setProfileData({
         user: pData.user || null,
@@ -206,7 +219,7 @@ export default function PublicProfilePage() {
     );
   }
 
-  const currentGroup = profileData?.groups?.find((g: any) => g.name === profileData?.user?.role) || null;
+  const currentGroup = profileData?.groups?.find((group) => group.name === profileData?.user?.role) || null;
 
   return (
     <SiteShell>
@@ -282,21 +295,21 @@ export default function PublicProfilePage() {
             ) : profileData?.user ? (
               <ProfileEditingPanel
                 profile={profileData.user}
-                setProfile={(u: any) => setProfileData((prev) => prev ? { ...prev, user: u } : prev)}
+                setProfile={(user) => setProfileData((prev) => prev ? { ...prev, user } : prev)}
                 profileForm={profileForm}
                 setProfileForm={setProfileForm}
                 groups={profileData.groups}
                 currentGroup={currentGroup}
                 pendingUsernameRequest={profileData.pendingUsernameRequest}
-                setPendingUsernameRequest={(r: any) => setProfileData((prev) => prev ? { ...prev, pendingUsernameRequest: r } : prev)}
+                setPendingUsernameRequest={(request) => setProfileData((prev) => prev ? { ...prev, pendingUsernameRequest: request } : prev)}
                 posts={myPosts}
                 setPosts={setMyPosts}
                 images={myImages}
                 setImages={setMyImages}
                 avatarHistory={profileData.avatarHistory}
                 setAvatarHistory={(h: string[]) => setProfileData((prev) => prev ? { ...prev, avatarHistory: h } : prev)}
-                token={localStorage.getItem("token")}
-                authHeaders={{ Authorization: `Bearer ${localStorage.getItem("token")}` }}
+                token={authToken}
+                authHeaders={authToken ? { Authorization: `Bearer ${authToken}` } : {}}
               />
             ) : null}
           </div>

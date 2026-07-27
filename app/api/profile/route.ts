@@ -85,6 +85,9 @@ export async function PATCH(request: NextRequest) {
        WHERE id = ?
        RETURNING id, username, email, display_name, avatar, role, bio, is_active, created_at`
     ).bind(displayName, email, bio, currentUser.id).first();
+    if (!updated) {
+      return json({ error: "Failed to update profile" }, { status: 500 });
+    }
 
     return json({ user: serializeUser(updated) });
   } catch (error) {

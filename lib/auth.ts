@@ -63,7 +63,7 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
 
 export { hashPassword, verifyPassword };
 
-export async function createToken(user: User): Promise<string> {
+export async function createToken(user: Pick<User, "id" | "username"> & Partial<Pick<User, "role">>): Promise<string> {
   const secret = new TextEncoder().encode(getJwtSecret());
   return new SignJWT({ userId: user.id, username: user.username, role: getEffectiveRole(user) })
     .setProtectedHeader({ alg: "HS256" })

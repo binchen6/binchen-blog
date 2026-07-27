@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { canManagePost, getCurrentUserFromRequest } from "@/lib/auth";
 import { generateExcerpt } from "@/lib/utils";
 import { cacheHeaders, isSafePublicUrl, json, noStoreHeaders, rateLimit, requireText } from "@/lib/security";
-import { getDb, parseJsonBody, requireLogin } from "../../_shared";
+import { getDb, parseJsonBody, PostWriteBody, requireLogin } from "../../_shared";
+import type { Post } from "@/lib/types";
 
 export const runtime = "edge";
 
@@ -53,7 +54,7 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
     const currentUser = auth.user;
 
     const db = getDb();
-    const existing = await db.prepare("SELECT * FROM posts WHERE slug = ?").bind(params.slug).first();
+    const existing = await db.prepare("SELECT * FROM posts WHERE slug = ?").bind(params.slug).first<Post>();
     if (!existing) {
       return json({ error: "Post not found" }, { status: 404 });
     }
@@ -61,7 +62,7 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
       return json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await parseJsonBody(request);
+    const body = await parseJsonBody<PostWriteBody>(request);
     if (!body) {
       return json({ error: "Invalid JSON body" }, { status: 400 });
     }

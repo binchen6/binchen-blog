@@ -35,8 +35,8 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
     if (currentUser) {
       const liked = await db.prepare(
         "SELECT target_id FROM likes WHERE user_id = ? AND target_type = 'comment' AND target_id IN (SELECT id FROM comments WHERE post_id = ?)"
-      ).bind(currentUser.id, post.id).all();
-      likedIds = (liked.results || []).map((row: any) => Number(row.target_id));
+      ).bind(currentUser.id, post.id).all<{ target_id: number }>();
+      likedIds = (liked.results || []).map((row) => Number(row.target_id));
     }
 
     return json({ comments: results.results, likedIds });

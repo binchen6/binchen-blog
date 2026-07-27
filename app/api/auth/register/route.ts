@@ -36,8 +36,11 @@ export async function POST(request: NextRequest) {
     const result = await db.prepare(
       "INSERT INTO users (username, email, password_hash, display_name, role) VALUES (?, ?, ?, ?, ?) RETURNING id, username, email, display_name, avatar, role, bio, is_active, created_at"
     ).bind(username, email, passwordHash, displayName || null, "member").first();
+    if (!result) {
+      return json({ error: "Registration failed" }, { status: 500 });
+    }
     const user = serializeUser(result);
-    const token = await createToken(user as any);
+    const token = await createToken(user);
     return json({ user, token }, { status: 201 });
   } catch (error) {
     console.error("Registration error:", error);

@@ -3,6 +3,7 @@ import { getRequestContext } from "@cloudflare/next-on-pages";
 import { canManageImage } from "@/lib/auth";
 import { getGithubImageConfig } from "@/lib/github-config";
 import { json, noStoreHeaders, parsePositiveId, rateLimit, securityHeaders } from "@/lib/security";
+import type { ImageAsset } from "@/lib/types";
 import { getDb, requireLogin } from "../../_shared";
 
 export const runtime = "edge";
@@ -25,7 +26,7 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
-async function fetchGithubImageBytes(github: ReturnType<typeof getGithubImageConfig>, image: any): Promise<Uint8Array | null> {
+async function fetchGithubImageBytes(github: ReturnType<typeof getGithubImageConfig>, image: ImageAsset): Promise<Uint8Array | null> {
   const commonHeaders = {
     Authorization: `Bearer ${github.token}`,
     Accept: "application/vnd.github+json",
@@ -76,9 +77,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const ctx = getRequestContext();
-    const env = ctx.env as any;
+    const env = ctx.env as unknown as CloudflareEnv;
     const db = env.DB;
-    const image = await db.prepare("SELECT * FROM images WHERE id = ?").bind(imageId).first();
+    const image = await db.prepare("SELECT * FROM images WHERE id = ?").bind(imageId).first<ImageAsset>();
     if (!image) {
       return json({ error: "Image not found" }, { status: 404 });
     }
@@ -140,9 +141,9 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     if (limited) return limited;
 
     const ctx = getRequestContext();
-    const env = ctx.env as any;
+    const env = ctx.env as unknown as CloudflareEnv;
     const db = getDb();
-    const image = await db.prepare("SELECT * FROM images WHERE id = ?").bind(imageId).first();
+    const image = await db.prepare("SELECT * FROM images WHERE id = ?").bind(imageId).first<ImageAsset>();
     if (!image) {
       return json({ error: "Image not found" }, { status: 404 });
     }

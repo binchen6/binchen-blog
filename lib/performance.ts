@@ -18,7 +18,7 @@ type PerformanceTask = {
   name: string;
   description: string;
   timeoutMs: number;
-  handler: (db: any) => Promise<Record<string, unknown>> | Record<string, unknown>;
+  handler: (db: D1Database) => Promise<Record<string, unknown>> | Record<string, unknown>;
 };
 
 /** 单次调度运行的汇总事件 task 名（用于"最近运行"查询） */

@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
     const db = getDb();
     const announcement = await db.prepare(
       "INSERT INTO announcements (title, content, created_by) VALUES (?, ?, ?) RETURNING *"
-    ).bind(title, content, currentUser.id).first();
+    ).bind(title, content, currentUser.id).first<{ id: number }>();
+    if (!announcement) {
+      return json({ error: "Failed to create announcement" }, { status: 500 });
+    }
 
     const notified = await broadcastAnnouncement(db, { id: Number(announcement.id), title, content });
 

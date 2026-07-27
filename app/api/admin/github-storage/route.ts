@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (auth.error) return auth.error;
 
     const ctx = getRequestContext();
-    const env = ctx.env as any;
+    const env = ctx.env as unknown as CloudflareEnv;
     const github = getGithubImageConfig(env);
     let repoStatus: number | null = null;
     let repoOk = false;

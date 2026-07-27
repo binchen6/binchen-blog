@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       "SELECT COUNT(*) AS c FROM likes WHERE target_type = ? AND target_id = ?"
     ).bind(targetType, targetId).first();
 
-    return json({ liked, likeCount: Number((countRow as any)?.c ?? 0) });
+    return json({ liked, likeCount: Number(countRow?.c ?? 0) });
   } catch (error) {
     console.error("Like toggle error:", error);
     return json({ error: "Failed to toggle like" }, { status: 500 });

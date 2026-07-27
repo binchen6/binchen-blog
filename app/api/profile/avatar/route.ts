@@ -58,6 +58,9 @@ export async function PUT(request: NextRequest) {
       `UPDATE users SET avatar = ?, avatar_history = ? WHERE id = ?
        RETURNING id, username, email, display_name, avatar, avatar_history, role, bio, is_active, created_at`
     ).bind(newAvatar, JSON.stringify(nextHistory), currentUser.id).first();
+    if (!updated) {
+      return json({ error: "Failed to update avatar" }, { status: 500 });
+    }
 
     return json({ user: serializeUser(updated), avatarHistory: nextHistory });
   } catch (error) {

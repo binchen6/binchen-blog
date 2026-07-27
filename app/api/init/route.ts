@@ -8,7 +8,7 @@ export const runtime = "edge";
 export async function GET(request: Request) {
   try {
     const ctx = getRequestContext();
-    const env = ctx.env as any;
+    const env = ctx.env as unknown as CloudflareEnv;
     const configuredToken = env.INIT_TOKEN;
     const providedToken = new URL(request.url).searchParams.get("token") || request.headers.get("x-init-token");
 

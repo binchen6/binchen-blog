@@ -7,7 +7,7 @@ export const runtime = "edge";
 export async function POST(request: Request) {
   try {
     const ctx = getRequestContext();
-    const env = ctx.env as any;
+    const env = ctx.env as unknown as CloudflareEnv;
     const configuredSecret = env.CRON_SECRET;
     const providedSecret = request.headers.get("x-cron-secret") || new URL(request.url).searchParams.get("secret");
 

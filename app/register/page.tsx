@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Lock, Mail, Sparkles, User, UserPlus } from "lucide-react";
 import { SiteShell, SurfacePanel } from "@/components/page-chrome";
-import { storeAuth } from "@/lib/client-auth";
+import { storeAuth, type ClientUser } from "@/lib/client-auth";
 import { useDocumentTitle } from "@/lib/use-document-title";
 import { validateEmail } from "@/lib/utils";
 
@@ -47,7 +47,7 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password, displayName: displayName || undefined }),
       });
-      const data = (await res.json()) as { token?: string; user?: any; error?: string };
+      const data = (await res.json()) as { token?: string; user?: ClientUser; error?: string };
       if (data.token && data.user) {
         storeAuth(data.user, data.token);
         router.push("/");
