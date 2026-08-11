@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="no-js">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地图上的裂痕 · 世界奇观国界与飞地</title>
+<meta name="description" content="一份关于世界奇观国界与飞地的数字地理档案：国中之国、被国界穿过的房子、无人认领的土地、航天器公墓。">
+<style>
+
+/* ============ 地图上的裂痕 · 旧制图室美学 ============ */
+:root{
+  --ink:#0b0f14;
+  --ink2:#0f151d;
+  --panel:#111720;
+  --panel2:#151c26;
+  --paper:#e9e2d3;
+  --paper-dim:#a49e90;
+  --paper-faint:rgba(233,226,211,.55);
+  --rust:#c0503a;
+  --rust-soft:#d97a5f;
+  --gold:#c9a227;
+  --moss:#8a9a6b;
+  --line:rgba(233,226,211,.09);
+  --line2:rgba(233,226,211,.16);
+  --serif:"Source Han Serif SC","Noto Serif CJK SC","Songti SC","STSong","SimSun",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Consolas,"Courier New",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:
+    radial-gradient(1200px 600px at 75% -10%, #182030 0%, transparent 60%),
+    radial-gradient(900px 500px at 8% 110%, #131a24 0%, transparent 55%),
+    var(--ink);
+  color:var(--paper);
+  font-family:var(--serif);
+  line-height:1.75;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+/* 经纬网格 + 噪点 */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    repeating-linear-gradient(0deg, var(--line) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 88px);
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 30%, #000 40%, transparent 100%);
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+::selection{background:var(--rust);color:#fff}
+
+/* ============ 顶栏 ============ */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 4vw;mix-blend-mode:normal;
+  background:linear-gradient(180deg, rgba(11,15,20,.92), rgba(11,15,20,.55) 70%, transparent);
+  border-bottom:1px solid transparent;
+  transition:border-color .3s;
+}
+.topbar.scrolled{border-bottom-color:var(--line)}
+.brand{
+  font-size:13px;letter-spacing:.42em;color:var(--paper);
+  font-family:var(--serif);
+}
+.brand b{color:var(--rust);font-weight:400}
+.nav{display:flex;gap:26px;list-style:none}
+.nav a{
+  color:var(--paper-dim);text-decoration:none;font-size:12px;
+  letter-spacing:.18em;font-family:var(--mono);
+  transition:color .25s;position:relative;
+}
+.nav a:hover{color:var(--paper)}
+.nav a::after{
+  content:"";position:absolute;left:0;bottom:-4px;height:1px;width:0;
+  background:var(--rust);transition:width .3s;
+}
+.nav a:hover::after{width:100%}
+.progress{
+  position:fixed;top:0;left:0;height:2px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--rust),var(--gold));
+}
+
+/* ============ 英雄区 ============ */
+.hero{
+  position:relative;min-height:100vh;display:flex;flex-direction:column;
+  justify-content:center;padding:0 7vw;z-index:2;
+}
+.hero .kicker{
+  font-family:var(--mono);font-size:12px;letter-spacing:.55em;
+  color:var(--gold);margin-bottom:26px;display:flex;align-items:center;gap:14px;
+}
+.hero .kicker::before{content:"";width:56px;height:1px;background:var(--gold)}
+.hero h1{
+  font-size:clamp(56px,9vw,124px);font-weight:600;line-height:1.08;
+  letter-spacing:.06em;color:var(--paper);
+}
+.hero h1 .crack{color:var(--rust)}
+.hero .sub{
+  margin-top:28px;max-width:560px;color:var(--paper-dim);
+  font-size:clamp(15px,1.6vw,18px);
+}
+.hero .meta{
+  margin-top:44px;display:flex;gap:40px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--paper-faint);
+}
+.hero .meta span b{color:var(--rust);font-weight:400}
+.scrollhint{
+  position:absolute;bottom:34px;left:7vw;display:flex;align-items:center;gap:12px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.4em;color:var(--paper-faint);
+}
+.scrollhint::before{content:"";width:44px;height:1px;background:var(--line2);animation:grow 1.8s ease-in-out infinite}
+@keyframes grow{0%,100%{transform:scaleX(.4);transform-origin:left}50%{transform:scaleX(1);transform-origin:left}}
+
+/* 裂痕 SVG 舞台 */
+.crack-stage{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.85}
+.crack-stage svg{width:100%;height:100%}
+.crack-path{
+  fill:none;stroke:var(--rust);stroke-width:2.4;stroke-linecap:round;
+  stroke-dasharray:1400;stroke-dashoffset:1400;
+  filter:drop-shadow(0 0 6px rgba(192,80,58,.5));
+}
+.hero.done .crack-path{animation:drawcrack 2.6s cubic-bezier(.6,.05,.35,1) .2s forwards}
+@keyframes drawcrack{to{stroke-dashoffset:0}}
+.crack-sub{fill:none;stroke:rgba(201,162,39,.5);stroke-width:1;stroke-dasharray:5 7;opacity:0}
+.hero.done .crack-sub{animation:fadein 1s .9s forwards}
+
+/* ============ 通用区块 ============ */
+section{position:relative;z-index:2;padding:110px 7vw}
+.wrap{max-width:1180px;margin:0 auto}
+.sec-head{display:flex;align-items:baseline;gap:22px;margin-bottom:54px}
+.sec-num{
+  font-family:var(--mono);font-size:13px;color:var(--gold);
+  letter-spacing:.2em;white-space:nowrap;
+}
+.sec-num::after{content:"/";margin-left:8px;color:var(--line2)}
+.sec-title{font-size:clamp(28px,4vw,44px);font-weight:600;letter-spacing:.05em}
+.sec-title em{font-style:normal;color:var(--rust)}
+.sec-line{flex:1;height:1px;background:var(--line)}
+.sec-en{
+  font-family:var(--mono);font-size:10px;letter-spacing:.5em;
+  color:var(--paper-faint);text-transform:uppercase;margin-bottom:14px;
+}
+
+/* reveal 动效（仅 JS 启用时隐藏；无 JS 时内容直接可见） */
+.js .reveal{opacity:0;transform:translateY(34px);transition:opacity .9s cubic-bezier(.2,.6,.2,1),transform .9s cubic-bezier(.2,.6,.2,1)}
+.js .reveal.in{opacity:1;transform:none}
+.reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}.reveal.d3{transition-delay:.24s}
+
+/* ============ 统计带 ============ */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:70px}
+.stat{background:var(--panel);padding:34px 28px;transition:background .3s}
+.stat:hover{background:var(--panel2)}
+.stat .n{
+  font-family:var(--mono);font-size:clamp(30px,3.4vw,46px);color:var(--rust);
+  display:flex;align-items:baseline;gap:2px;
+}
+.stat .n small{font-size:.45em;color:var(--gold);letter-spacing:.1em}
+.stat .t{font-size:13px;color:var(--paper-dim);letter-spacing:.06em;margin-top:8px}
+
+/* ============ 概念卡 ============ */
+.concept-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.concept{
+  border:1px solid var(--line);background:var(--panel);padding:30px 26px;
+  transition:transform .35s,border-color .35s;
+}
+.concept:hover{transform:translateY(-6px);border-color:var(--line2)}
+.concept .tag{
+  font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:var(--gold);
+  border:1px solid rgba(201,162,39,.35);padding:3px 10px;display:inline-block;margin-bottom:16px;
+}
+.concept h3{font-size:20px;font-weight:600;margin-bottom:10px}
+.concept p{font-size:13.5px;color:var(--paper-dim)}
+.concept .ex{font-family:var(--mono);font-size:11px;color:var(--rust-soft);margin-top:14px;letter-spacing:.06em}
+
+/* ============ 国中国 ============ */
+.country-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.country{
+  border:1px solid var(--line);background:var(--panel);padding:30px 24px 26px;
+  display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden;
+  transition:border-color .3s;
+}
+.country::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--rust),var(--gold));transform:scaleX(0);
+  transform-origin:left;transition:transform .45s;
+}
+.country:hover{border-color:var(--line2)}
+.country:hover::before{transform:scaleX(1)}
+.country .flag{font-size:11px;letter-spacing:.3em;font-family:var(--mono);color:var(--gold)}
+.country h3{font-size:22px;font-weight:600}
+.country .num{font-family:var(--mono);font-size:15px;color:var(--rust)}
+.country .num small{color:var(--paper-dim);font-size:11px}
+.country p{font-size:13px;color:var(--paper-dim);flex:1}
+.country .fact{
+  font-size:12px;color:var(--paper);border-top:1px dashed var(--line2);
+  padding-top:10px;
+}
+.country .fact b{color:var(--rust-soft);font-weight:400}
+.area-bars{margin-top:60px;border:1px solid var(--line);background:var(--panel);padding:34px 30px}
+.area-bars .ab-title{font-size:13px;letter-spacing:.2em;color:var(--paper-dim);margin-bottom:22px;font-family:var(--mono)}
+.bar-row{display:grid;grid-template-columns:130px 1fr 90px;align-items:center;gap:16px;margin-bottom:16px}
+.bar-row:last-child{margin-bottom:0}
+.bar-row .name{font-size:14px}
+.bar-row .track{height:22px;background:rgba(233,226,211,.05);position:relative;overflow:hidden}
+.bar-row .fill{
+  position:absolute;inset:0;transform:scaleX(0);transform-origin:left;
+  background:linear-gradient(90deg,var(--rust),var(--gold));
+}
+.bar-row.in .fill{animation:barfill 1.3s cubic-bezier(.3,.7,.2,1) forwards}
+@keyframes barfill{to{transform:scaleX(1)}}
+.bar-row .val{font-family:var(--mono);font-size:12px;color:var(--paper-dim);text-align:right}
+.log-note{font-size:11px;color:var(--paper-faint);margin-top:12px;font-family:var(--mono);letter-spacing:.05em}
+
+/* ============ 巴勒拼图 ============ */
+.baarle-wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+.mosaic{
+  width:100%;aspect-ratio:1;position:relative;border:1px solid var(--line2);
+  background:
+    repeating-linear-gradient(0deg, rgba(233,226,211,.05) 0 1px, transparent 1px 12.5%),
+    repeating-linear-gradient(90deg, rgba(233,226,211,.05) 0 1px, transparent 1px 12.5%),
+    var(--ink2);
+}
+.mosaic .tile{position:absolute;transition:opacity .5s}
+.mosaic .be{background:rgba(192,80,58,.75);border:1px solid rgba(233,226,211,.35)}
+.mosaic .nl{background:rgba(201,162,39,.7);border:1px solid rgba(233,226,211,.35)}
+.mosaic .nl-in-be{background:#e9e2d3;border:1px solid var(--rust)}
+.mosaic .lab{
+  position:absolute;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+  color:rgba(233,226,211,.8);text-shadow:0 1px 3px #000;
+}
+.mosaic .lab.be{color:#ffd9cf}.mosaic .lab.nl{color:#fff3cf}
+.baarle-side h3{font-size:24px;font-weight:600;margin-bottom:14px}
+.baarle-side p{font-size:14px;color:var(--paper-dim);margin-bottom:16px}
+.baarle-side .big{font-family:var(--mono);font-size:15px;color:var(--rust)}
+.story-list{list-style:none;display:flex;flex-direction:column;gap:12px;margin-top:26px}
+.story-list li{
+  position:relative;padding-left:26px;font-size:13.5px;color:var(--paper-dim);
+  border-bottom:1px dashed var(--line);padding-bottom:12px;
+}
+.story-list li::before{
+  content:"◆";color:var(--gold);font-size:9px;position:absolute;left:0;top:8px;
+}
+.story-list li b{color:var(--paper);font-weight:400}
+.story-list li em{color:var(--rust-soft);font-style:normal}
+
+/* ============ 印孟 ============ */
+.big-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+.big-num{background:var(--panel);padding:44px 30px;text-align:center}
+.big-num .v{
+  font-family:var(--mono);font-size:clamp(40px,5vw,64px);color:var(--rust);line-height:1.1;
+}
+.big-num .v small{font-size:.5em;color:var(--gold)}
+.big-num .k{font-size:12.5px;color:var(--paper-dim);letter-spacing:.14em;margin-top:10px;font-family:var(--mono)}
+.nest{
+  margin-top:52px;border:1px solid var(--line);background:var(--panel);padding:40px;
+  display:flex;align-items:center;gap:34px;flex-wrap:wrap;
+}
+.nest .rings{position:relative;width:250px;height:250px;flex:none;margin:0 auto}
+.nest .rings .r{
+  position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-align:center;
+}
+.nest .rings .r1{inset:0;border:1.5px dashed var(--gold);color:var(--gold)}
+.nest .rings .r2{inset:13%;border:1.5px solid rgba(192,80,58,.85);color:#ffd9cf}
+.nest .rings .r3{inset:28%;border:1.5px dashed rgba(233,226,211,.7);color:var(--paper)}
+.nest .rings .core{
+  position:absolute;inset:43%;border-radius:50%;background:var(--rust);
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  font-size:10px;text-align:center;line-height:1.3;padding:4px;
+}
+.nest .explain{flex:1;min-width:260px}
+.nest .explain h3{font-size:20px;margin-bottom:10px}
+.nest .explain p{font-size:13.5px;color:var(--paper-dim)}
+.nest .explain .chain{
+  font-family:var(--mono);font-size:12px;color:var(--gold);
+  margin-top:16px;letter-spacing:.05em;line-height:2;
+}
+
+/* ============ Point Roberts ============ */
+.pr-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.pr-map{
+  border:1px solid var(--line2);background:var(--ink2);padding:30px;position:relative;
+}
+.pr-map svg{width:100%;height:auto;display:block}
+.pr-map .cap{
+  font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--paper-faint);
+  margin-top:14px;text-align:center;
+}
+.quote{
+  border-left:2px solid var(--rust);padding:18px 22px;margin-top:26px;
+  background:rgba(192,80,58,.06);font-size:14px;color:var(--paper-dim);
+}
+.quote b{color:var(--paper);font-weight:400}
+.pr-side p{font-size:14px;color:var(--paper-dim);margin-bottom:14px}
+.pr-side .hl{color:var(--rust-soft)}
+
+/* ============ 比尔泰维勒 ============ */
+.tawil{
+  border:1px dashed var(--line2);background:linear-gradient(160deg,var(--panel),var(--ink2));
+  padding:44px 40px;display:grid;grid-template-columns:1.2fr .8fr;gap:40px;align-items:center;
+}
+.tawil .tag2{
+  font-family:var(--mono);font-size:10px;letter-spacing:.35em;color:var(--rust);
+  border:1px solid rgba(192,80,58,.5);padding:4px 12px;display:inline-block;margin-bottom:18px;
+}
+.tawil h3{font-size:26px;font-weight:600;margin-bottom:14px}
+.tawil p{font-size:14px;color:var(--paper-dim);margin-bottom:12px}
+.tawil .dune{position:relative;height:220px;border:1px solid var(--line);overflow:hidden}
+.tawil .dune svg{width:100%;height:100%}
+.tawil .flag-note{
+  font-family:var(--mono);font-size:11px;color:var(--gold);margin-top:16px;
+  letter-spacing:.08em;
+}
+
+/* ============ 微型飞地表 ============ */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.24em;color:var(--gold);
+  text-align:left;padding:14px 16px;border-bottom:1px solid var(--gold);
+}
+td{padding:16px;border-bottom:1px solid var(--line);color:var(--paper-dim);vertical-align:top}
+tr:hover td{background:rgba(233,226,211,.03)}
+td b{color:var(--paper);font-weight:400}
+td .lat{font-family:var(--mono);font-size:11px;color:var(--rust-soft)}
+
+/* ============ 时间与海洋 ============ */
+.tm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.tm-card{
+  border:1px solid var(--line);background:var(--panel);padding:32px 26px;
+  display:flex;flex-direction:column;gap:12px;transition:transform .35s;
+}
+.tm-card:hover{transform:translateY(-6px)}
+.tm-card .big{font-family:var(--mono);font-size:44px;color:var(--rust)}
+.tm-card .big small{font-size:.5em;color:var(--gold)}
+.tm-card h3{font-size:19px;font-weight:600}
+.tm-card p{font-size:13.5px;color:var(--paper-dim)}
+.tm-card .tag3{
+  font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:var(--gold);
+}
+
+/* ============ 结语 ============ */
+.outro{text-align:center;padding:140px 7vw 120px}
+.outro .big-line{
+  font-size:clamp(26px,4vw,44px);line-height:1.5;max-width:820px;margin:0 auto;
+  font-weight:600;letter-spacing:.04em;
+}
+.outro .big-line .hl{color:var(--rust)}
+.outro .sign{
+  margin-top:40px;font-family:var(--mono);font-size:11px;letter-spacing:.4em;
+  color:var(--paper-faint);
+}
+.refs{
+  margin-top:70px;text-align:left;border-top:1px solid var(--line);padding-top:34px;
+  display:grid;grid-template-columns:repeat(2,1fr);gap:8px 40px;
+}
+.refs span{font-size:11px;color:var(--paper-faint);font-family:var(--mono);letter-spacing:.03em}
+.refs b{color:var(--gold);font-weight:400;margin-right:8px}
+
+/* ============ 动效增强 v2 ============ */
+/* 标题字符级入场（JS 拆分） */
+.js .hero h1 .ch{
+  display:inline-block;opacity:0;transform:translateY(.45em) rotate(2deg);
+  transition:opacity .5s cubic-bezier(.2,.7,.2,1),transform .5s cubic-bezier(.2,.7,.2,1);
+}
+.js .hero h1.in .ch{opacity:1;transform:none}
+/* 3D tilt 卡片（JS 控制 transform） */
+.tiltable{transition:transform .35s cubic-bezier(.2,.6,.2,1),border-color .35s}
+.tiltable:hover{transform:none}
+.concept.tiltable:hover,.country.tiltable:hover,.tm-card.tiltable:hover{border-color:var(--line2)}
+/* scrollspy 导航高亮 */
+.nav a.active{color:var(--paper)}
+.nav a.active::after{width:100%;background:var(--rust)}
+/* 巴勒马赛克 SVG 块 hover */
+.mosaic svg rect,.mosaic svg path{transition:filter .25s}
+.mosaic svg rect:hover,.mosaic svg path:hover{filter:brightness(1.35)}
+/* 裂痕线绘制完成后持续发光脉冲 */
+.hero.done .crack-path{
+  animation:drawcrack 2.6s cubic-bezier(.6,.05,.35,1) .2s forwards,
+            glowpulse 3.4s 2.8s ease-in-out infinite;
+}
+@keyframes glowpulse{
+  0%,100%{filter:drop-shadow(0 0 4px rgba(192,80,58,.4))}
+  50%{filter:drop-shadow(0 0 12px rgba(192,80,58,.8))}
+}
+
+/* ============ 响应式 ============ */
+@media (max-width:1024px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .concept-grid{grid-template-columns:1fr 1fr}
+  .country-grid{grid-template-columns:1fr 1fr}
+  .baarle-wrap,.pr-grid{grid-template-columns:1fr}
+  .tawil{grid-template-columns:1fr}
+  .tm-grid{grid-template-columns:1fr 1fr}
+  .nav{display:none}
+}
+@media (max-width:640px){
+  section{padding:76px 6vw}
+  .stats,.concept-grid,.country-grid,.tm-grid,.big-nums{grid-template-columns:1fr}
+  .hero h1{font-size:52px}
+  .refs{grid-template-columns:1fr}
+  .nest .rings{width:200px;height:200px}
+}
+
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="topbar" id="topbar">
+  <div class="brand">裂缝地图册 <b>CRACKS</b> IN THE MAP</div>
+  <ul class="nav">
+    <li><a href="#concepts">概念</a></li>
+    <li><a href="#enclaved">国中之国</a></li>
+    <li><a href="#baarle">巴勒</a></li>
+    <li><a href="#indobangla">印孟</a></li>
+    <li><a href="#pointroberts">49°N</a></li>
+    <li><a href="#tawil">无主之地</a></li>
+    <li><a href="#time-sea">时与海</a></li>
+  </ul>
+</header>
+
+<!-- ============ HERO ============ -->
+<div class="hero" id="hero">
+  <div class="crack-stage">
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <path class="crack-path" d="M-40 820 L300 800 L380 760 L460 800 L540 760 L620 800 L700 780 L900 660 L900 480 L820 420 L760 400 L820 280 L910 330 L1020 190 L1120 250 L1230 130 L1330 200 L1440 140"/>
+      <path class="crack-sub" d="M560 680 L480 720 L400 680 L320 760"/>
+      <path class="crack-sub" d="M700 470 L760 400 L820 280"/>
+      <path class="crack-sub" d="M1020 190 L1120 250 L1230 130"/>
+      <g class="crack-sub">
+        <circle cx="700" cy="470" r="3" fill="#c0503a"/>
+        <circle cx="820" cy="280" r="3" fill="#c0503a"/>
+        <circle cx="1120" cy="250" r="3" fill="#c0503a"/>
+      </g>
+    </svg>
+  </div>
+  <div class="kicker reveal in">A GEOGRAPHICAL DOSSIER · 2026</div>
+  <h1 class="reveal in d1">地图上的<span class="crack">裂痕</span></h1>
+  <p class="sub reveal in d2">25 万公里的国界线里，藏着房子、教堂、赌场与一个王国。本档案收录地球上最奇特的国界与飞地——它们不是测绘失误，而是历史留在土地上的年轮。</p>
+  <div class="meta reveal in d3">
+    <span>专题 <b>07</b> 章</span>
+    <span>案例 <b>12</b> 处</span>
+    <span>坐标 <b>5</b> 大洲</span>
+    <span>唯一原则 <b>：不虚构</b></span>
+  </div>
+  <div class="scrollhint">向下滚动 — SCROLL</div>
+</div>
+
+<!-- ============ STATS ============ -->
+<section id="stats">
+  <div class="wrap">
+    <div class="stats reveal">
+      <div class="stat">
+        <div class="n"><span class="countup" data-to="250000">0</span><small>KM</small></div>
+        <div class="t">地球上国界线总长（陆地边境约 25 万公里）</div>
+      </div>
+      <div class="stat">
+        <div class="n"><span class="countup" data-to="4">0</span><small>个</small></div>
+        <div class="t">完全被单一国家包围的"国中国"</div>
+      </div>
+      <div class="stat">
+        <div class="n"><span class="countup" data-to="198">0</span><small>块</small></div>
+        <div class="t">2015 年前印孟边界上的飞地总数</div>
+      </div>
+      <div class="stat">
+        <div class="n"><span class="countup" data-to="200">0</span><small>+</small></div>
+        <div class="t">沉入尼莫点海底的退役航天器</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CONCEPTS ============ -->
+<section id="concepts">
+  <div class="wrap">
+    <div class="sec-en reveal">Field Glossary · 概念</div>
+    <div class="sec-head reveal">
+      <span class="sec-num">00</span>
+      <h2 class="sec-title">先认识这些<em>裂缝</em></h2>
+      <div class="sec-line"></div>
+    </div>
+    <div class="concept-grid">
+      <div class="concept reveal tiltable">
+        <span class="tag">ENCLAVE 飞地</span>
+        <h3>被"吞"进去的领土</h3>
+        <p>完全被另一国领土包围的领地。当它同时属于另一个国家时，就成了一国领土在别国肚子里的"孤岛"。</p>
+        <div class="ex">例：莱索托 · 圣马力诺 · 梵蒂冈</div>
+      </div>
+      <div class="concept reveal d1 tiltable">
+        <span class="tag">COUNTER-ENCLAVE 反飞地</span>
+        <h3>套娃式嵌套</h3>
+        <p>飞地之内再飞地：A 国的地，包着 B 国的地，B 国的地里又包着 A 国的地。地理学家把这种结构叫"三级飞地"。</p>
+        <div class="ex">例：巴勒 · 印孟边界（2015 年前）</div>
+      </div>
+      <div class="concept reveal d2 tiltable">
+        <span class="tag">PENE-EXCLAVE 准飞地</span>
+        <h3>看得见，过不去</h3>
+        <p>与本国主体仅一线相连，实际通行却必须借道他国。最典型：美国 Point Roberts，去趟"国内"要先过加拿大海关。</p>
+        <div class="ex">例：Point Roberts · 阿拉斯加</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAPTER 01 国中国 ============ -->
+<section id="enclaved">
+  <div class="wrap">
+    <div class="sec-en reveal">Chapter 01 · States Inside States</div>
+    <div class="sec-head reveal">
+      <span class="sec-num">01</span>
+      <h2 class="sec-title">国中之国：被装进<em>别国</em>的国家</h2>
+      <div class="sec-line"></div>
+    </div>
+    <p class="reveal" style="max-width:760px;color:var(--paper-dim);font-size:15px;margin-bottom:44px;">
+      全球公认的四个"国中国"，面积从 0.44 到 3 万平方公里不等。它们能存在至今，靠的分别是：一段殖民史、一位石匠、一场豪赌，与一把圣彼得的钥匙。
+    </p>
+    <div class="country-grid">
+      <div class="country reveal tiltable">
+        <div class="flag">LESOTHO · 非洲</div>
+        <h3>莱索托</h3>
+        <div class="num">30,344 <small>km²</small></div>
+        <p>世界最大、也是唯一完全被单一国家（南非）包围的独立国家。全境海拔 1388 米以上，逾 65% 国土高于 2300 米，人称"天空王国"。</p>
+        <div class="fact"><b>◆ 2018 年开采出 910 克拉钻石</b>，一度为世界最大。</div>
+      </div>
+      <div class="country reveal d1 tiltable">
+        <div class="flag">SAN MARINO · 欧洲</div>
+        <h3>圣马力诺</h3>
+        <div class="num">61.2 <small>km²</small></div>
+        <p>公元 301 年由石匠马力诺在蒂塔诺山创建，号称现存最古老的主权国家。国家元首是两名权力平等的执政官，每半年轮换。</p>
+        <div class="fact"><b>◆ 拿破仑想送它领土，被拒</b>——"怕日后遭致报复"。</div>
+      </div>
+      <div class="country reveal d2 tiltable">
+        <div class="flag">MONACO · 欧洲</div>
+        <h3>摩纳哥</h3>
+        <div class="num">2.02 <small>km²</small></div>
+        <p>世界第二小国：长 3.5 公里、最窄处不足 200 米，三面被法国环绕，一面临地中海。蒙特卡洛赌场让它名扬天下。</p>
+        <div class="fact"><b>◆ 全国面积小于北京故宫</b>（72 万 m² 的两倍多一点）。</div>
+      </div>
+      <div class="country reveal d3 tiltable">
+        <div class="flag">VATICAN · 城中之国</div>
+        <h3>梵蒂冈</h3>
+        <div class="num">0.44 <small>km²</small></div>
+        <p>全球最小国家，约等于 62 个标准足球场；常住人口约 800 人，多为神职人员。国界总长仅 2.5 公里，1984 年全境列入世界遗产。</p>
+        <div class="fact"><b>◆ 没有产科医院——全世界唯一"无人能出生"的国家</b>；瑞士卫队源自 1527 年"罗马大劫掠"（147 人战死 142 人）。</div>
+      </div>
+    </div>
+
+    <div class="area-bars reveal">
+      <div class="ab-title">面积对比 · AREA COMPARISON（对数刻度）</div>
+      <div class="bar-row">
+        <div class="name">梵蒂冈</div>
+        <div class="track"><div class="fill" style="--w:1"></div></div>
+        <div class="val">0.44 km²</div>
+      </div>
+      <div class="bar-row">
+        <div class="name">摩纳哥</div>
+        <div class="track"><div class="fill" style="--w:.36"></div></div>
+        <div class="val">2.02 km²</div>
+      </div>
+      <div class="bar-row">
+        <div class="name">圣马力诺</div>
+        <div class="track"><div class="fill" style="--w:.68"></div></div>
+        <div class="val">61.2 km²</div>
+      </div>
+      <div class="bar-row">
+        <div class="name">莱索托</div>
+        <div class="track"><div class="fill" style="--w:1"></div></div>
+        <div class="val">30,344 km²</div>
+      </div>
+      <div class="log-note">※ 图中条长按对数比例示意（0.44 → 30,344 km² 跨度约 7 万倍，线性比例无法同时呈现）</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAPTER 02 巴勒 ============ -->
+<section id="baarle">
+  <div class="wrap">
+    <div class="sec-en reveal">Chapter 02 · The Town Cut in Pieces</div>
+    <div class="sec-head reveal">
+      <span class="sec-num">02</span>
+      <h2 class="sec-title">巴勒：一座被国界切成<em>拼图</em>的小镇</h2>
+      <div class="sec-line"></div>
+    </div>
+    <div class="baarle-wrap">
+      <div class="mosaic reveal" id="mosaic" style="position:relative;overflow:hidden" aria-label="巴勒飞地结构示意">
+        <svg viewBox="0 0 400 400" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0">
+          <!-- 荷兰底 -->
+          <rect x="0" y="0" width="400" height="400" fill="#0f151d"/>
+          <!-- 比利时主飞地 H1（大块） -->
+          <path d="M60 60 L260 48 L252 120 L310 130 L296 210 L360 226 L330 320 L190 340 L176 268 L96 286 L84 190 L40 178 Z" fill="rgba(192,80,58,.72)" stroke="rgba(233,226,211,.5)" stroke-width="1.5"/>
+          <!-- 荷兰反飞地 N1-N3 -->
+          <rect x="130" y="92" width="52" height="34" fill="rgba(201,162,39,.85)" stroke="#0b0f14" stroke-width="2"/>
+          <rect x="208" y="150" width="30" height="24" fill="rgba(201,162,39,.85)" stroke="#0b0f14" stroke-width="2"/>
+          <rect x="252" y="196" width="26" height="20" fill="rgba(201,162,39,.85)" stroke="#0b0f14" stroke-width="2"/>
+          <!-- 比利时小块飞地 H7/H8/H13 -->
+          <path d="M290 300 L330 292 L338 340 L300 348 Z" fill="rgba(192,80,58,.72)" stroke="rgba(233,226,211,.5)" stroke-width="1.5"/>
+          <path d="M40 300 L84 296 L80 352 L46 356 Z" fill="rgba(192,80,58,.72)" stroke="rgba(233,226,211,.5)" stroke-width="1.5"/>
+          <path d="M240 258 L268 250 L274 284 L246 292 Z" fill="rgba(192,80,58,.72)" stroke="rgba(233,226,211,.5)" stroke-width="1.5"/>
+          <!-- 反飞地中的"两门牌房子" -->
+          <rect x="144" y="100" width="24" height="16" fill="#e9e2d3" stroke="#c0503a" stroke-width="2"/>
+          <text x="156" y="117" font-size="7" text-anchor="middle" fill="#0b0f14" font-family="monospace">2门牌</text>
+          <text x="30" y="30" font-size="9" fill="rgba(233,226,211,.75)" font-family="monospace" letter-spacing="2">NEDERLAND 荷兰</text>
+          <text x="92" y="66" font-size="9" fill="#ffd9cf" font-family="monospace" letter-spacing="2">BELGIË 比利时（22 块飞地）</text>
+          <text x="196" y="190" font-size="8" fill="#fff3cf" font-family="monospace" letter-spacing="1">NL 反飞地 ×8</text>
+        </svg>
+      </div>
+      <div class="baarle-side">
+        <h3 class="reveal">欧洲最复杂的边界，在一条街上</h3>
+        <p class="reveal d1">比利时巴勒海托赫在荷兰境内拥有 <span class="big">22 块飞地</span>；其中最大的飞地里又嵌着 <span class="big">8 块荷兰反飞地</span>——"套娃"结构。1843 年《马斯特里赫特条约》把中世纪领主间的土地分割正式画成了国界。如今申根区内无边境管制，人行道上用 <span class="big">B / NL</span> 字样标出你正站在哪个国家。</p>
+        <ul class="story-list reveal d2">
+          <li><b>一栋房子，两个门牌</b>：边界穿过前门正中——"Loveren 2, Baarle-Hertog（比利时）"与"Loveren 19, Baarle-Nassau（荷兰）"。</li>
+          <li><b>餐厅分两国</b>：荷兰曾规定更早打烊，边境餐厅的客人只需挪到比利时一侧的桌子就能继续喝。</li>
+          <li><b>最小的荷兰反飞地仅 0.2863 公顷</b>，边界穿过一家酒行的装卸台；店内地板画着两国国旗线，还卖边境主题啤酒 <em>"走私者 Smokkelar"</em>。</li>
+          <li><b>一战"死亡电线"</b>：德军无法占领这些比利时飞地（须借道中立荷兰），荷兰为隔离战区竖起通电铁丝网 <em>Dodendraad</em>，据估计电死 <b>2000–3000 名平民</b>。</li>
+          <li><b>2020 新冠</b>：比利时居民看着几米外的荷兰酒吧——"看得到，喝不到"。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAPTER 03 印孟 ============ -->
+<section id="indobangla">
+  <div class="wrap">
+    <div class="sec-en reveal">Chapter 03 · The Densest Border on Earth</div>
+    <div class="sec-head reveal">
+      <span class="sec-num">03</span>
+      <h2 class="sec-title">印孟飞地：曾经全世界<em>最乱</em>的国界</h2>
+      <div class="sec-line"></div>
+    </div>
+    <div class="big-nums reveal">
+      <div class="big-num">
+        <div class="v"><span class="countup" data-to="198">0</span></div>
+        <div class="k">飞地总数（印度 106 · 孟加拉 92）</div>
+      </div>
+      <div class="big-num">
+        <div class="v"><span class="countup" data-to="25">0</span><small>.95 km²</small></div>
+        <div class="k">最大飞地 Balapara Khagrabari</div>
+      </div>
+      <div class="big-num">
+        <div class="v"><span class="countup" data-to="1" data-decimals="3">0</span><small>m²</small></div>
+        <div class="k">最小飞地 Panisala——不足一平米</div>
+      </div>
+    </div>
+    <div class="nest reveal">
+      <div class="rings">
+        <div class="r r1">印度<br>INDIA</div>
+        <div class="r r2">孟加拉<br>BANGLADESH</div>
+        <div class="r r3">印度<br>INDIA</div>
+        <div class="core">三级飞地<br>DAHALA<br>KHAGRABARI</div>
+      </div>
+      <div class="explain">
+        <h3>全球唯一的"三级飞地"</h3>
+        <p>印度飞地 → 孟加拉国飞地 → 印度飞地，层层嵌套（Dahala Khagrabari）。在库奇-比哈尔地区，两国的国界被切成 199 段，稍不留神多走几步就"出国"一次。2015 年 7 月 31 日，两国互换 162 块飞地，约 5.1 万人获得国籍选择权，这段纠缠 70 年的边界终于被拉直。</p>
+        <div class="chain">CHAIN: 印度 → 孟加拉 → 印度 →（2015 年协议后：全部并入一方）</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAPTER 04 POINT ROBERTS ============ -->
+<section id="pointroberts">
+  <div class="wrap">
+    <div class="sec-en reveal">Chapter 04 · Below the 49th Parallel</div>
+    <div class="sec-head reveal">
+      <span class="sec-num">04</span>
+      <h2 class="sec-title">Point Roberts：陆地尽头的<em>美国</em>小镇</h2>
+      <div class="sec-line"></div>
+    </div>
+    <div class="pr-grid">
+      <div class="pr-map reveal">
+        <svg viewBox="0 0 400 300" aria-label="49度线与Point Roberts示意">
+          <rect x="0" y="0" width="400" height="300" fill="#0f151d"/>
+          <text x="16" y="40" font-size="11" fill="rgba(233,226,211,.7)" font-family="monospace" letter-spacing="2">CANADA 加拿大（不列颠哥伦比亚）</text>
+          <rect x="30" y="60" width="340" height="120" fill="rgba(233,226,211,.08)" stroke="rgba(233,226,211,.35)"/>
+          <text x="200" y="126" font-size="10" fill="rgba(233,226,211,.55)" font-family="monospace" text-anchor="middle">TSAWWASSEN 半岛</text>
+          <line x1="20" y1="180" x2="380" y2="180" stroke="#c9a227" stroke-width="2.5" stroke-dasharray="10 6"/>
+          <text x="384" y="174" font-size="11" fill="#c9a227" font-family="monospace" text-anchor="end">49°N 国界</text>
+          <rect x="140" y="188" width="120" height="74" fill="rgba(192,80,58,.75)" stroke="#c0503a" stroke-width="2"/>
+          <text x="200" y="218" font-size="10" fill="#fff" font-family="monospace" text-anchor="middle">POINT</text>
+          <text x="200" y="232" font-size="10" fill="#fff" font-family="monospace" text-anchor="middle">ROBERTS</text>
+          <text x="200" y="246" font-size="8" fill="rgba(255,255,255,.8)" font-family="monospace" text-anchor="middle">12.6 km² · 人口 ~1200</text>
+          <path d="M60 195 L60 300" stroke="rgba(233,226,211,.25)" stroke-dasharray="4 5"/>
+          <text x="62" y="292" font-size="9" fill="rgba(233,226,211,.5)" font-family="monospace">去美国本土：陆路需先过加拿大（约 40 km）</text>
+          <path d="M340 195 L340 300" stroke="rgba(233,226,211,.25)" stroke-dasharray="4 5"/>
+          <text x="338" y="292" font-size="9" fill="rgba(233,226,211,.5)" font-family="monospace" text-anchor="end">或乘船 / 小飞机越海</text>
+        </svg>
+        <div class="cap">FIG.04 — 49 度线把半岛切下一角，留给了美国</div>
+      </div>
+      <div class="pr-side">
+        <p class="reveal d1">1846 年《俄勒冈条约》以 49 度线划分美加，把察瓦森半岛最南端约 12.6 km² 划给了美国——北接加拿大、三面临海，<span class="hl">从美国本土开车前往必须穿过加拿大</span>。</p>
+        <p class="reveal d2">这里约 <b>90% 的经济活动依赖加拿大</b>：电力、自来水都来自对岸的不列颠哥伦比亚省。加拿大人在此买便宜汽油、取包裹、度周末——油价按升标，啤酒按加元计价。它像一颗"美国领土上的加拿大卫星"。</p>
+        <div class="quote reveal d3">"<b>新冠封关</b>让 Point Roberts 一夜失去 80% 客流；2025 年美加贸易战又让它变成 '幽灵镇'。居民说：'我们就像经历父母离婚的孩子。'"<br><span style="font-family:var(--mono);font-size:11px;color:var(--paper-faint)">—— CBC / AP / Fast Company, 2025</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAPTER 05 比尔泰维勒 ============ -->
+<section id="tawil">
+  <div class="wrap">
+    <div class="sec-en reveal">Chapter 05 · No Man's Land</div>
+    <div class="sec-head reveal">
+      <span class="sec-num">05</span>
+      <h2 class="sec-title">比尔泰维勒：地球上<em>没人要</em>的国家</h2>
+      <div class="sec-line"></div>
+    </div>
+    <div class="tawil reveal">
+      <div>
+        <span class="tag2">UNCLAIMED · 2060 km²</span>
+        <h3>因为"没价值"，成了无主之地</h3>
+        <p>1899 与 1902 年两份互相矛盾的划界协议，在埃及与苏丹之间制造了两块争议地：<b>哈拉伊卜三角区</b>（红海沿岸，有战略价值，两国都想要）与<b>比尔泰维勒</b>（内陆沙漠，无价值，两国都不想要）。于是这块土地成了地球上极少数没有任何国家主张主权的陆地区域。</p>
+        <p>2014 年，美国弗吉尼亚州男子 Jeremiah Heaton 为圆女儿的"公主梦"在此插旗，宣布建立"北苏丹王国"——自然无人承认。它至今是微国家爱好者的圣地：<b>世界上唯一"想建国就能建国"（但没人承认）的地方</b>。</p>
+        <div class="flag-note">▲ 要"拥有"比尔泰维勒，你只需从苏丹一侧步行入境——没有海关，没有警察。</div>
+      </div>
+      <div class="dune" aria-hidden="true">
+        <svg viewBox="0 0 320 220" preserveAspectRatio="xMidYMid slice">
+          <defs>
+            <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#1c2530"/><stop offset="1" stop-color="#0e1319"/>
+            </linearGradient>
+          </defs>
+          <rect width="320" height="220" fill="url(#sand)"/>
+          <path d="M0 130 Q60 90 120 120 T240 110 T320 130" fill="none" stroke="rgba(201,162,39,.55)" stroke-width="1.4"/>
+          <path d="M0 160 Q80 120 160 150 T320 140" fill="none" stroke="rgba(201,162,39,.35)" stroke-width="1.2"/>
+          <path d="M0 190 Q90 160 190 182 T320 172" fill="none" stroke="rgba(233,226,211,.18)" stroke-width="1"/>
+          <circle cx="236" cy="84" r="26" fill="rgba(233,226,211,.08)" stroke="rgba(233,226,211,.4)"/>
+          <circle cx="236" cy="84" r="13" fill="rgba(233,226,211,.12)"/>
+          <text x="236" y="88" font-size="9" fill="rgba(233,226,211,.75)" font-family="monospace" text-anchor="middle">BIR TAWIL</text>
+          <text x="16" y="24" font-size="9" fill="rgba(233,226,211,.5)" font-family="monospace" letter-spacing="2">EGYPT ▸ 苏丹都宣称：这块地是你的</text>
+          <text x="16" y="40" font-size="9" fill="rgba(192,80,58,.85)" font-family="monospace" letter-spacing="2">事实：两国都不认领</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAPTER 06 微型飞地 ============ -->
+<section id="micro">
+  <div class="wrap">
+    <div class="sec-en reveal">Chapter 06 · Micro-Enclaves of Europe</div>
+    <div class="sec-head reveal">
+      <span class="sec-num">06</span>
+      <h2 class="sec-title">欧洲的<em>微型</em>飞地</h2>
+      <div class="sec-line"></div>
+    </div>
+    <div class="reveal" style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th>飞地</th><th>所属国</th><th>被谁包围</th><th>面积</th><th>趣闻</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Llívia 利维亚</b></td>
+            <td>西班牙</td>
+            <td>法国（东比利牛斯省）</td>
+            <td><span class="lat">~12.9 km²</span></td>
+            <td>1659 年《比利牛斯条约》只割让"村庄"，Llívia 因是"城镇"而幸免——<b>一座被条约文字救下的飞地</b>。</td>
+          </tr>
+          <tr>
+            <td><b>Campione d'Italia 坎皮奥内</b></td>
+            <td>意大利</td>
+            <td>瑞士（提契诺州）</td>
+            <td><span class="lat">~2.7 km²</span></td>
+            <td>卢加诺湖畔，赌场闻名，日常通行瑞士法郎——<b>意大利领土上的"瑞士生活"</b>。</td>
+          </tr>
+          <tr>
+            <td><b>Büsingen am Hochrhein 布辛根</b></td>
+            <td>德国</td>
+            <td>瑞士</td>
+            <td><span class="lat">~7.6 km²</span></td>
+            <td>与瑞士关税同盟，买东西用瑞士法郎，邮局信却走德国——<b>德国领土上的瑞士经济区</b>。</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHAPTER 07 时与海 ============ -->
+<section id="time-sea">
+  <div class="wrap">
+    <div class="sec-en reveal">Chapter 07 · Cracks in Time & Ocean</div>
+    <div class="sec-head reveal">
+      <span class="sec-num">07</span>
+      <h2 class="sec-title">时间与海洋的<em>裂缝</em></h2>
+      <div class="sec-line"></div>
+    </div>
+    <div class="tm-grid">
+      <div class="tm-card reveal tiltable">
+        <span class="tag3">时区 · TIME ZONES</span>
+        <div class="big">12<small> 个</small></div>
+        <h3>法国：时区最多的国家</h3>
+        <p>凭借遍布三大洋的海外领地，法国本土 1 个 + 海外 11 个时区——全球最多。当塔希提岛还在深夜，巴黎已经天亮。</p>
+      </div>
+      <div class="tm-card reveal d1 tiltable">
+        <span class="tag3">时区 · TIME ZONES</span>
+        <div class="big">5→1<small> 个</small></div>
+        <h3>中国：统一时间</h3>
+        <p>国土理论横跨约 5 个地理时区，却统一使用北京时间。新疆喀什凌晨 5 点时，东部沿海已开始上午 9 点的工作。</p>
+      </div>
+      <div class="tm-card reveal d2 tiltable">
+        <span class="tag3">海洋 · OCEAN</span>
+        <div class="big">2688<small> km</small></div>
+        <h3>尼莫点：航天器公墓</h3>
+        <p>南太平洋"海洋难抵极"，距最近陆地约 2688 公里——离你最近的人类常是 400 公里上空空间站的宇航员。200+ 艘退役航天器（含 2001 年的和平号）在此沉底。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OUTRO ============ -->
+<section class="outro" id="outro">
+  <div class="big-line reveal">
+    国界线不是数学公式，而是<span class="hl">历史谈判、战争与妥协的化石</span>。它可以被画直，也可以穿堂入室；可以被交换，也可以被遗忘。
+  </div>
+  <div class="sign reveal d1">— 读图，即读人类如何用线条想象世界 —</div>
+  <div class="refs reveal d2">
+    <span><b>01</b>澎湃新闻 · 荷比边境 33 块飞地</span>
+    <span><b>02</b>Wikipedia · Baarle-Hertog</span>
+    <span><b>03</b>Places of Charm · Baarle 游记</span>
+    <span><b>04</b>地球知识局 · 印孟飞地</span>
+    <span><b>05</b>Wikipedia · Point Roberts</span>
+    <span><b>06</b>CBC / AP / CNN · Point Roberts 2025</span>
+    <span><b>07</b>Wikipedia / Britannica · Bir Tawil</span>
+    <span><b>08</b>外交部 · 莱索托国家概况</span>
+    <span><b>09</b>Wikipedia · Llívia / Campione / Büsingen</span>
+    <span><b>10</b>公开资料 · 时区与 Point Nemo</span>
+  </div>
+</section>
+
+<script>
+
+(function(){
+  "use strict";
+  document.documentElement.classList.remove('no-js');
+  document.documentElement.classList.add('js');
+  var topbar = document.getElementById('topbar');
+  var progress = document.getElementById('progress');
+  var hero = document.getElementById('hero');
+
+  /* 顶栏 + 进度条 */
+  function onScroll(){
+    var y = window.scrollY;
+    topbar.classList.toggle('scrolled', y > 10);
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    progress.style.width = (h > 0 ? (y / h * 100) : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  /* 英雄区裂痕动画触发 */
+  requestAnimationFrame(function(){ hero.classList.add('done'); });
+
+  /* 通用 reveal（IntersectionObserver） */
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        e.target.classList.add('in');
+        /* 触发内部条形动画 */
+        e.target.querySelectorAll('.bar-row').forEach(function(r){ r.classList.add('in'); });
+        io.unobserve(e.target);
+      }
+    });
+  }, {threshold:.15, rootMargin:'0px 0px -40px 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+
+  /* 数字滚动 */
+  var fmt = function(v, dec){
+    var s = v.toFixed(dec||0);
+    return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+  var io2 = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(!e.isIntersecting) return;
+      var el = e.target, to = parseFloat(el.dataset.to), dec = parseInt(el.dataset.decimals||'0', 10);
+      var t0 = null, dur = 1500;
+      function step(ts){
+        if(!t0) t0 = ts;
+        var p = Math.min((ts - t0) / dur, 1);
+        var eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = fmt(to * eased, dec);
+        if(p < 1) requestAnimationFrame(step);
+        else el.textContent = fmt(to, dec);
+      }
+      requestAnimationFrame(step);
+      io2.unobserve(el);
+    });
+  }, {threshold:.6});
+  document.querySelectorAll('.countup').forEach(function(el){ io2.observe(el); });
+
+  /* 英雄区视差：滚动位移 + 光标微移（合并到一个 rAF 循环） */
+  var stage = document.querySelector('.crack-stage');
+  var sy = 0, fine = window.matchMedia('(pointer:fine)').matches;
+  var stk = false;
+  function setSy(){ sy = window.scrollY * 0.16; stk = false; }
+  window.addEventListener('scroll', function(){
+    if(!stk){ requestAnimationFrame(setSy); stk = true; }
+  }, {passive:true});
+  if(stage){
+    var tx = 0, ty = 0, cx = 0, cy = 0;
+    if(fine){
+      window.addEventListener('mousemove', function(e){
+        tx = (e.clientX / window.innerWidth - .5) * 14;
+        ty = (e.clientY / window.innerHeight - .5) * 10;
+      });
+    }
+    (function loop(){
+      cx += (tx - cx) * .06; cy += (ty - cy) * .06;
+      stage.style.transform = 'translate3d(' + cx + 'px,' + (cy + sy) + 'px,0)';
+      requestAnimationFrame(loop);
+    })();
+  }
+
+  /* 标题字符级入场（拆分“地图上的裂痕”逐字淡入） */
+  (function(){
+    var h1 = document.querySelector('.hero h1');
+    if(!h1) return;
+    var frag = document.createDocumentFragment();
+    Array.prototype.forEach.call(h1.childNodes, function(n){
+      if(n.nodeType === 3){
+        Array.prototype.forEach.call(n.textContent.split(''), function(c){
+          var s = document.createElement('span');
+          s.className = 'ch'; s.textContent = c;
+          frag.appendChild(s);
+        });
+      } else {
+        var inner = Array.prototype.slice.call(n.childNodes);
+        n.textContent = '';
+        inner.forEach(function(t){
+          if(t.nodeType === 3){
+            Array.prototype.forEach.call(t.textContent.split(''), function(c){
+              var s = document.createElement('span');
+              s.className = 'ch'; s.textContent = c;
+              n.appendChild(s);
+            });
+          } else n.appendChild(t);
+        });
+        frag.appendChild(n);
+      }
+    });
+    h1.textContent = '';
+    h1.appendChild(frag);
+    requestAnimationFrame(function(){
+      var chars = h1.querySelectorAll('.ch');
+      Array.prototype.forEach.call(chars, function(c, i){ c.style.transitionDelay = (0.2 + i * 0.05) + 's'; });
+      h1.classList.add('in');
+    });
+  })();
+
+  /* 卡片 3D tilt（仅桌面精指针） */
+  if(fine){
+    document.querySelectorAll('.tiltable').forEach(function(card){
+      card.addEventListener('mousemove', function(e){
+        var r = card.getBoundingClientRect();
+        var rx = ((e.clientY - r.top) / r.height - .5) * -7;
+        var ry = ((e.clientX - r.left) / r.width - .5) * 7;
+        card.style.transform = 'perspective(800px) rotateX(' + rx.toFixed(2) + 'deg) rotateY(' + ry.toFixed(2) + 'deg) translateY(-4px)';
+      });
+      card.addEventListener('mouseleave', function(){ card.style.transform = ''; });
+    });
+  }
+
+  /* scrollspy：当前章节导航高亮 */
+  (function(){
+    var ids = ['concepts','enclaved','baarle','indobangla','pointroberts','tawil','time-sea'];
+    var links = {};
+    document.querySelectorAll('.nav a').forEach(function(a){
+      var id = a.getAttribute('href').replace('#','');
+      if(id) links[id] = a;
+    });
+    var spy = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting && links[e.target.id]){
+          Object.keys(links).forEach(function(k){ links[k].classList.remove('active'); });
+          links[e.target.id].classList.add('active');
+        }
+      });
+    }, {rootMargin:'-35% 0px -55% 0px'});
+    ids.forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) spy.observe(el);
+    });
+  })();
+})();
+</script>
+</body>
+</html>

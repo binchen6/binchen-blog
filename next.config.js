@@ -39,4 +39,9 @@ module.exports = {
   images: {
     unoptimized: true,
   },
+  async rewrites() {
+    return [
+      { source: '/geography', destination: '/geography/index.html' },
+    ];
+  },
 };

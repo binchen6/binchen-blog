@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Eye, MessageCircle, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Compass, Eye, MessageCircle, Star } from "lucide-react";
 import { SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { formatDate } from "@/lib/utils";
 
@@ -97,6 +97,11 @@ export default function HomePage() {
                   <Link href="/guestbook" className="btn-tech inline-flex items-center justify-center gap-2">
                     <MessageCircle size={17} />
                     <span>留个言</span>
+                  </Link>
+                  <Link href="/geography" className="btn-ink inline-flex items-center justify-center gap-2">
+                    <Compass size={17} />
+                    <span>地理专题</span>
+                    <ArrowRight size={14} />
                   </Link>
                 </div>
               </div>

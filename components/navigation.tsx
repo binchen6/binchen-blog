@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/", label: "首页", icon: Home },
   { href: "/blog", label: "文章", icon: BookOpen },
+  { href: "/geography", label: "专题", icon: Compass },
   { href: "/write", label: "撰写", icon: Pen },
   { href: "/guestbook", label: "留言", icon: MessageCircle },
 ];
