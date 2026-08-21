@@ -95,7 +95,7 @@ function WorkCard({ work, delay }: { work: WorkItem; delay: number }) {
 export default function WorksPage() {
   useDocumentTitle("作品", "binchen 的个人作品架：CryoClaw 桌面客户端、地理专题、视觉小说，以及这个小站本身。");
   const [works, setWorks] = useState<WorkItem[]>(DEFAULT_WORKS);
-  useScrollReveal([works.length]);
+  useScrollReveal([works]);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,7 +197,7 @@ export default function WorksPage() {
         </div>
         <div className="grid gap-5 sm:grid-cols-2">
           {rest.map((work, i) => (
-            <WorkCard key={work.id ?? work.title} work={work} delay={i * 60} />
+            <WorkCard key={work.title} work={work} delay={i * 60} />
           ))}
         </div>
       </section>

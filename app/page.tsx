@@ -56,7 +56,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [works, setWorks] = useState<WorkItem[]>(DEFAULT_WORKS);
 
-  useScrollReveal([loading, works.length]);
+  useScrollReveal([loading, works]);
 
   useEffect(() => {
     let cancelled = false;
