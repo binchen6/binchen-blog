@@ -112,3 +112,26 @@ INSERT OR IGNORE INTO user_groups (name, label, permissions) VALUES
   ('editor', '编辑', '["posts:create","posts:manage_own","images:upload","images:manage_own","comments:create","guestbook:create"]'),
   ('author', '作者', '["posts:create","posts:manage_own","images:upload","images:manage_own","comments:create","guestbook:create"]'),
   ('member', '成员', '["comments:create","guestbook:create"]');
+
+-- 作品架（/works 页面，控制台可视化编辑）
+CREATE TABLE IF NOT EXISTS works (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  badge TEXT DEFAULT '',
+  year TEXT DEFAULT '',
+  description TEXT DEFAULT '',
+  tags TEXT DEFAULT '',
+  href TEXT DEFAULT '',
+  external INTEGER DEFAULT 0,
+  cta TEXT DEFAULT '',
+  icon TEXT DEFAULT '',
+  accent TEXT DEFAULT 'dai',
+  cover TEXT DEFAULT '',
+  repo TEXT DEFAULT '',
+  featured INTEGER DEFAULT 0,
+  sort_order INTEGER DEFAULT 0,
+  visible INTEGER DEFAULT 1,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_works_visible ON works(visible, featured, sort_order);
+

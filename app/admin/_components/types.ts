@@ -88,3 +88,24 @@ export interface GithubStorageStatus {
   buildEnvPresence?: Record<string, boolean>;
   relatedRuntimeEnvKeys?: string[];
 }
+
+export interface WorkRow {
+  id: number;
+  title: string;
+  badge: string;
+  year: string;
+  description: string;
+  tags: string;
+  href: string;
+  external: number;
+  cta: string;
+  icon: string;
+  accent: string;
+  cover: string;
+  repo: string;
+  featured: number;
+  sort_order: number;
+  visible: number;
+  updated_at: string;
+}
+

@@ -24,13 +24,6 @@ export function SiteShell({ children, className, contentClassName, withFooter = 
   return (
     <main className={cn("min-h-screen relative overflow-hidden bg-paper text-ink has-tab-bar", className)}>
       <Navigation />
-      {/* 墨晕只落在角落，留白给内容 */}
-      {!compactDecor && (
-        <>
-          <img src="/assets/ink/ink-blot-2.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" className="ink-blot -right-24 top-24 w-72 opacity-35" />
-          <img src="/assets/ink/ink-blot-1.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" className="ink-blot -left-28 bottom-16 w-80 opacity-30" />
-        </>
-      )}
       <div className={cn("relative z-10", contentClassName)}>{children}</div>
       {withFooter && <Footer />}
       <BackToTop />
@@ -70,13 +63,7 @@ export function PageHeader({ eyebrow, title, description, icon, align = "center"
           {description}
         </p>
       )}
-      <img
-        src="/assets/ink/brush-divider-2.webp"
-        alt=""
-        aria-hidden="true"
-        decoding="async"
-        className={cn("brush-divider mt-6", !isCenter && "brush-divider--left")}
-      />
+      <div aria-hidden="true" className={cn("section-rule mt-7", !isCenter && "!ml-0")} />
     </header>
   );
 }

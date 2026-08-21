@@ -1,3 +1,4 @@
+import { DEFAULT_WORKS } from "./works-data";
 import { getRequestContext } from "@cloudflare/next-on-pages";
 import { User, Post, GuestbookEntry, Comment, PostMode } from "./types";
 import { ROLE_PERMISSIONS } from "./auth";
@@ -159,6 +160,28 @@ export async function createTables() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS works (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        badge TEXT DEFAULT '',
+        year TEXT DEFAULT '',
+        description TEXT DEFAULT '',
+        tags TEXT DEFAULT '',
+        href TEXT DEFAULT '',
+        external INTEGER DEFAULT 0,
+        cta TEXT DEFAULT '',
+        icon TEXT DEFAULT '',
+        accent TEXT DEFAULT 'dai',
+        cover TEXT DEFAULT '',
+        repo TEXT DEFAULT '',
+        featured INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0,
+        visible INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_works_visible ON works(visible, featured, sort_order)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_slug ON posts(slug)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at)`),
@@ -180,10 +203,27 @@ export async function createTables() {
     db.prepare(`CREATE TABLE IF NOT EXISTS _meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`),
   ]);
 
+  await seedWorks(db);
   await migrateSchema(db);
   await migrateImageUrls(db);
   await seedUserGroups(db);
   await db.prepare("UPDATE users SET role = 'author' WHERE role IS NULL").run();
+}
+
+
+/** 作品表为空时写入默认作品（幂等：只在空表执行） */
+async function seedWorks(db: D1Database) {
+  const row = await db.prepare("SELECT COUNT(*) AS c FROM works").first<{ c: number }>();
+  if (row && row.c > 0) return;
+  for (const w of DEFAULT_WORKS) {
+    await db.prepare(
+      `INSERT INTO works (title, badge, year, description, tags, href, external, cta, icon, accent, cover, repo, featured, sort_order, visible)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      w.title, w.badge, w.year, w.description, w.tags, w.href, w.external, w.cta,
+      w.icon, w.accent, w.cover, w.repo, w.featured, w.sort_order, w.visible
+    ).run();
+  }
 }
 
 async function addColumnIfMissing(db: D1Database, table: string, column: string, definition: string) {

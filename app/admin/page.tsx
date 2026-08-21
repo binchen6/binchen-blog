@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, BookOpen, Image, LayoutDashboard, Megaphone, MessageCircle, MessagesSquare, Shield, Users } from "lucide-react";
+import { BarChart3, BookOpen, Image, LayoutDashboard, Megaphone, MessageCircle, MessagesSquare, Shield, Sparkles, Users } from "lucide-react";
 import { EmptyState, PageHeader, SiteShell } from "@/components/page-chrome";
 import { toast } from "@/components/toast";
 import { useDocumentTitle } from "@/lib/use-document-title";
 
-import type { AnnouncementRow, CommentRow, GithubStorageStatus, GuestbookRow, ImageRow, PerformanceRunRow, PerformanceTaskRow, PostRow, UsernameRequestRow, UserRow } from "./_components/types";
+import type { AnnouncementRow, CommentRow, GithubStorageStatus, GuestbookRow, ImageRow, PerformanceRunRow, PerformanceTaskRow, PostRow, UsernameRequestRow, UserRow, WorkRow } from "./_components/types";
 import { AnnouncementsPanel } from "./_components/announcements-panel";
 import { ImagesPanel } from "./_components/images-panel";
 import { InteractionsPanel } from "./_components/interactions-panel";
@@ -15,12 +15,14 @@ import { OverviewPanel } from "./_components/overview-panel";
 import { PerformancePanel } from "./_components/performance-panel";
 import { PostsPanel } from "./_components/posts-panel";
 import { UsersPanel } from "./_components/users-panel";
+import { WorksPanel } from "./_components/works-panel";
 
-type TabKey = "overview" | "posts" | "users" | "interactions" | "images" | "performance" | "announcements";
+type TabKey = "overview" | "posts" | "works" | "users" | "interactions" | "images" | "performance" | "announcements";
 
 const tabs: { key: TabKey; label: string; icon: LucideIcon }[] = [
   { key: "overview", label: "概览", icon: LayoutDashboard },
   { key: "posts", label: "文章", icon: BookOpen },
+  { key: "works", label: "作品", icon: Sparkles },
   { key: "users", label: "用户", icon: Users },
   { key: "interactions", label: "互动", icon: MessagesSquare },
   { key: "images", label: "图片", icon: Image },
@@ -47,6 +49,7 @@ export default function AdminPage() {
   const [performanceRuns, setPerformanceRuns] = useState<PerformanceRunRow[]>([]);
   const [githubStorage, setGithubStorage] = useState<GithubStorageStatus | null>(null);
   const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([]);
+  const [works, setWorks] = useState<WorkRow[]>([]);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -118,6 +121,11 @@ export default function AdminPage() {
             return { ...run, detailsText };
           })
         );
+      });
+    } else if (tab === "works") {
+      add("/api/works?all=1", async (res) => {
+        const data = (await res.json()) as { works?: WorkRow[] };
+        setWorks(data.works || []);
       });
     } else if (tab === "announcements") {
       add("/api/announcements?all=1", async (res) => {
@@ -234,6 +242,7 @@ export default function AdminPage() {
               />
             )}
             {activeTab === "images" && <ImagesPanel images={images} setImages={setImages} authHeaders={authHeaders} />}
+            {activeTab === "works" && <WorksPanel works={works} setWorks={setWorks} authHeaders={authHeaders} />}
             {activeTab === "announcements" && (
               <AnnouncementsPanel announcements={announcements} setAnnouncements={setAnnouncements} authHeaders={authHeaders} />
             )}

@@ -6,10 +6,11 @@ import { useEffect } from "react";
  * Scroll reveal via IntersectionObserver.
  * Elements marked with [data-reveal] fade/slide in when entering viewport.
  * Honors prefers-reduced-motion; stagger via inline style transitionDelay.
+ * Pass deps (e.g. [loading]) to re-scan after async content renders.
  */
-export function useScrollReveal() {
+export function useScrollReveal(deps: readonly unknown[] = []) {
   useEffect(() => {
-    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]"));
+    const els = Array.from(document.querySelectorAll<HTMLElement>("[data-reveal]:not(.is-visible)"));
     if (els.length === 0) return;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -31,5 +32,6 @@ export function useScrollReveal() {
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 }

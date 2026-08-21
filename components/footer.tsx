@@ -14,7 +14,7 @@ const footerLinks = [
 export default function Footer() {
   return (
     <footer className="relative z-10 mt-10">
-      <img src="/assets/ink/brush-divider-2.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" className="brush-divider mb-0" />
+      <div aria-hidden="true" className="section-rule" style={{ width: "100%" }} />
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 px-5 py-10 text-center">
         <img src="/assets/ink/seal-logo.webp" alt="尘墨" loading="lazy" decoding="async" className="h-12 w-12 mix-blend-multiply opacity-85" />
 

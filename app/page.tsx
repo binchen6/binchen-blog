@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { MouseEvent } from "react";
-import { ArrowRight, BookOpen, Compass, Eye, MessageCircle, Sparkles, Star } from "lucide-react";
+import type { CSSProperties, MouseEvent } from "react";
+import { ArrowRight, ArrowUpRight, BookOpen, Eye, MessageCircle, Sparkles, Star } from "lucide-react";
 import { SiteShell, SurfacePanel } from "@/components/page-chrome";
 import { useScrollReveal } from "@/lib/use-reveal";
+import { DEFAULT_WORKS, WORK_ACCENTS, WORK_ICONS } from "@/lib/works-defaults";
+import type { WorkItem } from "@/lib/works-defaults";
 import { formatDate } from "@/lib/utils";
 
 interface PostItem {
@@ -44,27 +46,35 @@ function handleGlow(e: MouseEvent<HTMLElement>) {
   el.style.setProperty("--my", `${e.clientY - rect.top}px`);
 }
 
+function tagList(work: WorkItem, max = 3): string[] {
+  return work.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, max);
+}
+
 export default function HomePage() {
   const [featuredPosts, setFeaturedPosts] = useState<PostItem[]>([]);
   const [latestPosts, setLatestPosts] = useState<PostItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [works, setWorks] = useState<WorkItem[]>(DEFAULT_WORKS);
 
-  useScrollReveal();
+  useScrollReveal([loading, works.length]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
       try {
-        const [featuredRes, latestRes] = await Promise.all([
+        const [featuredRes, latestRes, worksRes] = await Promise.all([
           fetch("/api/posts?featured=1&limit=3"),
           fetch("/api/posts?limit=5"),
+          fetch("/api/works"),
         ]);
         const featuredData = (await featuredRes.json()) as { posts?: PostItem[] };
         const latestData = (await latestRes.json()) as { posts?: PostItem[] };
+        const worksData = (await worksRes.json()) as { works?: WorkItem[] };
         if (cancelled) return;
         setFeaturedPosts(featuredData.posts || []);
         setLatestPosts(latestData.posts || []);
+        if (worksData.works && worksData.works.length > 0) setWorks(worksData.works);
       } catch {
         if (!cancelled) {
           setFeaturedPosts([]);
@@ -81,158 +91,160 @@ export default function HomePage() {
     };
   }, []);
 
+  const featuredWork = works.find((w) => w.featured === 1) ?? works[0];
+  const sideWork = works.find((w) => w !== featuredWork);
+  const SideIcon = sideWork ? (WORK_ICONS[sideWork.icon] ?? WORK_ICONS.sparkles) : WORK_ICONS.sparkles;
+  const sideAccent = sideWork ? (WORK_ACCENTS[sideWork.accent] ?? WORK_ACCENTS.dai) : WORK_ACCENTS.dai;
+
   return (
     <SiteShell>
-      {/* ===== Hero 长卷 ===== */}
-      <section className="ink-hero">
-        <div className="ink-hero__bg" aria-hidden="true" />
-        <div className="ink-hero__content mx-auto flex min-h-[88vh] max-w-5xl items-center px-5 pb-24 pt-28">
-          <div className="w-full">
-            <div className="flex items-start justify-between gap-6">
-              <div className="unfold">
-                <img src="/assets/ink/seal-logo.webp" alt="尘墨印章" className="ink-hero__seal mb-7" />
-                <h1 className="font-serif-zh text-5xl font-bold leading-tight tracking-[0.12em] text-ink md:text-7xl">
-                  binchen
-                </h1>
-                <p className="mt-5 max-w-md font-serif-zh text-xl leading-loose tracking-[0.06em] text-ink-2">
-                  喜欢自由与宁静地生活，旅行，也记录路上的风景。
-                </p>
-                <p className="mt-4 max-w-md text-sm leading-loose text-ink-3">
-                  山海、日常、古代科技与现代工具——想到就写，写完就放这儿。
-                </p>
-                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                  <Link href="/works" className="btn-ink inline-flex items-center justify-center gap-2">
-                    <Sparkles size={17} />
-                    <span>看看作品</span>
-                    <ArrowRight size={14} />
-                  </Link>
-                  <Link href="/blog" className="btn-tech inline-flex items-center justify-center gap-2">
-                    <BookOpen size={17} />
-                    <span>展开长卷</span>
-                  </Link>
-                  <Link href="/guestbook" className="btn-outline inline-flex items-center justify-center gap-2">
-                    <MessageCircle size={17} />
-                    <span>留个言</span>
-                  </Link>
-                </div>
-              </div>
-
-              {/* 竖排题字（桌面显示，移动隐藏） */}
-              <div className="v-text hidden shrink-0 select-none text-2xl text-ink-2/80 md:block" aria-hidden="true">
-                行到水穷处　坐看云起时
-              </div>
-            </div>
+      {/* ===== Hero · 极简排版 ===== */}
+      <section className="hero-min">
+        <img src="/assets/ink/seal-logo.webp" alt="" aria-hidden="true" className="hero-min__seal" />
+        <div className="mx-auto max-w-5xl px-5 pb-20 pt-36 md:pb-28 md:pt-44">
+          <span className="t-eyebrow anim-fade">尘墨 · binchen&apos;s blog</span>
+          <h1 className="anim-fade mt-6 font-serif-zh text-6xl font-bold tracking-[0.1em] text-ink md:text-8xl" style={{ "--d": ".08s" } as CSSProperties}>
+            binchen
+          </h1>
+          <div className="hero-min__rule" aria-hidden="true" />
+          <p className="anim-fade max-w-xl font-serif-zh text-xl leading-loose tracking-[0.06em] text-ink-2" style={{ "--d": ".2s" } as CSSProperties}>
+            喜欢自由与宁静地生活，旅行，也记录路上的风景。
+          </p>
+          <p className="anim-fade mt-4 max-w-md text-sm leading-loose text-ink-3" style={{ "--d": ".28s" } as CSSProperties}>
+            山海、日常、古代科技与现代工具——想到就写，写完就放这儿。
+          </p>
+          <div className="anim-fade mt-10 flex flex-col gap-3 sm:flex-row" style={{ "--d": ".38s" } as CSSProperties}>
+            <Link href="/works" className="btn-ink inline-flex items-center justify-center gap-2">
+              <Sparkles size={17} />
+              <span>看看作品</span>
+              <ArrowRight size={14} />
+            </Link>
+            <Link href="/blog" className="btn-tech inline-flex items-center justify-center gap-2">
+              <BookOpen size={17} />
+              <span>展开长卷</span>
+            </Link>
+            <Link href="/guestbook" className="btn-outline inline-flex items-center justify-center gap-2">
+              <MessageCircle size={17} />
+              <span>留个言</span>
+            </Link>
           </div>
         </div>
       </section>
 
       {/* ===== 作品速览 ===== */}
-      <section className="mx-auto max-w-5xl px-5 py-16">
-        <div className="mb-10 flex items-end justify-between" data-reveal>
-          <div>
-            <span className="font-mono-tech text-xs uppercase tracking-[0.18em] text-dai/70">Works</span>
-            <h2 className="mt-2 font-serif-zh text-3xl font-bold tracking-[0.1em]">造出来的东西</h2>
+      {featuredWork && (
+        <section className="mx-auto max-w-5xl px-5 py-16 md:py-20">
+          <div className="mb-10 flex items-end justify-between" data-reveal>
+            <div>
+              <span className="t-eyebrow">Works</span>
+              <h2 className="mt-2 font-serif-zh text-3xl font-bold tracking-[0.1em]">造出来的东西</h2>
+            </div>
+            <Link href="/works" className="group inline-flex items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-dai">
+              全部作品
+              <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+            </Link>
           </div>
-          <Link href="/works" className="group inline-flex items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-dai">
-            全部作品
-            <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
-          </Link>
-        </div>
 
-        <div className="grid gap-6 md:grid-cols-5">
-          {/* 旗舰：CryoClaw */}
-          <Link href="/CryClaw" className="work-featured group p-8 md:col-span-3" data-reveal onMouseMove={handleGlow}>
-            <div className="work-featured__glow" aria-hidden="true" />
-            <div className="relative flex items-center gap-6">
-              <div className="flex min-w-0 flex-1 flex-col gap-8">
-              <div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="inline-flex items-center gap-1.5 border border-[#b8933f]/40 bg-[#b8933f]/10 px-2.5 py-1 font-mono-tech text-[11px] uppercase tracking-[0.16em] text-[#d8b96a]">
-                    <Sparkles size={12} />
-                    Flagship
-                  </span>
-                  <span className="font-mono-tech text-xs text-[#8f8774]">桌面应用 · 2026</span>
-                </div>
-                <h3 className="mt-5 font-serif-zh text-2xl font-bold tracking-[0.08em] text-[#f3edde] md:text-3xl">
-                  CryoClaw
-                </h3>
-                <p className="mt-3 max-w-md text-sm leading-loose text-[#c9c0ab]">
-                  高效、易用、纯净的 OpenClaw 桌面客户端——一分钟装好，即刻开聊。
-                </p>
-              </div>
-              <div className="flex items-end justify-between gap-4">
-                <div className="flex flex-wrap gap-2">
-                  {["Electron", "487 测试全绿", "≈0.6s 冷启动"].map((chip) => (
-                    <span key={chip} className="border border-white/10 bg-white/5 px-2.5 py-1 font-mono-tech text-[11px] text-[#b8b09c]">
-                      {chip}
+          <div className="grid gap-6 md:grid-cols-5">
+            {/* 旗舰 */}
+            <Link href={featuredWork.href || "/works"} className="work-featured group p-8 md:col-span-3" data-reveal onMouseMove={handleGlow}>
+              <div className="work-featured__glow" aria-hidden="true" />
+              <div className="relative flex items-center gap-6">
+                <div className="flex min-w-0 flex-1 flex-col gap-8">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="inline-flex items-center gap-1.5 border border-[#b8933f]/40 bg-[#b8933f]/10 px-2.5 py-1 font-mono-tech text-[11px] uppercase tracking-[0.16em] text-[#d8b96a]">
+                        <Sparkles size={12} />
+                        {featuredWork.badge || "Flagship"}
+                      </span>
+                      <span className="font-mono-tech text-xs text-[#8f8774]">{featuredWork.year}</span>
+                    </div>
+                    <h3 className="mt-5 font-serif-zh text-2xl font-bold tracking-[0.08em] text-[#f3edde] md:text-3xl">
+                      {featuredWork.title}
+                    </h3>
+                    <p className="mt-3 line-clamp-2 max-w-md text-sm leading-loose text-[#c9c0ab]">
+                      {featuredWork.description}
+                    </p>
+                  </div>
+                  <div className="flex items-end justify-between gap-4">
+                    <div className="flex flex-wrap gap-2">
+                      {tagList(featuredWork).map((chip) => (
+                        <span key={chip} className="border border-white/10 bg-white/5 px-2.5 py-1 font-mono-tech text-[11px] text-[#b8b09c]">
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1.5 text-sm text-[#d8b96a]">
+                      {featuredWork.cta || "进入页面"}
+                      <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
                     </span>
-                  ))}
+                  </div>
                 </div>
-                <span className="inline-flex shrink-0 items-center gap-1.5 text-sm text-[#d8b96a]">
-                  进入产品页
-                  <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+                {featuredWork.icon.startsWith("/") && (
+                  <img
+                    src={featuredWork.icon}
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    decoding="async"
+                    className="work-icon hidden w-20 shrink-0 animate-float sm:block md:w-24"
+                  />
+                )}
+              </div>
+            </Link>
+
+            {/* 次位作品 */}
+            {sideWork && (
+              <Link
+                href={sideWork.href || "/works"}
+                className="work-card group p-6 md:col-span-2"
+                data-reveal
+                style={{ transitionDelay: "90ms" }}
+                {...(sideWork.external === 1 ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`inline-flex h-11 w-11 items-center justify-center border ${sideAccent}`}>
+                    <SideIcon size={20} />
+                  </span>
+                  <span className="font-mono-tech text-xs text-ink-4">
+                    {sideWork.badge}{sideWork.year ? ` · ${sideWork.year}` : ""}
+                  </span>
+                </div>
+                <h3 className="mt-5 font-serif-zh text-xl font-semibold tracking-[0.06em] transition-colors group-hover:text-dai">
+                  {sideWork.title}
+                </h3>
+                <p className="mt-3 line-clamp-3 text-sm leading-loose text-ink-3">{sideWork.description}</p>
+                <span className="mt-6 inline-flex items-center gap-2 text-xs text-dai">
+                  {sideWork.cta || "去看看"}
+                  {sideWork.external === 1 ? (
+                    <ArrowUpRight size={13} />
+                  ) : (
+                    <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
+                  )}
                 </span>
-              </div>
-              </div>
-              <img
-                src="/CryClaw/assets/icon.png"
-                alt="CryoClaw 应用图标"
-                loading="lazy"
-                decoding="async"
-                className="work-icon hidden w-20 shrink-0 animate-float sm:block md:w-24"
-              />
-            </div>
-          </Link>
+              </Link>
+            )}
+          </div>
 
-          {/* 地理专题 */}
-          <Link
-            href="/geography"
-            className="work-card group md:col-span-2"
+          <div
+            className="mt-8 flex flex-col gap-2 border border-dashed border-ink-5/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
             data-reveal
-            style={{ transitionDelay: "90ms" }}
+            style={{ transitionDelay: "160ms" }}
           >
-            <div className="work-card__cover">
-              <img src="/assets/works/geography.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" />
-            </div>
-            <div className="p-6">
-            <div className="flex items-center justify-between">
-              <span className="inline-flex h-11 w-11 items-center justify-center border border-dai/30 bg-dai/5 text-dai">
-                <Compass size={20} />
-              </span>
-              <span className="font-mono-tech text-xs text-ink-4">专题 · 2026</span>
-            </div>
-            <h3 className="mt-5 font-serif-zh text-xl font-semibold tracking-[0.06em] transition-colors group-hover:text-dai">
-              地图上的裂痕
-            </h3>
-            <p className="mt-3 text-sm leading-loose text-ink-3">
-              交互式地理长卷：板块、裂谷与时间的刻度，滚动之间徐徐展开。
-            </p>
-            <span className="mt-6 inline-flex items-center gap-2 text-xs text-dai">
-              进入专题
-              <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
-            </span>
-            </div>
-          </Link>
-        </div>
-
-        <div
-          className="mt-6 flex flex-col gap-2 border border-dashed border-ink-5/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-          data-reveal
-          style={{ transitionDelay: "160ms" }}
-        >
-          <p className="text-sm text-ink-3">还有桌面小工具、一部视觉小说，以及这个小站本身。</p>
-          <Link href="/works" className="group inline-flex shrink-0 items-center gap-1.5 text-sm text-dai">
-            逛逛作品架
-            <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
-          </Link>
-        </div>
-      </section>
+            <p className="text-sm text-ink-3">作品架共 {works.length} 件——工具、专题、小站，持续增加。</p>
+            <Link href="/works" className="group inline-flex shrink-0 items-center gap-1.5 text-sm text-dai">
+              逛逛作品架
+              <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* ===== 最新文章·时间轴 ===== */}
       <section className="mx-auto max-w-5xl px-5 py-16">
         <div className="mb-10 flex items-end justify-between" data-reveal>
           <div>
-            <span className="font-mono-tech text-xs uppercase tracking-[0.18em] text-dai/70">Latest</span>
+            <span className="t-eyebrow">Latest</span>
             <h2 className="mt-2 font-serif-zh text-3xl font-bold tracking-[0.1em]">最近写的</h2>
           </div>
           <Link href="/blog" className="group inline-flex items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-dai">
@@ -291,13 +303,13 @@ export default function HomePage() {
         )}
       </section>
 
-      <img src="/assets/ink/brush-divider-1.webp" alt="" aria-hidden="true" className="brush-divider" />
+      <div className="section-rule" aria-hidden="true" />
 
       {/* ===== 精选 ===== */}
       {(loading || featuredPosts.length > 0) && (
         <section className="mx-auto max-w-5xl px-5 py-16">
           <div className="mb-10" data-reveal>
-            <span className="font-mono-tech text-xs uppercase tracking-[0.18em] text-dai/70">Featured</span>
+            <span className="t-eyebrow">Featured</span>
             <h2 className="mt-2 font-serif-zh text-3xl font-bold tracking-[0.1em]">值得一读再读</h2>
           </div>
           {loading ? (
@@ -333,7 +345,7 @@ export default function HomePage() {
       <section className="mx-auto max-w-5xl px-5 pb-24 pt-8">
         <div className="grid gap-6 md:grid-cols-3">
           {principles.map((item, index) => (
-            <SurfacePanel key={item.title} className="unfold p-6" >
+            <SurfacePanel key={item.title} className="p-6" data-reveal style={{ transitionDelay: `${index * 80}ms` }}>
               <div className="font-serif-zh text-3xl font-bold text-gold">{item.title}</div>
               <p className="mt-4 text-sm leading-loose text-ink-2">{item.description}</p>
             </SurfacePanel>

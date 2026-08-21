@@ -7,6 +7,7 @@ import { ArrowRight, Calendar, Clock, Eye, FileText, PenLine, Search, Tag, X } f
 import { EmptyState, PageHeader, SiteShell } from "@/components/page-chrome";
 import { PostCardSkeleton } from "@/components/site-widgets";
 import { useDocumentTitle } from "@/lib/use-document-title";
+import { useScrollReveal } from "@/lib/use-reveal";
 import { cn, formatDate } from "@/lib/utils";
 
 interface Post {
@@ -50,6 +51,7 @@ function BlogContent() {
   const [tag, setTag] = useState(initialTag);
   const [allTags, setAllTags] = useState<string[]>([]);
   const requestId = useRef(0);
+  useScrollReveal([loading, loadingMore]);
 
   // 拉一遍标签云（个人博客量级，limit=100 足够）
   useEffect(() => {
@@ -242,7 +244,13 @@ function BlogContent() {
             <>
               <div>
                 {posts.map((post, index) => (
-                  <Link key={post.id} href={`/blog/${post.slug}`} className="tie-card group">
+                  <Link
+                    key={post.id}
+                    href={`/blog/${post.slug}`}
+                    className="tie-card group"
+                    data-reveal
+                    style={{ transitionDelay: `${(index % 9) * 45}ms` }}
+                  >
                     {index < NUMERALS.length && (
                       <span className="tie-card__num">{NUMERALS[index]}</span>
                     )}
