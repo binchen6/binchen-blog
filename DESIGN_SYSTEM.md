@@ -137,7 +137,7 @@
 ### 资产标准（红线）
 
 - **装饰素材一律透明底 WebP**，禁止白底 JPG 直接上图（白边在暗色模式突兀）。
-- 白底水墨素材处理管线：`unblend_white()`（亮度→alpha + 白色反解混）+ alpha 色调分离（24 阶）压缩，脚本见 `workspace/tmp/asset_pipeline.py` 模式。
+- 白底水墨素材处理管线：`unblend_white()`（亮度→alpha + 白色反解混）+ alpha 色调分离（24 阶）压缩，脚本见 `scripts/optimize_ink_assets.py` + `scripts/tune_ink_assets.py`。
 - 暗色模式：墨色装饰用 `filter: invert(.86) sepia(.15)` 反相为暖灰；**印章等彩色素材禁止反相**。
 - 体积红线：装饰图 < 60KB，Hero < 160KB，favicon/og 必备（`app/icon.png` + `/assets/og-image.jpg`）。
 - 现状：seal 258KB→10KB、blot-1 121KB→47KB、hero 153KB→29KB、paper-texture 986KB→1KB。
