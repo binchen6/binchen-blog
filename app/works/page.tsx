@@ -137,7 +137,7 @@ function WorkCard({ work, delay }: { work: WorkItem; delay: number }) {
 }
 
 export default function WorksPage() {
-  useDocumentTitle("作品", "binchen 的个人作品架：CryClaw 桌面客户端、地理专题、视觉小说，以及这个小站本身。");
+  useDocumentTitle("作品", "binchen 的个人作品架：CryoClaw 桌面客户端、地理专题、视觉小说，以及这个小站本身。");
   useScrollReveal();
 
   return (
@@ -158,7 +158,7 @@ export default function WorksPage() {
         </div>
       </section>
 
-      {/* ===== 旗舰：CryClaw ===== */}
+      {/* ===== 旗舰：CryoClaw ===== */}
       <section className="mx-auto max-w-5xl px-5 pb-16">
         <div className="work-featured p-8 md:p-12" data-reveal onMouseMove={handleGlow}>
           <div className="work-featured__glow" aria-hidden="true" />
@@ -172,7 +172,7 @@ export default function WorksPage() {
                 <span className="font-mono-tech text-xs text-[#8f8774]">桌面应用 · 2026 · 持续更新</span>
               </div>
               <h2 className="mt-5 font-serif-zh text-3xl font-bold tracking-[0.08em] text-[#f3edde] md:text-4xl">
-                CryClaw
+                CryoClaw
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-loose text-[#c9c0ab] md:text-base">
                 高效、易用、纯净的 OpenClaw 桌面客户端。一分钟装好，即刻开聊——零配置、零依赖，487 个测试用例全绿。
@@ -205,7 +205,7 @@ export default function WorksPage() {
             </div>
             <img
               src="/CryClaw/assets/icon.png"
-              alt="CryClaw 应用图标"
+              alt="CryoClaw 应用图标"
               loading="lazy"
               decoding="async"
               className="work-icon mx-auto w-24 animate-float md:w-36"

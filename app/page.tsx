@@ -140,7 +140,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-5">
-          {/* 旗舰：CryClaw */}
+          {/* 旗舰：CryoClaw */}
           <Link href="/CryClaw" className="work-featured group p-8 md:col-span-3" data-reveal onMouseMove={handleGlow}>
             <div className="work-featured__glow" aria-hidden="true" />
             <div className="relative flex items-center gap-6">
@@ -154,7 +154,7 @@ export default function HomePage() {
                   <span className="font-mono-tech text-xs text-[#8f8774]">桌面应用 · 2026</span>
                 </div>
                 <h3 className="mt-5 font-serif-zh text-2xl font-bold tracking-[0.08em] text-[#f3edde] md:text-3xl">
-                  CryClaw
+                  CryoClaw
                 </h3>
                 <p className="mt-3 max-w-md text-sm leading-loose text-[#c9c0ab]">
                   高效、易用、纯净的 OpenClaw 桌面客户端——一分钟装好，即刻开聊。
@@ -176,7 +176,7 @@ export default function HomePage() {
               </div>
               <img
                 src="/CryClaw/assets/icon.png"
-                alt="CryClaw 应用图标"
+                alt="CryoClaw 应用图标"
                 loading="lazy"
                 decoding="async"
                 className="work-icon hidden w-20 shrink-0 animate-float sm:block md:w-24"
