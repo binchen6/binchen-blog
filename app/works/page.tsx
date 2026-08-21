@@ -26,6 +26,7 @@ function handleGlow(e: MouseEvent<HTMLElement>) {
 
 interface WorkItem {
   title: string;
+  cover?: string;
   badge: string;
   year: string;
   description: string;
@@ -40,6 +41,7 @@ interface WorkItem {
 const works: WorkItem[] = [
   {
     title: "地图上的裂痕",
+    cover: "/assets/works/geography.webp",
     badge: "地理专题",
     year: "2026",
     description: "一篇可以滚动探索的交互式地理长卷——板块、裂谷与时间的刻度，在地图上徐徐展开。",
@@ -51,6 +53,7 @@ const works: WorkItem[] = [
   },
   {
     title: "尘墨博客",
+    cover: "/assets/works/blog.webp",
     badge: "本站",
     year: "2026",
     description: "你现在站的地方。Next.js + Cloudflare Pages + D1，自研「墨卷」设计系统，从零手搓的全栈小站。",
@@ -62,6 +65,7 @@ const works: WorkItem[] = [
   },
   {
     title: "第七频率",
+    cover: "/assets/works/seventh-frequency.webp",
     badge: "视觉小说",
     year: "2026",
     description: "一部网页视觉小说：从 218 个文件重构到 65 个，QA 评级 A。关于频率、信号与相遇的故事。",
@@ -74,6 +78,7 @@ const works: WorkItem[] = [
   },
   {
     title: "小明连点器",
+    cover: "/assets/works/clicker.webp",
     badge: "桌面工具",
     year: "2026",
     description: "Windows 桌面自动化小工具：连点、配置方案、托盘常驻。18.6MB 单文件，开箱即用。",
@@ -86,6 +91,12 @@ const works: WorkItem[] = [
 function WorkCard({ work, delay }: { work: WorkItem; delay: number }) {
   const inner = (
     <>
+      {work.cover && (
+        <div className="work-card__cover">
+          <img src={work.cover} alt="" aria-hidden="true" loading="lazy" decoding="async" />
+        </div>
+      )}
+      <div className="p-6">
       <div className="flex items-center justify-between">
         <span className={`inline-flex h-11 w-11 items-center justify-center border ${work.accent}`}>
           {work.icon}
@@ -109,10 +120,11 @@ function WorkCard({ work, delay }: { work: WorkItem; delay: number }) {
         {work.href ? work.cta : "未公开发布"}
         {work.href && (work.external ? <ArrowUpRight size={13} /> : <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />)}
       </span>
+      </div>
     </>
   );
 
-  const cls = "work-card group p-6";
+  const cls = "work-card group";
   const reveal = { "data-reveal": true, style: { transitionDelay: `${delay}ms` } } as const;
 
   if (work.href && work.external) {

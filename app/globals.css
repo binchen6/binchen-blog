@@ -1913,3 +1913,171 @@ input::placeholder, textarea::placeholder {
 .work-featured .work-icon { filter: drop-shadow(0 12px 28px rgba(0, 0, 0, .45)); }
 
 .dark .work-card { background: rgba(var(--paper-rgb), .75); }
+
+
+/* ============================================================
+   墨卷 InkScroll 3.0 —— 现代化覆盖层（2026-08）
+   同优先级后者胜：旧规则零改动，新标准集中在此
+   ============================================================ */
+
+:root {
+  /* 圆角阶 */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  /* 阴影阶（暗色用纯黑深影） */
+  --shadow-rgb: 22, 19, 14;
+  --shadow-1: 0 1px 2px rgba(var(--shadow-rgb), .05), 0 3px 12px rgba(var(--shadow-rgb), .05);
+  --shadow-2: 0 8px 24px -8px rgba(var(--shadow-rgb), .14), 0 2px 8px rgba(var(--shadow-rgb), .05);
+  --shadow-3: 0 24px 56px -16px rgba(var(--shadow-rgb), .28);
+  /* 动效 */
+  --ease-standard: cubic-bezier(.22, .61, .36, 1);
+  --dur-fast: .18s;
+  --dur: .28s;
+}
+
+.dark {
+  --shadow-rgb: 0, 0, 0;
+  --shadow-1: 0 1px 2px rgba(var(--shadow-rgb), .35), 0 3px 12px rgba(var(--shadow-rgb), .3);
+  --shadow-2: 0 8px 24px -8px rgba(var(--shadow-rgb), .5), 0 2px 8px rgba(var(--shadow-rgb), .35);
+  --shadow-3: 0 24px 56px -16px rgba(var(--shadow-rgb), .65);
+}
+
+/* ---------- 3.0 控件标准：按钮 ---------- */
+.btn-ink,
+.btn-outline,
+.btn-tech {
+  border-radius: var(--r-md);
+  transition: all var(--dur) var(--ease-standard);
+}
+.btn-ink:active,
+.btn-outline:active,
+.btn-tech:active {
+  transform: scale(.97);
+}
+
+/* ---------- 3.0 控件标准：卡片 ---------- */
+.paper-card {
+  border-radius: var(--r-lg);
+  border-color: rgba(var(--ink-5-rgb), .55);
+  box-shadow: var(--shadow-1);
+  transition: transform var(--dur) var(--ease-standard), box-shadow var(--dur) var(--ease-standard), border-color var(--dur) var(--ease-standard);
+}
+.paper-card:hover {
+  box-shadow: var(--shadow-2);
+}
+.surface-panel {
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+}
+.work-card {
+  border-radius: var(--r-lg);
+  border-color: rgba(var(--ink-5-rgb), .6);
+  box-shadow: var(--shadow-1);
+}
+.work-card:hover {
+  box-shadow: var(--shadow-2);
+}
+.work-featured {
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-2);
+}
+.work-featured:hover {
+  box-shadow: var(--shadow-3);
+}
+.tie-card {
+  border-radius: var(--r-md);
+  transition: border-color var(--dur) var(--ease-standard), background var(--dur) var(--ease-standard);
+}
+
+/* ---------- 3.0 排版工具类 ---------- */
+.t-eyebrow {
+  font-family: 'Maple Mono NF', 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  font-size: .72rem;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: rgba(var(--dai-rgb), .7);
+}
+
+/* ---------- 3.0 资产：透明底 WebP，弃用混合模式 hack ---------- */
+.ink-blot,
+.brush-divider,
+.ink-hero__seal,
+.seal-img {
+  mix-blend-mode: normal;
+}
+.ink-hero__bg {
+  background-image: url('/assets/ink/ink-hero.webp');
+}
+.paper-texture-bg,
+.site-bg__paper {
+  background-image: url('/paper-texture.webp');
+}
+
+/* 暗色：墨色装饰反相为暖灰，印章保持原色 */
+.dark .ink-blot,
+.dark .brush-divider {
+  mix-blend-mode: normal;
+  filter: invert(.86) sepia(.15) brightness(1.02);
+}
+.dark .ink-hero__seal,
+.dark .seal-img,
+.dark img[src*="seal-logo"] {
+  mix-blend-mode: normal;
+  filter: none;
+}
+.dark .ink-hero__bg {
+  filter: brightness(.72) contrast(1.04);
+}
+
+
+/* ---------- 3.0 控件标准：表单与列表 ---------- */
+input,
+textarea,
+select {
+  border-radius: var(--r-md);
+  transition: border-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
+}
+
+/* 帖式列表 → 独立卡片流（圆角需要呼吸间距） */
+.tie-card {
+  border: 1px solid rgba(var(--ink-5-rgb), .45);
+  margin-bottom: .9rem;
+  background: rgba(var(--paper-rgb), .65);
+}
+.tie-card:hover {
+  border-color: rgba(var(--gold-rgb), .5);
+  box-shadow: var(--shadow-1);
+}
+.dark .tie-card {
+  background: rgba(var(--paper-2-rgb), .5);
+}
+
+
+/* ---------- 3.0 作品卡封面（装裱式：暗色下仍保持宣纸画心） ---------- */
+.work-card__cover {
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  background: #f2ecdf;
+  border-bottom: 1px solid rgba(var(--ink-5-rgb), .4);
+}
+.work-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .6s var(--ease-standard);
+}
+.work-card:hover .work-card__cover img {
+  transform: scale(1.045);
+}
+.dark .work-card__cover {
+  border-bottom-color: rgba(var(--ink-5-rgb), .25);
+}
+.dark .work-card__cover {
+  background: #211e1a;
+}
+.dark .work-card__cover img {
+  filter: brightness(.66) sepia(.12);
+  transition: filter var(--dur) var(--ease-standard), transform .6s var(--ease-standard);
+}

@@ -34,6 +34,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "zh_CN",
     siteName: "尘墨 | binchen",
+    images: [{ url: "/assets/og-image.jpg", width: 1200, height: 630, alt: "尘墨 | binchen" }],
   },
 };
 

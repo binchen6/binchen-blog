@@ -100,7 +100,7 @@ const DEMO_LIST = `- 无序列表项一
 
 const DEMO_LINK_IMAGE = `[回到首页](/)
 
-![墨点](/assets/ink/ink-blot-1.jpg)`;
+![墨点](/assets/ink/ink-blot-1.webp)`;
 
 const DEMO_HR = `上文段落。
 

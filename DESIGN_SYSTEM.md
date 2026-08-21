@@ -1,6 +1,7 @@
-# 尘墨 | binchen · 墨卷 InkScroll 2.0 设计系统
+# 尘墨 | binchen · 墨卷 InkScroll 3.0 设计系统
 
-> 版本: 2.0 | 2026-07-22 | 取代 1.2「国风古代科技风」
+> 版本: 3.0 | 2026-08-21 | 现代化修订：token 层 · 控件标准 · 排版标尺 · 资产透明化
+> 2.0 的设计宣言与五级墨色保持不变，3.0 在其上确立工程化标准。
 
 ## 设计宣言
 
@@ -101,4 +102,43 @@
 - `.work-card`：浅色作品卡，hover 上浮 + 金箔描边 + 光泽扫过（`::after` transform）
 - `[data-reveal]` + `lib/use-reveal.ts`：IntersectionObserver 滚动显现，`prefers-reduced-motion` 降级为直显
 - 首页结构：Hero 长卷 → 作品速览（CryClaw 旗舰 + 地理专题 + 作品架入口）→ 最新文章(5) → 精选(3) → 理念
+
+---
+
+## 3.0 现代化标准（2026-08-21）
+
+### Token 层（globals.css 末尾覆盖层）
+
+| Token | 值 | 用途 |
+| --- | --- | --- |
+| `--r-sm/md/lg/xl` | 6 / 10 / 16 / 22px | 圆角阶：按钮 md、卡片 lg、旗舰卡 xl |
+| `--shadow-1/2/3` | 三档 elevation | 静息 / hover / 旗舰悬浮；暗色自动换纯黑深影 |
+| `--ease-standard` | cubic-bezier(.22,.61,.36,1) | 全站统一缓动 |
+| `--dur-fast` / `--dur` | .18s / .28s | 微交互 / 常规过渡 |
+
+### 控件标准
+
+- **按钮**（`.btn-ink` 主 / `.btn-outline` 次 / `.btn-tech` 技术）：圆角 `--r-md`，`:active` scale(.97)，过渡 `--dur` + `--ease-standard`，focus 金环 2px offset 3px。触屏最小高度 44px。
+- **卡片**：`.paper-card` 内容卡（lg + shadow-1 → hover shadow-2 + translateY(-4px)）；`.surface-panel` 面板（lg + shadow-2 + 金箔顶线）；`.work-card` 作品卡（lg + 光泽扫过）；`.work-featured` 旗舰卡（xl + shadow-3 + 鼠标光斑）。
+- **新写组件禁止自定义圆角/阴影/缓动**，一律引用 token。
+
+### 排版标尺
+
+| 层级 | 规格 | 场景 |
+| --- | --- | --- |
+| Display | serif-zh 44-72px / 1.2 / tracking .12em | Hero 名 |
+| H2 区题 | serif-zh 28-30px / tracking .1em / bold | 页面分区 |
+| H3 卡题 | serif-zh 18-22px / tracking .05em | 卡片标题 |
+| 正文 | sans 14-16px / 1.8 / tracking .02em | 通用（文章 17px / 38em 上限） |
+| 辅助 | sans 12-14px / ink-3 | 说明文字 |
+| Eyebrow | mono 11-12px / uppercase / tracking .18em / dai-70%（工具类 `.t-eyebrow`） | 分区眉标 |
+| 数据 | mono + tabular-nums | 日期、统计 |
+
+### 资产标准（红线）
+
+- **装饰素材一律透明底 WebP**，禁止白底 JPG 直接上图（白边在暗色模式突兀）。
+- 白底水墨素材处理管线：`unblend_white()`（亮度→alpha + 白色反解混）+ alpha 色调分离（24 阶）压缩，脚本见 `workspace/tmp/asset_pipeline.py` 模式。
+- 暗色模式：墨色装饰用 `filter: invert(.86) sepia(.15)` 反相为暖灰；**印章等彩色素材禁止反相**。
+- 体积红线：装饰图 < 60KB，Hero < 160KB，favicon/og 必备（`app/icon.png` + `/assets/og-image.jpg`）。
+- 现状：seal 258KB→10KB、blot-1 121KB→47KB、hero 153KB→29KB、paper-texture 986KB→1KB。
 

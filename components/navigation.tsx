@@ -56,7 +56,7 @@ export default function Navigation() {
       >
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-5">
           <Link href="/" className="group flex items-center gap-2.5" aria-label="返回首页">
-            <img src="/assets/ink/seal-logo.png" alt="尘墨" decoding="async" className="h-9 w-9 mix-blend-multiply transition-transform group-hover:rotate-[-3deg]" />
+            <img src="/assets/ink/seal-logo.webp" alt="尘墨" decoding="async" className="h-9 w-9 mix-blend-multiply transition-transform group-hover:rotate-[-3deg]" />
             <span className="font-serif-zh text-lg font-bold tracking-[0.24em] text-ink">尘墨</span>
           </Link>
 

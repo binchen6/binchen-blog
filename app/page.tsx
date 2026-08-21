@@ -90,7 +90,7 @@ export default function HomePage() {
           <div className="w-full">
             <div className="flex items-start justify-between gap-6">
               <div className="unfold">
-                <img src="/assets/ink/seal-logo.png" alt="尘墨印章" className="ink-hero__seal mb-7" />
+                <img src="/assets/ink/seal-logo.webp" alt="尘墨印章" className="ink-hero__seal mb-7" />
                 <h1 className="font-serif-zh text-5xl font-bold leading-tight tracking-[0.12em] text-ink md:text-7xl">
                   binchen
                 </h1>
@@ -187,10 +187,14 @@ export default function HomePage() {
           {/* 地理专题 */}
           <Link
             href="/geography"
-            className="work-card group p-6 md:col-span-2"
+            className="work-card group md:col-span-2"
             data-reveal
             style={{ transitionDelay: "90ms" }}
           >
+            <div className="work-card__cover">
+              <img src="/assets/works/geography.webp" alt="" aria-hidden="true" loading="lazy" decoding="async" />
+            </div>
+            <div className="p-6">
             <div className="flex items-center justify-between">
               <span className="inline-flex h-11 w-11 items-center justify-center border border-dai/30 bg-dai/5 text-dai">
                 <Compass size={20} />
@@ -207,6 +211,7 @@ export default function HomePage() {
               进入专题
               <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
             </span>
+            </div>
           </Link>
         </div>
 
@@ -286,7 +291,7 @@ export default function HomePage() {
         )}
       </section>
 
-      <img src="/assets/ink/brush-divider-1.jpg" alt="" aria-hidden="true" className="brush-divider" />
+      <img src="/assets/ink/brush-divider-1.webp" alt="" aria-hidden="true" className="brush-divider" />
 
       {/* ===== 精选 ===== */}
       {(loading || featuredPosts.length > 0) && (
