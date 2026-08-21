@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Compass, Eye, MessageCircle, Star } from "lucide-react";
+import type { MouseEvent } from "react";
+import { ArrowRight, BookOpen, Compass, Eye, MessageCircle, Sparkles, Star } from "lucide-react";
 import { SiteShell, SurfacePanel } from "@/components/page-chrome";
+import { useScrollReveal } from "@/lib/use-reveal";
 import { formatDate } from "@/lib/utils";
 
 interface PostItem {
@@ -34,10 +36,20 @@ const principles = [
   },
 ];
 
+/** 鼠标跟随光斑：只写 CSS 变量，不触发 layout */
+function handleGlow(e: MouseEvent<HTMLElement>) {
+  const el = e.currentTarget;
+  const rect = el.getBoundingClientRect();
+  el.style.setProperty("--mx", `${e.clientX - rect.left}px`);
+  el.style.setProperty("--my", `${e.clientY - rect.top}px`);
+}
+
 export default function HomePage() {
   const [featuredPosts, setFeaturedPosts] = useState<PostItem[]>([]);
   const [latestPosts, setLatestPosts] = useState<PostItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useScrollReveal();
 
   useEffect(() => {
     let cancelled = false;
@@ -46,7 +58,7 @@ export default function HomePage() {
       try {
         const [featuredRes, latestRes] = await Promise.all([
           fetch("/api/posts?featured=1&limit=3"),
-          fetch("/api/posts?limit=3"),
+          fetch("/api/posts?limit=5"),
         ]);
         const featuredData = (await featuredRes.json()) as { posts?: PostItem[] };
         const latestData = (await latestRes.json()) as { posts?: PostItem[] };
@@ -89,19 +101,18 @@ export default function HomePage() {
                   山海、日常、古代科技与现代工具——想到就写，写完就放这儿。
                 </p>
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                  <Link href="/blog" className="btn-ink inline-flex items-center justify-center gap-2">
+                  <Link href="/works" className="btn-ink inline-flex items-center justify-center gap-2">
+                    <Sparkles size={17} />
+                    <span>看看作品</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                  <Link href="/blog" className="btn-tech inline-flex items-center justify-center gap-2">
                     <BookOpen size={17} />
                     <span>展开长卷</span>
-                    <ArrowRight size={14} />
                   </Link>
-                  <Link href="/guestbook" className="btn-tech inline-flex items-center justify-center gap-2">
+                  <Link href="/guestbook" className="btn-outline inline-flex items-center justify-center gap-2">
                     <MessageCircle size={17} />
                     <span>留个言</span>
-                  </Link>
-                  <Link href="/geography" className="btn-ink inline-flex items-center justify-center gap-2">
-                    <Compass size={17} />
-                    <span>地理专题</span>
-                    <ArrowRight size={14} />
                   </Link>
                 </div>
               </div>
@@ -115,9 +126,106 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ===== 作品速览 ===== */}
+      <section className="mx-auto max-w-5xl px-5 py-16">
+        <div className="mb-10 flex items-end justify-between" data-reveal>
+          <div>
+            <span className="font-mono-tech text-xs uppercase tracking-[0.18em] text-dai/70">Works</span>
+            <h2 className="mt-2 font-serif-zh text-3xl font-bold tracking-[0.1em]">造出来的东西</h2>
+          </div>
+          <Link href="/works" className="group inline-flex items-center gap-1.5 text-sm text-ink-3 transition-colors hover:text-dai">
+            全部作品
+            <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-5">
+          {/* 旗舰：CryClaw */}
+          <Link href="/CryClaw" className="work-featured group p-8 md:col-span-3" data-reveal onMouseMove={handleGlow}>
+            <div className="work-featured__glow" aria-hidden="true" />
+            <div className="relative flex items-center gap-6">
+              <div className="flex min-w-0 flex-1 flex-col gap-8">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center gap-1.5 border border-[#b8933f]/40 bg-[#b8933f]/10 px-2.5 py-1 font-mono-tech text-[11px] uppercase tracking-[0.16em] text-[#d8b96a]">
+                    <Sparkles size={12} />
+                    Flagship
+                  </span>
+                  <span className="font-mono-tech text-xs text-[#8f8774]">桌面应用 · 2026</span>
+                </div>
+                <h3 className="mt-5 font-serif-zh text-2xl font-bold tracking-[0.08em] text-[#f3edde] md:text-3xl">
+                  CryClaw
+                </h3>
+                <p className="mt-3 max-w-md text-sm leading-loose text-[#c9c0ab]">
+                  高效、易用、纯净的 OpenClaw 桌面客户端——一分钟装好，即刻开聊。
+                </p>
+              </div>
+              <div className="flex items-end justify-between gap-4">
+                <div className="flex flex-wrap gap-2">
+                  {["Electron", "487 测试全绿", "≈0.6s 冷启动"].map((chip) => (
+                    <span key={chip} className="border border-white/10 bg-white/5 px-2.5 py-1 font-mono-tech text-[11px] text-[#b8b09c]">
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 text-sm text-[#d8b96a]">
+                  进入产品页
+                  <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+              </div>
+              <img
+                src="/CryClaw/assets/icon.png"
+                alt="CryClaw 应用图标"
+                loading="lazy"
+                decoding="async"
+                className="work-icon hidden w-20 shrink-0 animate-float sm:block md:w-24"
+              />
+            </div>
+          </Link>
+
+          {/* 地理专题 */}
+          <Link
+            href="/geography"
+            className="work-card group p-6 md:col-span-2"
+            data-reveal
+            style={{ transitionDelay: "90ms" }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="inline-flex h-11 w-11 items-center justify-center border border-dai/30 bg-dai/5 text-dai">
+                <Compass size={20} />
+              </span>
+              <span className="font-mono-tech text-xs text-ink-4">专题 · 2026</span>
+            </div>
+            <h3 className="mt-5 font-serif-zh text-xl font-semibold tracking-[0.06em] transition-colors group-hover:text-dai">
+              地图上的裂痕
+            </h3>
+            <p className="mt-3 text-sm leading-loose text-ink-3">
+              交互式地理长卷：板块、裂谷与时间的刻度，滚动之间徐徐展开。
+            </p>
+            <span className="mt-6 inline-flex items-center gap-2 text-xs text-dai">
+              进入专题
+              <ArrowRight size={13} className="transition-transform group-hover:translate-x-1" />
+            </span>
+          </Link>
+        </div>
+
+        <div
+          className="mt-6 flex flex-col gap-2 border border-dashed border-ink-5/80 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+          data-reveal
+          style={{ transitionDelay: "160ms" }}
+        >
+          <p className="text-sm text-ink-3">还有桌面小工具、一部视觉小说，以及这个小站本身。</p>
+          <Link href="/works" className="group inline-flex shrink-0 items-center gap-1.5 text-sm text-dai">
+            逛逛作品架
+            <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+      </section>
+
       {/* ===== 最新文章·时间轴 ===== */}
-      <section className="mx-auto max-w-5xl px-5 py-20">
-        <div className="mb-10 flex items-end justify-between">
+      <section className="mx-auto max-w-5xl px-5 py-16">
+        <div className="mb-10 flex items-end justify-between" data-reveal>
           <div>
             <span className="font-mono-tech text-xs uppercase tracking-[0.18em] text-dai/70">Latest</span>
             <h2 className="mt-2 font-serif-zh text-3xl font-bold tracking-[0.1em]">最近写的</h2>
@@ -183,7 +291,7 @@ export default function HomePage() {
       {/* ===== 精选 ===== */}
       {(loading || featuredPosts.length > 0) && (
         <section className="mx-auto max-w-5xl px-5 py-16">
-          <div className="mb-10">
+          <div className="mb-10" data-reveal>
             <span className="font-mono-tech text-xs uppercase tracking-[0.18em] text-dai/70">Featured</span>
             <h2 className="mt-2 font-serif-zh text-3xl font-bold tracking-[0.1em]">值得一读再读</h2>
           </div>

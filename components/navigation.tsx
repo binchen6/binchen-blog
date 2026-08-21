@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, BookOpen, Compass, Home, LogIn, LogOut, MessageCircle, Pen, User, X } from "lucide-react";
+import { Bell, BookOpen, Home, LogIn, LogOut, MessageCircle, Pen, Sparkles, User, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar } from "@/components/user-avatar";
 import { NotificationBell } from "@/components/notification-bell";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/", label: "首页", icon: Home },
   { href: "/blog", label: "文章", icon: BookOpen },
-  { href: "/geography", label: "专题", icon: Compass },
+  { href: "/works", label: "作品", icon: Sparkles },
   { href: "/write", label: "撰写", icon: Pen },
   { href: "/guestbook", label: "留言", icon: MessageCircle },
 ];

@@ -93,3 +93,12 @@
 - 构建输出 `.vercel/output/static`，`vercel` 锁定 `34.3.1`（package.json overrides）
 - `@cloudflare/next-on-pages` 锁定 `1.12.1`
 - 本地构建：`npm install --include=dev`（本机 npm 全局 omit=dev）
+
+## 作品页与滚动显现（2026-08 增补）
+
+- 路由：`/works`（作品架）、`/CryClaw`（产品静态站，`public/CryClaw/`，`<base href>` 归位相对资源）、`/cryclaw` 经 `_redirects` 301 到 `/CryClaw`
+- `.work-featured`：深色旗舰卡（硬编码深色，双主题一致），`--mx/--my` 鼠标跟随光斑，只写 CSS 变量不触发 layout
+- `.work-card`：浅色作品卡，hover 上浮 + 金箔描边 + 光泽扫过（`::after` transform）
+- `[data-reveal]` + `lib/use-reveal.ts`：IntersectionObserver 滚动显现，`prefers-reduced-motion` 降级为直显
+- 首页结构：Hero 长卷 → 作品速览（CryClaw 旗舰 + 地理专题 + 作品架入口）→ 最新文章(5) → 精选(3) → 理念
+

@@ -90,3 +90,14 @@ GET https://cryoconite.cn/api/init?token=<INIT_TOKEN>
 - **评论/留言**：仅支持一层嵌套（UI + API 双重约束，父级必须是顶层，防孤儿回复）
 - **Markdown 渲染**：`lib/markdown.ts` 唯一渲染源，TOC 锚点渲染期生成保证同步，DOMPurify 白名单消毒
 - **限流**：内存桶（isolate 级，阈值≈limit×活跃 isolate 数），仅作低成本兜底
+
+---
+
+## 2026-08-21 作品页 + 首页重构
+
+- 新增 `/works` 个人作品页：CryClaw 旗舰卡（深色+鼠标光斑）、地理专题/本站/第七频率/连点器四卡，IO 滚动显现动效
+- 迁移 CryClaw 产品静态站到 `public/CryClaw/`；`/cryclaw` 301 重定向（`_redirects` + `next.config.js` rewrite）
+- 首页重构：Hero CTA 改为「看看作品」首选，新增作品速览区；最新文章 3→5 条
+- 导航/页脚/sitemap 同步：「专题」→「作品」(`/works`)
+- 注意：Next.js rewrites/redirects 匹配**大小写不敏感**，小写 redirect + 大写目标路径会自循环（308→自身），本地用 rewrite 兼容、生产靠 `_redirects` 301
+

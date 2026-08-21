@@ -1835,3 +1835,81 @@ input::placeholder, textarea::placeholder {
   border-color: #5a9a9a;
   background: rgba(37, 34, 32, 0.6);
 }
+
+
+/* ===== Works pages & scroll reveal (2026-08) ===== */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity .7s cubic-bezier(.22,.61,.36,1), transform .7s cubic-bezier(.22,.61,.36,1);
+}
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
+}
+
+.work-card {
+  position: relative;
+  display: block;
+  height: 100%;
+  border: 1px solid rgba(var(--ink-5-rgb), .9);
+  background: rgba(var(--paper-rgb), .92);
+  overflow: hidden;
+  transition: transform .35s cubic-bezier(.22,.61,.36,1), box-shadow .35s ease, border-color .35s ease;
+}
+.work-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(var(--gold-rgb), .16) 50%, transparent 60%);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+.work-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(var(--gold-rgb), .6);
+  box-shadow: 0 20px 44px -20px rgba(22, 19, 14, .3);
+}
+.work-card:hover::after {
+  transform: translateX(130%);
+  transition: transform .8s ease;
+}
+
+.work-featured {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid rgba(184, 147, 63, .25);
+  background: linear-gradient(135deg, #171410 0%, #1c2a2a 58%, #152020 100%);
+  transition: transform .35s cubic-bezier(.22,.61,.36,1), box-shadow .35s ease, border-color .35s ease;
+}
+.work-featured::before {
+  content: "";
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  right: -160px;
+  top: -240px;
+  background: radial-gradient(circle, rgba(64, 98, 98, .5), transparent 65%);
+  pointer-events: none;
+}
+.work-featured__glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(560px circle at var(--mx, 72%) var(--my, 24%), rgba(184, 147, 63, .16), transparent 55%);
+  opacity: 0;
+  transition: opacity .4s ease;
+  pointer-events: none;
+}
+.work-featured:hover {
+  transform: translateY(-5px);
+  border-color: rgba(184, 147, 63, .55);
+  box-shadow: 0 24px 52px -20px rgba(10, 9, 6, .55);
+}
+.work-featured:hover .work-featured__glow { opacity: 1; }
+.work-featured .work-icon { filter: drop-shadow(0 12px 28px rgba(0, 0, 0, .45)); }
+
+.dark .work-card { background: rgba(var(--paper-rgb), .75); }

@@ -6,6 +6,7 @@ import { Github, Mail, Rss } from "lucide-react";
 const footerLinks = [
   { href: "/", label: "首页" },
   { href: "/blog", label: "文章" },
+  { href: "/works", label: "作品" },
   { href: "/write", label: "撰写" },
   { href: "/guestbook", label: "留言" },
 ];
