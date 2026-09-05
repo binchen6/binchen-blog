@@ -194,7 +194,7 @@
       var dlVer = document.getElementById("download-version");
       if (dlVer) dlVer.textContent = "最新版本 v" + version;
       var dlLabel = document.getElementById("download-label");
-      if (dlLabel) dlLabel.textContent = "加速下载 v" + version;
+      if (dlLabel) dlLabel.textContent = (dlLabel.getAttribute("data-prefix") || "下载") + " v" + version;
 
       var asset = (data.assets || []).find(function (a) { return /Setup.*x64\.exe$/i.test(a.name); });
       if (asset) {
