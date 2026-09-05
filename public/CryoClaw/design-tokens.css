@@ -1,0 +1,279 @@
+/* ==========================================================================
+   CryoClaw Design Tokens — 官网（2026.9 R2 品牌焕新）
+   全局设计语言单一事实来源（@import 引用，改此文件 = 全局生效）
+
+   设计方向：与应用同一套设计语言 —— 中性灰 + 单一沉稳蓝强调色
+   ── 品牌：CryoBlue 蓝青混色（浅色主色 #1a6fd0，辅色 cyan；签名渐变 蓝→青）
+   ── 主题：浅色一等（纸白中性底），暗色独立调参（近黑中性，非浅色反推）
+   ── 材质：细腻玻璃 + hairline 描边 + 克制的同色系蓝渐变（不霓虹、不渐变轰炸）
+   ── 气质：冷静、可信、工程感，长时间阅读不疲劳
+
+   说明：页面默认浅色，[data-theme=dark] 或 OS 偏好切换暗色；
+   兼容基线同前（现代浏览器）。与应用规范 docs/design-guidelines-zh.md 对齐。
+   ========================================================================== */
+
+/* ── 静态 token（主题无关） ── */
+:root {
+  /* radius 数值阶梯 */
+  --radius-2: 2px;
+  --radius-4: 4px;
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-10: 10px;
+  --radius-12: 12px;
+  --radius-14: 14px;
+  --radius-16: 16px;
+  --radius-18: 18px;
+  --radius-20: 20px;
+  --radius-24: 24px;
+  --radius-28: 28px;
+  --radius-32: 32px;
+  --radius-pill: 999px;
+
+  /* spacer 数值阶梯（4px 基网） */
+  --spacer-2: 2px;
+  --spacer-4: 4px;
+  --spacer-6: 6px;
+  --spacer-8: 8px;
+  --spacer-10: 10px;
+  --spacer-12: 12px;
+  --spacer-14: 14px;
+  --spacer-16: 16px;
+  --spacer-18: 18px;
+  --spacer-20: 20px;
+  --spacer-24: 24px;
+  --spacer-28: 28px;
+  --spacer-32: 32px;
+  --spacer-36: 36px;
+  --spacer-40: 40px;
+  --spacer-48: 48px;
+  --spacer-56: 56px;
+  --spacer-64: 64px;
+  --spacer-72: 72px;
+  --spacer-80: 80px;
+  --spacer-96: 96px;
+  --spacer-112: 112px;
+  --spacer-128: 128px;
+
+  --radius-22: 22px;
+
+  /* icon 尺寸阶梯 */
+  --icon-12: 12px;
+  --icon-14: 14px;
+  --icon-16: 16px;
+  --icon-18: 18px;
+  --icon-20: 20px;
+  --icon-22: 22px;
+  --icon-24: 24px;
+
+  /* 阅读列宽 */
+  --container: 1200px;
+  --container-wide: 1320px;
+
+  /* 字体栈 */
+  --font-body: "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI",
+    Roboto, "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  --font-display: "SF Pro Display", "PingFang SC", system-ui, -apple-system,
+    "Segoe UI", Roboto, "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
+  --font-meta: var(--mono);
+
+  /* 字号阶梯 */
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --heading-sm: 16px;
+  --heading-md: 20px;
+  --heading-lg: 24px;
+  --heading-xl: 28px;
+  --heading-3xl: 32px;
+  --display-sm: 32px;
+  --display-md: 44px;
+  --display-lg: 60px;
+  --display-xl: 78px;
+
+  /* 字距 & 行高 */
+  --tracking-tight: -0.02em;
+  --tracking-display: -0.035em;
+  --tracking-hero: -0.04em;
+  --tracking-body: -0.011em;
+  --tracking-wide: 0.04em;
+  --tracking-caps: 0.12em;
+  --leading-tight: 1.1;
+  --leading-title: 1.2;
+  --leading-body: 1.6;
+  --leading-relaxed: 1.72;
+
+  /* 字重 */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  /* 动效（spring / smooth 组合） */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-instant: 0.08s;
+  --duration-fast: 0.14s;
+  --duration-normal: 0.24s;
+  --duration-slow: 0.42s;
+  --duration-slower: 0.7s;
+}
+
+/* ── 浅色主题（默认 · 一等公民） ── */
+:root, :root[data-theme=light] {
+  /* 背景：纸白中性层级（与应用浅色主题同源） */
+  --bg: #fafafa;
+  --bg-2: #f4f4f5;
+  --bg-3: #ececee;
+  --bg-4: #e4e4e7;
+
+  /* 文字：五级中性灰阶 */
+  --text: #3f3f46;
+  --text-strong: #111113;
+  --text-secondary: #5c5c64;
+  --text-muted: #8a8a93;
+  --text-faint: #b6b6bd;
+  --text-on-accent: #ffffff;
+
+  /* 强调 —— 沉稳蓝（同色系渐变，克制不霓虹） */
+  --accent: #1a6fd0;
+  --accent-2: #0891b2;
+  --accent-strong: #1659b1;
+  --accent-grad: linear-gradient(120deg, #2a89dd 0%, #1a6fd0 52%, #06b6d4 100%);
+  --accent-grad-soft: linear-gradient(120deg, rgba(42, 137, 221, 0.15), rgba(6, 182, 212, 0.15));
+  --accent-glow: rgba(26, 111, 208, 0.2);
+  --accent-glow-strong: rgba(26, 111, 208, 0.34);
+  --accent-2-glow: rgba(6, 182, 212, 0.18);
+  --accent-subtle: rgba(26, 111, 208, 0.08);
+  --accent-subtle-2: rgba(6, 182, 212, 0.07);
+
+  /* 边框：hairline 中性 */
+  --border: rgba(17, 17, 19, 0.09);
+  --border-strong: rgba(17, 17, 19, 0.18);
+  --border-glow: rgba(26, 111, 208, 0.3);
+  --hairline: 1px solid var(--border);
+  --hairline-strong: 1px solid var(--border-strong);
+
+  /* 语义色 */
+  --ok: #16a34a;
+  --ok-subtle: rgba(22, 163, 74, 0.1);
+  --ok-glow: rgba(22, 163, 74, 0.28);
+  --warn: #d97706;
+  --warn-subtle: rgba(217, 119, 6, 0.1);
+  --destructive: #dc2626;
+  --destructive-subtle: rgba(220, 38, 38, 0.1);
+
+  /* 玻璃：白色提亮层（浅底上的浮卡） */
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.88);
+  --glass-xs: rgba(17, 17, 19, 0.03);
+  --glass-sm: rgba(17, 17, 19, 0.05);
+  --glass-md: rgba(17, 17, 19, 0.08);
+  --glass-lg: rgba(17, 17, 19, 0.12);
+  --glass-border: rgba(17, 17, 19, 0.08);
+  --glass-blur: 18px;
+  --glass-blur-sm: 10px;
+
+  /* 光斑混合模式：浅底用 multiply（淡蓝晕染），暗底用 screen */
+  --orb-blend: multiply;
+  --orb-opacity: 0.35;
+
+  /* 高光：卡片顶部亮边 */
+  --highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  /* 阴影：低透明多层，收敛克制 */
+  --shadow-xs: 0 1px 1px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 2px 5px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 2px 6px rgba(15, 23, 42, 0.05), 0 24px 48px -20px rgba(15, 23, 42, 0.16);
+  --shadow-lg: 0 6px 12px rgba(15, 23, 42, 0.06), 0 48px 90px -28px rgba(15, 23, 42, 0.2);
+  --shadow-xl: 0 10px 24px rgba(15, 23, 42, 0.06), 0 80px 140px -36px rgba(15, 23, 42, 0.24);
+  --shadow-glow: 0 0 0 1px var(--accent-subtle), 0 24px 60px -20px var(--accent-glow);
+
+  color-scheme: light;
+}
+
+/* ── 暗色主题（独立调参 · 近黑中性，非浅色反推） ── */
+:root[data-theme=dark] {
+  /* 背景：四档近黑中性深度（与应用暗色主题同源） */
+  --bg: #101012;
+  --bg-2: #17171a;
+  --bg-3: #1e1e22;
+  --bg-4: #26262b;
+
+  /* 文字 */
+  --text: #d4d4d8;
+  --text-strong: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-faint: #52525b;
+  --text-on-accent: #0b1220;
+
+  /* 强调 —— 沉稳蓝提亮一档 */
+  --accent: #4ba4e6;
+  --accent-2: #22d3ee;
+  --accent-strong: #85c2ee;
+  --accent-grad: linear-gradient(120deg, #85c2ee 0%, #4ba4e6 52%, #22d3ee 100%);
+  --accent-grad-soft: linear-gradient(120deg, rgba(133, 194, 238, 0.2), rgba(34, 211, 238, 0.2));
+  --accent-glow: rgba(75, 164, 230, 0.26);
+  --accent-glow-strong: rgba(75, 164, 230, 0.42);
+  --accent-2-glow: rgba(34, 211, 238, 0.22);
+  --accent-subtle: rgba(75, 164, 230, 0.14);
+  --accent-subtle-2: rgba(34, 211, 238, 0.1);
+
+  /* 边框 */
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-glow: rgba(75, 164, 230, 0.34);
+  --hairline: 1px solid var(--border);
+  --hairline-strong: 1px solid var(--border-strong);
+
+  /* 语义色（暗色各自提亮） */
+  --ok: #4ade80;
+  --ok-subtle: rgba(74, 222, 128, 0.14);
+  --ok-glow: rgba(74, 222, 128, 0.32);
+  --warn: #fbbf24;
+  --warn-subtle: rgba(251, 191, 36, 0.14);
+  --destructive: #f87171;
+  --destructive-subtle: rgba(248, 113, 113, 0.14);
+
+  /* 玻璃：暗色提亮层 */
+  --glass: rgba(30, 30, 34, 0.62);
+  --glass-strong: rgba(23, 23, 26, 0.8);
+  --glass-xs: rgba(255, 255, 255, 0.03);
+  --glass-sm: rgba(255, 255, 255, 0.05);
+  --glass-md: rgba(255, 255, 255, 0.08);
+  --glass-lg: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-blur: 18px;
+  --glass-blur-sm: 10px;
+
+  --orb-blend: screen;
+  --orb-opacity: 0.5;
+
+  /* 高光：微弱白边 */
+  --highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
+  /* 阴影：深影出屏 */
+  --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.22), 0 20px 48px -20px rgba(0, 0, 0, 0.62);
+  --shadow-lg: 0 4px 10px rgba(0, 0, 0, 0.26), 0 40px 90px -28px rgba(0, 0, 0, 0.72);
+  --shadow-xl: 0 8px 20px rgba(0, 0, 0, 0.24), 0 70px 140px -36px rgba(0, 0, 0, 0.8);
+  --shadow-glow: 0 0 0 1px var(--accent-subtle), 0 20px 60px -20px var(--accent-glow);
+
+  color-scheme: dark;
+}
+
+/* OS 偏好兜底：未显式指定 data-theme 时跟随系统（默认浅色） */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]):not([data-theme=dark]) {
+    --bg: #101012;
+    --accent: #4ba4e6;
+  }
+}

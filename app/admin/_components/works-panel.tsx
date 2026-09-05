@@ -134,7 +134,7 @@ function WorkFormFields({
             {ICON_OPTIONS.map((k) => (
               <option key={k} value={k}>{k}</option>
             ))}
-            <option value="/CryClaw/assets/icon.png">/CryClaw/assets/icon.png（图片路径）</option>
+            <option value="/CryoClaw/assets/icon.png">/CryoClaw/assets/icon.png（图片路径）</option>
           </select>
         </label>
         <label className="block">

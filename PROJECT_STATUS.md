@@ -95,8 +95,8 @@ GET https://cryoconite.cn/api/init?token=<INIT_TOKEN>
 
 ## 2026-08-21 作品页 + 首页重构
 
-- 新增 `/works` 个人作品页：CryClaw 旗舰卡（深色+鼠标光斑）、地理专题/本站/第七频率/连点器四卡，IO 滚动显现动效
-- 迁移 CryClaw 产品静态站到 `public/CryClaw/`；`/cryclaw` 301 重定向（`_redirects` + `next.config.js` rewrite）
+- 新增 `/works` 个人作品页：CryoClaw 旗舰卡（深色+鼠标光斑）、地理专题/本站/第七频率/连点器四卡，IO 滚动显现动效
+- 迁移 CryoClaw 产品静态站到 `public/CryoClaw/`（2026-09 起改为正确拼写，旧 `/CryClaw` 与小写路径 301 兼容）；301 重定向（`_redirects` + `next.config.js` rewrite + middleware）
 - 首页重构：Hero CTA 改为「看看作品」首选，新增作品速览区；最新文章 3→5 条
 - 导航/页脚/sitemap 同步：「专题」→「作品」(`/works`)
 - 注意：Next.js rewrites/redirects 匹配**大小写不敏感**，小写 redirect + 大写目标路径会自循环（308→自身）；且 Cloudflare Pages 上 Function 优先于 `_redirects`（301 规则被 worker 旁路）。最终方案：`middleware.ts` 精确匹配 `/cryclaw` → 301

@@ -97,11 +97,11 @@
 
 ## 作品页与滚动显现（2026-08 增补）
 
-- 路由：`/works`（作品架）、`/CryClaw`（产品静态站，`public/CryClaw/`，`<base href>` 归位相对资源）、`/cryclaw` 经 `_redirects` 301 到 `/CryClaw`
+- 路由：`/works`（作品架）、`/CryoClaw`（产品静态站，`public/CryoClaw/`，`<base href>` 归位相对资源）、旧拼写 `/CryClaw` 与小写 `/cryclaw`/`/cryoclaw` 经 middleware 301 到 `/CryoClaw`；下载加速走 `app/api/cryoclaw-dl` 边缘中转
 - `.work-featured`：深色旗舰卡（硬编码深色，双主题一致），`--mx/--my` 鼠标跟随光斑，只写 CSS 变量不触发 layout
 - `.work-card`：浅色作品卡，hover 上浮 + 金箔描边 + 光泽扫过（`::after` transform）
 - `[data-reveal]` + `lib/use-reveal.ts`：IntersectionObserver 滚动显现，`prefers-reduced-motion` 降级为直显
-- 首页结构：Hero 长卷 → 作品速览（CryClaw 旗舰 + 地理专题 + 作品架入口）→ 最新文章(5) → 精选(3) → 理念
+- 首页结构：Hero 长卷 → 作品速览（CryoClaw 旗舰 + 地理专题 + 作品架入口）→ 最新文章(5) → 精选(3) → 理念
 
 ---
 

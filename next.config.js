@@ -42,7 +42,7 @@ module.exports = {
   async rewrites() {
     return [
       { source: '/geography', destination: '/geography/index.html' },
-      { source: '/CryClaw', destination: '/CryClaw/index.html' },
+      { source: '/CryoClaw', destination: '/CryoClaw/index.html' },
     ];
   },
 };

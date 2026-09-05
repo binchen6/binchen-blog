@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     { path: "/blog", priority: "0.9", changefreq: "daily" },
     { path: "/guestbook", priority: "0.6", changefreq: "weekly" },
     { path: "/works", priority: "0.8", changefreq: "monthly" },
-    { path: "/CryClaw", priority: "0.7", changefreq: "monthly" },
+    { path: "/CryoClaw", priority: "0.7", changefreq: "monthly" },
     { path: "/geography", priority: "0.6", changefreq: "monthly" },
   ];
 
