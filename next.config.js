@@ -10,6 +10,7 @@ module.exports = {
   },
   async headers() {
     return [
+      { source: '/CryoClaw/:asset(styles.css|design-tokens.css|app.js)', headers: [{ key: 'Cache-Control', value: 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800' }] },
       {
         source: '/(.*)',
         headers: [
