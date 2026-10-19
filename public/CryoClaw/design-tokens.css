@@ -70,10 +70,10 @@
   --container: 1200px;
   --container-wide: 1320px;
 
-  /* 字体栈 */
-  --font-body: "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI",
+  /* 字体栈（对齐应用规范：MiSans/Inter 优先） */
+  --font-body: "MiSans", "Inter", "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI",
     Roboto, "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
-  --font-display: "SF Pro Display", "PingFang SC", system-ui, -apple-system,
+  --font-display: "MiSans", "Inter", "SF Pro Display", "PingFang SC", system-ui, -apple-system,
     "Segoe UI", Roboto, "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
   --font-meta: var(--mono);
@@ -117,12 +117,17 @@
   /* 动效（spring / smooth 组合） */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --duration-instant: 0.08s;
   --duration-fast: 0.14s;
   --duration-normal: 0.24s;
   --duration-slow: 0.42s;
   --duration-slower: 0.7s;
+  --duration-loop: 1.6s;
+
+  /* focus ring（对齐应用双层环契约） */
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
 }
 
 /* ── 浅色主题（默认 · 一等公民） ── */
@@ -270,10 +275,65 @@
   color-scheme: dark;
 }
 
-/* OS 偏好兜底：未显式指定 data-theme 时跟随系统（默认浅色） */
+/* OS 偏好兜底：未显式指定 data-theme 时跟随系统（完整暗色变量集，无 JS 场景生效） */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme=light]):not([data-theme=dark]) {
     --bg: #101012;
+    --bg-2: #17171a;
+    --bg-3: #1e1e22;
+    --bg-4: #26262b;
+
+    --text: #d4d4d8;
+    --text-strong: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --text-faint: #52525b;
+
     --accent: #4ba4e6;
+    --accent-2: #71c6a3;
+    --accent-strong: #85c2ee;
+    --accent-grad: linear-gradient(120deg, #1a6fd0, #1a6fd0);
+    --accent-grad-soft: linear-gradient(120deg, rgba(133, 194, 238, 0.2), rgba(34, 211, 238, 0.2));
+    --accent-glow: rgba(75, 164, 230, 0.26);
+    --accent-glow-strong: rgba(75, 164, 230, 0.42);
+    --accent-2-glow: rgba(34, 211, 238, 0.22);
+    --accent-subtle: rgba(75, 164, 230, 0.14);
+    --accent-subtle-2: rgba(34, 211, 238, 0.1);
+
+    --border: rgba(255, 255, 255, 0.09);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --border-glow: rgba(75, 164, 230, 0.34);
+    --hairline: 1px solid var(--border);
+    --hairline-strong: 1px solid var(--border-strong);
+
+    --ok: #4ade80;
+    --ok-subtle: rgba(74, 222, 128, 0.14);
+    --ok-glow: rgba(74, 222, 128, 0.32);
+    --warn: #fbbf24;
+    --warn-subtle: rgba(251, 191, 36, 0.14);
+    --destructive: #f87171;
+    --destructive-subtle: rgba(248, 113, 113, 0.14);
+
+    --glass: rgba(30, 30, 34, 0.62);
+    --glass-strong: rgba(23, 23, 26, 0.8);
+    --glass-xs: rgba(255, 255, 255, 0.03);
+    --glass-sm: rgba(255, 255, 255, 0.05);
+    --glass-md: rgba(255, 255, 255, 0.08);
+    --glass-lg: rgba(255, 255, 255, 0.12);
+    --glass-border: rgba(255, 255, 255, 0.09);
+
+    --orb-blend: screen;
+    --orb-opacity: 0.5;
+
+    --highlight-inset: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
+    --shadow-xs: 0 1px 1px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.24);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.22), 0 20px 48px -20px rgba(0, 0, 0, 0.62);
+    --shadow-lg: 0 4px 10px rgba(0, 0, 0, 0.26), 0 40px 90px -28px rgba(0, 0, 0, 0.72);
+    --shadow-xl: 0 8px 20px rgba(0, 0, 0, 0.24), 0 70px 140px -36px rgba(0, 0, 0, 0.8);
+    --shadow-glow: 0 0 0 1px var(--accent-subtle), 0 20px 60px -20px var(--accent-glow);
+
+    color-scheme: dark;
   }
 }

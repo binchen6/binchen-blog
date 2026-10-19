@@ -11,6 +11,7 @@ module.exports = {
   async headers() {
     return [
       { source: '/CryoClaw/:asset(styles.css|design-tokens.css|app.js)', headers: [{ key: 'Cache-Control', value: 'public, max-age=0, s-maxage=86400, stale-while-revalidate=604800' }] },
+      { source: '/CryoClaw/assets/:file*', headers: [{ key: 'Cache-Control', value: 'public, max-age=3600, s-maxage=604800, stale-while-revalidate=2592000' }] },
       {
         source: '/(.*)',
         headers: [
@@ -27,7 +28,7 @@ module.exports = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://api.github.com https://cloudflareinsights.com",
+              "connect-src 'self' https://api.github.com https://gh-proxy.com https://cloudflareinsights.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
