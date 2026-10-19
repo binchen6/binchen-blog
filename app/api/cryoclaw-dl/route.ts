@@ -1,49 +1,60 @@
-/** Fixed-repository streaming proxy; ranges allow interrupted downloads to resume.
- *  上游失败时自动切换 gh-proxy 国内镜像，最终兜底 302 到镜像地址。 */
+import { loadRelease, ReleaseError, MIRROR, USER_AGENT } from '../../../lib/cryoclaw-release';
+
 export const runtime = 'edge';
 
-const ROOT = 'https://github.com/binchen6/CryoClaw/releases/';
-const API = 'https://api.github.com/repos/binchen6/CryoClaw/releases/';
-const MIRROR = 'https://gh-proxy.com/';
-const UA = 'CryoClaw-download';
+/** Clear the timeout after headers: aborting later would truncate large downloads. */
+async function fetchHeaders(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try { return await fetch(url, { ...init, signal: controller.signal }); }
+  finally { clearTimeout(timeout); }
+}
 
-async function download(request: Request, head = false) {
-  const version = new URL(request.url).searchParams.get('v');
-  if (version && !/^v?\d+(\.\d+){2}$/.test(version)) return new Response('Invalid version', { status: 400 });
-  const releasePath = version ? 'tags/v' + version.replace(/^v/, '') : 'latest';
-  const fallback = ROOT + (version ? 'tag/v' + version.replace(/^v/, '') : 'latest');
-  try {
-    const metaSources = [API + releasePath, MIRROR + API + releasePath];
-    let release: { tag_name: string; assets: { name: string; browser_download_url: string }[] } | null = null;
-    for (const url of metaSources) {
-      try {
-        const meta = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(8000) });
-        if (!meta.ok) continue;
-        release = await meta.json() as typeof release;
-        break;
-      } catch { /* 尝试下一通道 */ }
-    }
-    if (!release) throw new Error('Metadata unavailable');
-    const asset = (release.assets || []).find((a) => /^CryoClaw-Setup-.*-x64\.exe$/i.test(a.name));
-    if (!asset || !asset.browser_download_url.startsWith(ROOT + 'download/')) throw new Error('Asset unavailable');
-    const upstreamHeaders = new Headers({ 'User-Agent': UA });
-    for (const key of ['range', 'if-range']) { const value = request.headers.get(key); if (value) upstreamHeaders.set(key, value); }
-    // 直连优先，失败走国内镜像
-    let upstream: Response | null = null;
-    for (const url of [asset.browser_download_url, MIRROR + asset.browser_download_url]) {
-      try {
-        const res = await fetch(url, { method: head ? 'HEAD' : 'GET', headers: upstreamHeaders, redirect: 'follow' });
-        if (res.status === 416 || res.ok) { upstream = res; break; }
-      } catch { /* 尝试下一通道 */ }
-    }
-    if (!upstream) throw new Error('Download unavailable');
-    const headers = new Headers({ 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename="${asset.name.replace(/[^\w.\-]/g, '_')}"`, 'Cache-Control': version ? 'public, max-age=86400' : 'no-cache', 'X-Dl-Version': release.tag_name });
-    for (const key of ['content-length', 'content-range', 'accept-ranges', 'etag', 'last-modified']) { const value = upstream.headers.get(key); if (value) headers.set(key, value); }
-    return new Response(head ? null : upstream.body, { status: upstream.status, headers });
-  } catch {
-    // 302 兜底顺序：国内镜像（latest 解析页）→ GitHub 官方
-    return new Response(null, { status: 302, headers: { Location: MIRROR + fallback, 'Cache-Control': 'no-store' } });
+async function download(request: Request, head = false): Promise<Response> {
+  const params = new URL(request.url).searchParams;
+  const rawVersion = params.get('v');
+  const source = params.get('source') || 'auto';
+  if (rawVersion !== null && !/^v?\d+(\.\d+){2}$/.test(rawVersion)) return new Response('Invalid version', { status: 400 });
+  if (!['auto', 'github', 'mirror'].includes(source)) return new Response('Invalid source', { status: 400 });
+  const range = request.headers.get('range');
+  // One range is sufficient for resume; multipart responses need a different MIME type.
+  if (range && !/^bytes=(?:\d+-\d*|-\d+)$/.test(range)) return new Response('Invalid range', { status: 400 });
+  let release;
+  try { release = await loadRelease(rawVersion?.replace(/^v/, '')); }
+  catch (error) { return new Response(error instanceof Error ? error.message : 'Release unavailable', { status: error instanceof ReleaseError ? error.status : 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' } }); }
+  const asset = release.assets[0];
+  const headers = new Headers({ 'User-Agent': USER_AGENT, 'Accept-Encoding': 'identity' });
+  for (const key of ['range', 'if-range']) { const value = request.headers.get(key); if (value) headers.set(key, value); }
+  const sources: [string, string][] = source === 'mirror' ? [[MIRROR + asset.browser_download_url, 'mirror']] : source === 'github' ? [[asset.browser_download_url, 'github']] : [[asset.browser_download_url, 'github'], [MIRROR + asset.browser_download_url, 'mirror']];
+  for (const [url, channel] of sources) {
+    try {
+      const upstream = await fetchHeaders(url, { method: head ? 'HEAD' : 'GET', headers, redirect: 'follow' });
+      if (upstream.status === 416) {
+        await upstream.body?.cancel();
+        const result = new Headers({ 'Cache-Control': 'no-store' });
+        const contentRange = upstream.headers.get('content-range');
+        if (contentRange) result.set('Content-Range', contentRange);
+        return new Response(null, { status: 416, headers: result });
+      }
+      const type = upstream.headers.get('content-type') || '';
+      // Proxy error/landing pages must never be delivered under an .exe filename.
+      if (![200, 206].includes(upstream.status) || !/^(?:application\/(?:octet-stream|x-msdownload|x-msdos-program|vnd\.microsoft\.portable-executable|exe|x-executable)|binary\/octet-stream)(?:;|$)/i.test(type) || (upstream.status === 206 && !upstream.headers.has('content-range'))) {
+        await upstream.body?.cancel(); continue;
+      }
+      const result = new Headers({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="${asset.name}"`,
+        'Cache-Control': upstream.status === 206 ? 'no-store' : 'public, max-age=3600',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Dl-Version': release.tag_name,
+        'X-Dl-Source': channel,
+      });
+      for (const key of ['content-length', 'content-range', 'accept-ranges', 'etag', 'last-modified']) { const value = upstream.headers.get(key); if (value) result.set(key, value); }
+      return new Response(head ? null : upstream.body, { status: upstream.status, headers: result });
+    } catch { /* The next source is independent and gets its own header deadline. */ }
   }
+  // Redirect to the actual official asset, never a mirror's HTML release page.
+  return new Response(null, { status: 302, headers: { Location: asset.browser_download_url, 'Cache-Control': 'no-store' } });
 }
 
 export const GET = (request: Request) => download(request);
