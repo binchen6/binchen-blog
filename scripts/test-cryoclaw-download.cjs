@@ -8,7 +8,10 @@ const { GET: metadata } = require('../app/api/cryoclaw-release/route.ts');
 const { normalizeRelease } = require('../lib/cryoclaw-release.ts');
 const snapshot = require('../public/CryoClaw/release.json');
 const asset = snapshot.assets[0];
-const request = (query = '?v=2026.1019.0', headers = {}) => new Request('https://example.com/api/cryoclaw-dl' + query, { headers });
+const version = snapshot.tag_name.slice(1);
+const parts = version.split('.');
+const nextVersion = [...parts.slice(0, 2), Number(parts[2]) + 1].join('.');
+const request = (query = '?v=' + version, headers = {}) => new Request('https://example.com/api/cryoclaw-dl' + query, { headers });
 const mockFetch = (t, handler) => t.mock.method(globalThis, 'fetch', handler);
 const binary = (body = 'MZbinary', extra = {}) => new Response(body, { headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': String(body.length), 'Accept-Ranges': 'bytes', ETag: '"installer"', ...extra } });
 
@@ -18,14 +21,14 @@ test('pinned download bypasses metadata and streams original bytes', async t => 
   assert.equal(result.status, 200); assert.equal(await result.text(), 'MZbinary');
   assert.equal(calls.length, 1); assert.equal(calls[0][0], asset.browser_download_url);
   assert.equal(result.headers.get('X-Dl-Source'), 'github');
-  assert.match(result.headers.get('content-disposition'), /CryoClaw-Setup-2026\.1019\.0-x64\.exe/);
+  assert.equal(result.headers.get('content-disposition'), 'attachment; filename="' + asset.name + '"');
 });
 test('Range and If-Range reach upstream, 206 and headers survive', async t => {
   mockFetch(t, async (url, init) => {
     assert.equal(init.headers.get('range'), 'bytes=2-5'); assert.equal(init.headers.get('if-range'), '"installer"');
     return new Response('bina', { status: 206, headers: { 'Content-Type': 'application/octet-stream', 'Content-Range': 'bytes 2-5/8', 'Content-Length': '4', 'Accept-Ranges': 'bytes' } });
   });
-  const result = await GET(request('?v=2026.1019.0', { Range: 'bytes=2-5', 'If-Range': '"installer"' }));
+  const result = await GET(request('?v=' + version, { Range: 'bytes=2-5', 'If-Range': '"installer"' }));
   assert.equal(result.status, 206); assert.equal(result.headers.get('Content-Range'), 'bytes 2-5/8');
   assert.equal(result.headers.get('Content-Length'), '4'); assert.equal(result.headers.get('Cache-Control'), 'no-store');
   assert.equal(await result.text(), 'bina');
@@ -45,18 +48,18 @@ test('all failed sources redirect to the actual official exe', async t => {
 });
 test('416 preserves the total size without inventing an attachment', async t => {
   mockFetch(t, async () => new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */8' } }));
-  const result = await GET(request('?v=2026.1019.0', { Range: 'bytes=999-' }));
+  const result = await GET(request('?v=' + version, { Range: 'bytes=999-' }));
   assert.equal(result.status, 416); assert.equal(result.headers.get('Content-Range'), 'bytes */8'); assert.equal(result.headers.get('Content-Disposition'), null);
 });
 test('invalid versions, sources, empty v and multipart ranges never fetch', async t => {
   const fetch = mockFetch(t, async () => { throw new Error('Must not fetch'); });
   for (const query of ['?v=', '?v=../../../secret', '?source=https://evil.test']) assert.equal((await GET(request(query))).status, 400);
-  assert.equal((await GET(request('?v=2026.1019.0', { Range: 'bytes=0-1,3-4' }))).status, 400);
+  assert.equal((await GET(request('?v=' + version, { Range: 'bytes=0-1,3-4' }))).status, 400);
   assert.equal(fetch.mock.calls.length, 0);
 });
 test('explicit mirror selection skips the direct source', async t => {
   mockFetch(t, async url => { assert.equal(url, 'https://gh-proxy.com/' + asset.browser_download_url); return binary(); });
-  assert.equal((await GET(request('?v=v2026.1019.0&source=mirror'))).headers.get('X-Dl-Source'), 'mirror');
+  assert.equal((await GET(request('?v=' + snapshot.tag_name + '&source=mirror'))).headers.get('X-Dl-Source'), 'mirror');
 });
 test('header timeout is cleared so a slow body is not aborted', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] }); let signal;
@@ -71,14 +74,15 @@ test('metadata rejects mismatched repositories and unpublished installers', () =
   assert.equal(normalizeRelease({ ...snapshot, assets: [{ ...asset, browser_download_url: 'https://evil.test/file.exe' }] }), null);
   assert.equal(normalizeRelease({ ...snapshot, prerelease: true }), null);
   assert.equal(normalizeRelease({ ...snapshot, assets: [] }), null);
-  assert.equal(normalizeRelease(snapshot, '2026.1018.0'), null);
+  assert.equal(normalizeRelease(snapshot, nextVersion), null);
 });
 test('live metadata updates all installer fields together', async t => {
-  const data = JSON.parse(JSON.stringify(snapshot)); data.tag_name = 'v2026.1020.0';
-  data.assets[0].name = data.assets[0].name.replace('2026.1019.0', '2026.1020.0');
-  data.assets[0].browser_download_url = data.assets[0].browser_download_url.replaceAll('2026.1019.0', '2026.1020.0');
+  const data = JSON.parse(JSON.stringify(snapshot)); data.tag_name = 'v' + nextVersion;
+  data.assets[0].name = data.assets[0].name.replace(version, nextVersion);
+  data.assets[0].browser_download_url = data.assets[0].browser_download_url.replaceAll(version, nextVersion);
+  data.assets[0].size += 12345; data.assets[0].digest = 'sha256:' + 'ab'.repeat(32);
   mockFetch(t, async () => Response.json(data));
-  const result = await metadata(); const release = await result.json(); assert.equal(release.stale, false); assert.equal(release.tag_name, data.tag_name); assert.equal(release.assets[0].browser_download_url, data.assets[0].browser_download_url);
+  const result = await metadata(); const release = await result.json(); assert.equal(release.stale, false); assert.equal(release.tag_name, data.tag_name); assert.deepEqual(release.assets[0], data.assets[0]);
 });
 test('unknown version returns 404 instead of a different installer', async t => {
   mockFetch(t, async () => new Response(null, { status: 404 }));
